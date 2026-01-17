@@ -1,0 +1,39 @@
+---
+import "../../react-app/index.css";
+
+import { Image } from "astro:assets";
+import { getCollection } from "astro:content";
+
+import DocsLayout from "../../layouts/DocsLayout.astro";
+
+const posts = (await getCollection("docs")).sort(
+	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+---
+
+<DocsLayout title="Docs">
+	<section class="space-y-4">
+		<h1 class="text-2xl font-semibold tracking-tight">Docs</h1>
+		<ul class="grid gap-3 sm:grid-cols-2">
+			{
+				posts.map((post) => (
+					<li class="rounded-lg border bg-card text-card-foreground shadow-sm">
+						<a href={`/docs/${post.id}/`} class="block p-4 hover:bg-accent/40">
+							{post.data.heroImage && (
+								<Image
+									width={720}
+									height={360}
+									src={post.data.heroImage}
+									alt=""
+									class="mb-3 w-full rounded-md"
+								/>
+							)}
+							<h2 class="text-base font-medium">{post.data.title}</h2>
+							<p class="mt-1 text-sm text-muted-foreground">{post.data.description}</p>
+						</a>
+					</li>
+				))
+			}
+		</ul>
+	</section>
+</DocsLayout>

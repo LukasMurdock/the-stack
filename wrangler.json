@@ -1,0 +1,159 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "the-stack-local",
+	"main": "./src/worker.ts",
+	"compatibility_date": "2025-10-08",
+	"compatibility_flags": ["nodejs_compat"],
+	"observability": {
+		"enabled": true,
+		"traces": {
+			"enabled": true,
+			// In the future, Cloudflare plans to enable automatic tracing
+			// in addition to logs when you set observability.enabled = true
+			// in your Wrangler configuration.
+			// See https://developers.cloudflare.com/workers/observability/traces/
+			"head_sampling_rate": 0.05
+		}
+	},
+	"upload_source_maps": true,
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "./dist"
+	},
+	// "d1_databases": [
+	// 	{
+	// 		"binding": "CORE_DB",
+	// 		"database_name": "core-local",
+	// 		// Wrangler currently only respects `migrations_dir` for a D1 binding
+	// 		// when `database_id` is present. Replace with your real D1 UUID.
+	// 		"database_id": "00000000-0000-0000-0000-000000000000",
+	// 		"migrations_dir": "./src/bindings/d1/core/drizzle"
+	// 	}
+	// ],
+	/**
+	 * Smart Placement
+	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
+	 */
+	// "placement": {  "mode": "smart" }
+	/**
+	 * Bindings
+	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
+	 * databases, object storage, AI inference, real-time communication and more.
+	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
+	 */
+	/**
+	 * Environment Variables
+	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
+	 * Note: Use secrets to store sensitive data.
+	 * https://developers.cloudflare.com/workers/configuration/secrets/
+	 */
+	"vars": {
+		"PRODUCT_NAME": "The Stack",
+		"EMAIL_FROM": "The Stack <[email protected]>",
+		"APP_ENV": "local"
+	},
+	// Local secrets/vars are loaded from `.dev.vars`.
+	// Production vars should be set in `env.production.vars` below.
+	// Secrets (set via `wrangler secret put`):
+	// - BETTER_AUTH_SECRET
+	// - BOOTSTRAP_SECRET
+	"d1_databases": [
+		{
+			"binding": "CORE_DB",
+			"database_name": "core-local",
+			"database_id": "11111111-1111-1111-1111-111111111111",
+			"migrations_dir": "./src/bindings/d1/core/drizzle"
+		},
+		{
+			"binding": "TURRET_DB",
+			"database_name": "turret-local",
+			"database_id": "22222222-2222-2222-2222-222222222222",
+			"migrations_dir": "./src/bindings/d1/turret/drizzle"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "CORE_KV"
+		},
+		{
+			"binding": "TURRET_CFG"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "TURRET_REPLAY_BUCKET",
+			"bucket_name": "turret-replay-production"
+		}
+	],
+	"analytics_engine_datasets": [
+		{
+			"binding": "TURRET_ANALYTICS",
+			"dataset": "turret_analytics"
+		}
+	],
+	"triggers": {
+		"crons": ["0 * * * *"]
+	},
+	"env": {
+		"production": {
+			"name": "the-stack-production",
+			"d1_databases": [
+				{
+					"binding": "CORE_DB",
+					"database_name": "core-production",
+					"database_id": "00000000-0000-0000-0000-000000000000",
+					"migrations_dir": "./src/bindings/d1/core/drizzle"
+				},
+				{
+					"binding": "TURRET_DB",
+					"database_name": "turret-production",
+					"database_id": "00000000-0000-0000-0000-000000000000",
+					"migrations_dir": "./src/bindings/d1/turret/drizzle"
+				}
+			],
+			"kv_namespaces": [
+				{
+					"binding": "CORE_KV"
+				},
+				{
+					"binding": "TURRET_CFG"
+				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "TURRET_REPLAY_BUCKET",
+					"bucket_name": "turret-replay-production"
+				}
+			],
+			"analytics_engine_datasets": [
+				{
+					"binding": "TURRET_ANALYTICS",
+					"dataset": "turret_analytics"
+				}
+			],
+			"triggers": {
+				"crons": ["0 * * * *"]
+			},
+			"vars": {
+				"PRODUCT_NAME": "The Stack",
+				"EMAIL_FROM": "The Stack <[email protected]>",
+				"APP_ENV": "production",
+				"APP_URL": "https://your-app.example",
+				"ADMIN_EMAIL": "admin@your-app.example"
+			},
+			// Secrets (set via `wrangler secret put --env production`):
+			// - BETTER_AUTH_SECRET
+			// - BOOTSTRAP_SECRET
+			"version_metadata": {
+				"binding": "CF_VERSION_METADATA"
+			}
+		}
+	},
+	"version_metadata": {
+		"binding": "CF_VERSION_METADATA"
+	}
+}

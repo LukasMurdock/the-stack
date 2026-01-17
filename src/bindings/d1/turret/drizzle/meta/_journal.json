@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1768761991556,
+      "tag": "0000_numerous_blackheart",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1768767600000,
+      "tag": "0001_worker_version",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1768771294489,
+      "tag": "0003_gigantic_millenium_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1768778112057,
+      "tag": "0003_sturdy_scorpion",
+      "breakpoints": true
+    }
+  ]
+}

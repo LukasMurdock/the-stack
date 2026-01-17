@@ -1,0 +1,29 @@
+# Local development secrets for `wrangler dev` / Cloudflare Vite plugin.
+# Copy to `.dev.vars` and fill in real values.
+
+# Better Auth
+# Generate a secret with:
+# npx @better-auth/cli@latest secret
+BETTER_AUTH_SECRET="replace-me"
+
+# Used by the one-time bootstrap admin endpoint.
+BOOTSTRAP_SECRET="replace-me"
+
+# App
+# Used for email links (password reset / email verification) and the admin bootstrap flow.
+APP_URL="http://localhost:5173"
+
+# Where the bootstrap endpoint sends the reset email.
+ADMIN_EMAIL="admin@example.com"
+
+# OAuth (optional)
+GOOGLE_CLIENT_ID="replace-me"
+GOOGLE_CLIENT_SECRET="replace-me"
+
+# Email (optional)
+# If omitted, the app logs email contents instead of sending.
+RESEND_API_KEY=""
+
+# Turret (optional)
+# Signs Turret upload tokens. Only required if you enable Turret ingestion locally.
+TURRET_SIGNING_KEY="replace-me"

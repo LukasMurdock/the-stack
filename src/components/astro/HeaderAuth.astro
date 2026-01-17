@@ -1,0 +1,15 @@
+---
+export const prerender = false;
+
+type SessionUser = { name?: string | null; email?: string | null };
+
+const session = (Astro.locals as { session?: { user?: SessionUser } | null }).session;
+const user = session?.user;
+---
+{user ? (
+	<span>
+		Signed in{user.email ? ` as ${user.email}` : ""}
+	</span>
+) : (
+	<a href="/app/login">Sign in</a>
+)}

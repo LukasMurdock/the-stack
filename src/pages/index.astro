@@ -1,0 +1,44 @@
+---
+export const prerender = true;
+
+import "../react-app/index.css";
+
+import Layout from "../layouts/Layout.astro";
+
+const features = [
+	{ icon: "☁️", title: "Deploy", description: "Ship applications instead of managing infrastructure." },
+	{ icon: "🧩", title: "Validate", description: "End-to-end type-safe APIs with runtime schema validation." },
+	{ icon: "📖", title: "Document", description: "Beautiful docs and auto-generated API references—always in sync." },
+	{ icon: "⚛️", title: "Fetch", description: "Cache, refetch, and sync client data with resilient loading states." },
+	{ icon: "🔐", title: "Authenticate", description: "Sessions, email/password, OAuth, and verification flows." },
+	{ icon: "👀", title: "Observe", description: "Session replay, logs, traces, and metrics to find issues fast." },
+];
+---
+<Layout title="The Stack">
+	<section class="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+		<h1 class="text-4xl font-semibold tracking-tight sm:text-5xl">The Stack</h1>
+		<p class="mt-4 max-w-xl text-lg text-muted-foreground">
+			API-first, type-safe template for building fast, interactive apps on Cloudflare Workers.
+		</p>
+		<div class="mt-8 flex gap-4">
+			<a href="/docs/" class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
+				Read the docs
+			</a>
+			<a href="/app" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors">
+				Open app
+			</a>
+		</div>
+	</section>
+
+	<section class="max-w-4xl mx-auto px-4 pb-16">
+		<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+			{features.map((feature) => (
+				<div class="rounded-lg border bg-card p-5">
+					<div class="text-2xl mb-2">{feature.icon}</div>
+					<h3 class="font-medium">{feature.title}</h3>
+					<p class="mt-1 text-sm text-muted-foreground">{feature.description}</p>
+				</div>
+			))}
+		</div>
+	</section>
+</Layout>

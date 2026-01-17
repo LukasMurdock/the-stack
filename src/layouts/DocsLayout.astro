@@ -1,0 +1,57 @@
+---
+import globalStylesHref from "../react-app/index.css?url";
+
+import { DocsNav } from "../components/docs/DocsNav";
+
+export type Props = {
+	title: string;
+};
+
+const { title } = Astro.props;
+const pathname = Astro.url.pathname;
+
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<link rel="stylesheet" href={globalStylesHref} />
+		<slot name="head" />
+	</head>
+
+	<body class="min-h-screen bg-background text-foreground">
+		<header class="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
+			<div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+				<a href="/docs" class="text-sm font-semibold tracking-tight">
+					The Stack Docs
+				</a>
+
+				<div class="contents">
+					<DocsNav client:load pathname={pathname} />
+				</div>
+
+				<nav class="flex items-center gap-3 text-sm">
+					<a
+						href="/"
+						class={pathname === "/" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}
+					>
+						Home
+					</a>
+					<a
+						href="/app"
+						class={pathname.startsWith("/app") ? "text-foreground" : "text-muted-foreground hover:text-foreground"}
+					>
+						App
+					</a>
+				</nav>
+			</div>
+		</header>
+
+		<main class="mx-auto max-w-6xl px-4 py-8">
+			<slot />
+		</main>
+	</body>
+</html>

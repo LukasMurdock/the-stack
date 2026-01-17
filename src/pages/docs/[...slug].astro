@@ -1,0 +1,41 @@
+---
+import "../../react-app/index.css";
+
+import { type CollectionEntry, getCollection, render } from "astro:content";
+
+import { DocActionsDropdown } from "@/components/docs/DocActionsDropdown";
+import DocsLayout from "../../layouts/DocsLayout.astro";
+
+export async function getStaticPaths() {
+	const posts = await getCollection("docs");
+	return posts.map((post) => ({
+		params: { slug: post.id },
+		props: post,
+	}));
+}
+
+type Props = CollectionEntry<"docs">;
+
+const post = Astro.props;
+const { Content } = await render(post);
+
+const rawUrl = `/docs/raw/${post.id}`;
+---
+
+<DocsLayout title={post.data.title}>
+	<article class="mx-auto max-w-3xl space-y-6">
+		<header class="space-y-3">
+			<div class="flex flex-wrap items-start justify-between gap-3">
+				<h1 class="text-3xl font-semibold tracking-tight">{post.data.title}</h1>
+				<DocActionsDropdown client:load url={rawUrl} />
+			</div>
+			{post.data.description ? (
+				<p class="text-muted-foreground">{post.data.description}</p>
+			) : null}
+		</header>
+
+		<div class="space-y-4 text-sm leading-6 [&_a]:underline [&_a:hover]:opacity-80 [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-xs [&_h2]:mt-8 [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:mt-6 [&_h3]:text-lg [&_h3]:font-semibold [&_p]:text-foreground/90 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:bg-muted [&_pre]:p-4 [&_ul]:list-disc [&_ul]:pl-5">
+			<Content />
+		</div>
+	</article>
+</DocsLayout>

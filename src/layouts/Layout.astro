@@ -1,0 +1,39 @@
+---
+import globalStylesHref from "../react-app/index.css?url";
+
+import HeaderAuth from "../components/astro/HeaderAuth.astro";
+
+export type Props = {
+	title: string;
+};
+
+const { title } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<link rel="stylesheet" href={globalStylesHref} />
+		<slot name="head" />
+	</head>
+	<body class="min-h-screen flex flex-col">
+		<header class="border-b">
+			<nav class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+				<div class="flex items-center gap-6">
+					<a href="/" class="font-medium">The Stack</a>
+					<a href="/docs/" class="text-sm text-muted-foreground hover:text-foreground transition-colors">Docs</a>
+				</div>
+				<HeaderAuth server:defer>
+					<span slot="fallback">
+						<a href="/app/login" class="text-sm text-muted-foreground hover:text-foreground transition-colors">Sign in</a>
+					</span>
+				</HeaderAuth>
+			</nav>
+		</header>
+		<main class="flex-1">
+			<slot />
+		</main>
+	</body>
+</html>

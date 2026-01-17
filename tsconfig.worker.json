@@ -1,0 +1,23 @@
+{
+	"extends": "./tsconfig.node.json",
+	"compilerOptions": {
+		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.worker.tsbuildinfo",
+		"types": ["vite/client", "./worker-configuration.d.ts"],
+		"lib": ["ES2023"],
+		"jsx": "react-jsx",
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["./src/*"]
+		}
+	},
+	"include": [
+		"src/worker",
+		"src/worker.ts",
+		"src/bindings",
+		"src/error-tracker/index.ts",
+		"src/edge-errors"
+	],
+	"exclude": [
+		"src/bindings/d1/**/drizzle.studio.local.config.ts"
+	]
+}

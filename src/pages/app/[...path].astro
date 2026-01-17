@@ -1,0 +1,11 @@
+---
+export const prerender = false;
+
+import "../../react-app/index.css";
+
+import { AstroRoot } from "../../react-app/AstroRoot";
+---
+
+<div id="root">
+    <AstroRoot client:only="react" />
+</div>

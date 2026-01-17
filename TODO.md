@@ -1,0 +1,51 @@
+- Turret
+    - Sessions
+    - Errors
+    - Feedback
+    - Support
+        - Unified inbox
+- Product docs (/docs)
+    - top bar product name, logo | search | docs version select | dark mode
+    - nested/grouped collapsible left sidebar
+    - copy markdown | open in [x]
+    - ask AI
+    - page toc right side
+    - `/docs/changelog`
+- Admin interface for admins
+- Build Turret: built-in observability: Session replay, error capture and event pipeline for logs, traces, and metrics.
+    - rrweb
+        - https://github.com/rrweb-io/rrweb/tree/master/docs/recipes
+        - https://github.com/rrweb-io/rrweb/blob/master/docs/recipes/console.md
+        - https://github.com/rrweb-io/rrweb/blob/master/docs/recipes/custom-event.md
+    - https://developers.cloudflare.com/analytics/graphql-api/tutorials/querying-workers-metrics/
+    - https://github.com/GoogleChrome/web-vitals
+    - https://blog.cloudflare.com/loving-performance-measurements/
+    - https://www.youtube.com/watch?v=lJ8ydIuPFeU&feature=youtu.be
+    - https://github.com/TanStack/query/discussions/4774
+    - https://tanstack.com/start/latest/docs/framework/react/guide/observability
+    - https://tanstack.com/start/latest/docs/framework/react/guide/observability#performance-monitoring-checklist
+    - email/slack alarms/alerts
+- agent error debugging
+- agent pre-flight deploy audit of changes since last deployment
+- agent security checks
+- renovatebot
+- https://github.com/cloudflare/skills
+- https://developers.cloudflare.com/analytics/analytics-engine/get-started/
+- https://developers.cloudflare.com/durable-objects/api/
+- https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
+- https://developers.cloudflare.com/workflows/
+- logging (loggingsucks)
+- https://github.com/glotlabs/argon2-cloudflare
+- https://github.com/supermacro/neverthrow
+- https://www.fumadocs.dev/
+- https://inkeep.com/
+    - https://posthog.com/blog/ai-community-answers
+    - Website Search: Inkeep's chat interface provided direct answers, acting as an enhanced search tool that served custom responses sourced across multiple technical docs, while being seamlessly integrated into PostHog.com without a floating chat trigger icon.
+    - Internal Slack Bot: The "#ask-max" channel allowed employees to query documentation and their publicly-available internal company handbook.
+    - Product Integration: PostHog integrated Inkeep into their product's LLM, automatically routing documentation-related user questions directly to Inkeep's API.
+    - Generate Instant Code from Configuration Docs: Users simply ask Inkeep chat to "spin me up a config example for these parameters?" and instantly get working code.
+    - Integrate AI in Support Workflow: The support team now uses Inkeep's copilot (called "Keep") directly within their ticketing system. "They don't even have to leave where they work on tickets, which is phenomenal, 'cause those seconds do add up."
+- https://developers.cloudflare.com/workers/testing/vitest-integration/known-issues/
+- Examples
+    - Chat: IM, search, AI summary
+    -
