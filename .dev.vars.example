@@ -11,7 +11,7 @@ BOOTSTRAP_SECRET="replace-me"
 
 # App
 # Used for email links (password reset / email verification) and the admin bootstrap flow.
-APP_URL="http://localhost:5173"
+APP_URL="http://localhost:4321"
 
 # Where the bootstrap endpoint sends the reset email.
 ADMIN_EMAIL="admin@example.com"
