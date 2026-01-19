@@ -1,0 +1,27 @@
+{
+	"extends": "astro/tsconfigs/strict",
+	"compilerOptions": {
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["./src/*"]
+		}
+	},
+	"include": [
+		"src/env.d.ts",
+		"src/**/*.astro",
+		"src/pages/**/*",
+		"src/layouts/**/*",
+		"src/components/**/*",
+		"src/content/**/*",
+		"src/content.config.ts",
+		".astro/types.d.ts"
+	],
+	"exclude": [
+		"dist",
+		"node_modules",
+		"src/react-app",
+		"src/worker",
+		"src/bindings",
+		"src/edge-errors"
+	]
+}
