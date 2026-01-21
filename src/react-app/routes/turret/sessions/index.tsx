@@ -27,7 +27,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	turretFeaturesMutation,
 	turretFeaturesQueryOptions,
-	turretHealthQueryOptions,
 	turretSessionsQueryOptions,
 } from "../../../queries/turretQueries";
 
@@ -219,7 +218,6 @@ function TurretSessionsPage() {
 	const [now] = useState(() => Date.now());
 
 	const queryClient = useQueryClient();
-	const healthQuery = useQuery(turretHealthQueryOptions);
 	const featuresQuery = useQuery(turretFeaturesQueryOptions);
 	const featuresMutation = useMutation({
 		mutationFn: turretFeaturesMutation,
@@ -419,14 +417,8 @@ function TurretSessionsPage() {
 						</Button>
 					</div>
 
-						<div className="text-sm text-muted-foreground">
-							{healthQuery.isLoading
-								? "Checking access…"
-								: healthQuery.isError
-									? "Access denied or not signed in"
-									: "Admin access confirmed"}
-						</div>
-					</div>
+
+				</div>
 				</CardContent>
 			</Card>
 
