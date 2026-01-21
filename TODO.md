@@ -48,4 +48,6 @@
 - https://developers.cloudflare.com/workers/testing/vitest-integration/known-issues/
 - Examples
     - Chat: IM, search, AI summary
-    -
+- https://developers.cloudflare.com/workers/runtime-apis/bindings/worker-loader/
+- https://www.npmjs.com/package/hono-mcp-server
+- https://github.com/remotion-dev/skills

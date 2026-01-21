@@ -1,6 +1,8 @@
 ---
 import globalStylesHref from "../react-app/index.css?url";
 
+import turretAutoStartHref from "../lib/turretAutoStart?url";
+
 import HeaderAuth from "../components/astro/HeaderAuth.astro";
 
 export type Props = {
@@ -16,6 +18,7 @@ const { title } = Astro.props;
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>{title}</title>
 		<link rel="stylesheet" href={globalStylesHref} />
+		<script type="module" src={turretAutoStartHref}></script>
 		<slot name="head" />
 	</head>
 	<body class="min-h-screen flex flex-col">

@@ -12,7 +12,7 @@ export default defineConfig({
 	output: "static",
 	vite: {
 		optimizeDeps: {
-			exclude: ["astro:middleware"],
+			exclude: ["astro:middleware", "rrweb"],
 		},
 		resolve: {
 			dedupe: ["react", "react-dom"],

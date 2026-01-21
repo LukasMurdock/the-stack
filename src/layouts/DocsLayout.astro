@@ -1,6 +1,8 @@
 ---
 import globalStylesHref from "../react-app/index.css?url";
 
+import turretAutoStartHref from "../lib/turretAutoStart?url";
+
 import { DocsNav } from "../components/docs/DocsNav";
 
 export type Props = {
@@ -19,6 +21,7 @@ const pathname = Astro.url.pathname;
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>{title}</title>
 		<link rel="stylesheet" href={globalStylesHref} />
+		<script type="module" src={turretAutoStartHref}></script>
 		<slot name="head" />
 	</head>
 
@@ -29,9 +32,9 @@ const pathname = Astro.url.pathname;
 					The Stack Docs
 				</a>
 
-				<div class="contents">
-					<DocsNav client:load pathname={pathname} />
-				</div>
+					<div class="contents">
+						<DocsNav client:only="react" pathname={pathname} />
+					</div>
 
 				<nav class="flex items-center gap-3 text-sm">
 					<a

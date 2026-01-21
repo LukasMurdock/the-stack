@@ -1,11 +1,7 @@
-import "rrweb-player/dist/style.css";
-
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import rrwebPlayer from "rrweb-player";
-import { EventType, IncrementalSource } from "rrweb";
 import type { eventWithTime } from "@rrweb/types";
 
 import {
@@ -30,6 +26,12 @@ import {
 	turretSessionMetaQueryOptions,
 } from "../../../queries/turretQueries";
 
+type RrwebPlayerInstance = {
+	getMetaData?: () => { startTime: number; totalTime?: number };
+	goto: (offset: number, play?: boolean) => void;
+	$destroy?: () => void;
+};
+
 const Route = createFileRoute("/turret/sessions/$sessionId")({
 	component: TurretSessionPage,
 });
@@ -38,7 +40,7 @@ function RequestBreadcrumbRow(props: {
 	breadcrumb: TurretRequestBreadcrumb;
 	ts: number;
 	replayReady: boolean;
-	playerRef: React.RefObject<rrwebPlayer | null>;
+	playerRef: React.RefObject<RrwebPlayerInstance | null>;
 }) {
 	const spansQuery = useQuery(turretRequestSpansQueryOptions(props.breadcrumb.requestId));
 	const b = props.breadcrumb;
@@ -126,7 +128,7 @@ function TurretSessionPage() {
 	);
 
 	const playerHostRef = useRef<HTMLDivElement | null>(null);
-	const playerRef = useRef<rrwebPlayer | null>(null);
+	const playerRef = useRef<RrwebPlayerInstance | null>(null);
 
 	const sortedSeqs = useMemo(() => {
 		const chunks = chunksQuery.data?.chunks ?? [];
@@ -144,6 +146,11 @@ function TurretSessionPage() {
 	>({ state: "idle" });
 
 	const [replayEvents, setReplayEvents] = useState<eventWithTime[]>([]);
+	const [replayLibStatus, setReplayLibStatus] = useState<
+		| { state: "idle" }
+		| { state: "ready" }
+		| { state: "blocked"; message: string }
+	>({ state: "idle" });
 
 	type ConsoleItem = {
 		timestamp: number;
@@ -153,17 +160,15 @@ function TurretSessionPage() {
 	};
 
 	const consoleItems = useMemo(() => {
+		if (replayLibStatus.state !== "ready") return [];
 		const items: ConsoleItem[] = [];
 		for (const ev of replayEvents) {
 			const anyEv = ev as any;
 			let logData: any | null = null;
 
-			if (
-				anyEv.type === EventType.IncrementalSnapshot &&
-				anyEv.data?.source === IncrementalSource.Log
-			) {
-				logData = anyEv.data;
-			} else if (anyEv.type === EventType.Plugin && anyEv.data?.plugin === "rrweb/console@1") {
+			// Prefer the plugin event format so we don't depend on rrweb enums.
+			// When rrweb is blocked (ad blockers), this file should still load.
+			if (anyEv.data?.plugin === "rrweb/console@1" && anyEv.data?.payload) {
 				logData = anyEv.data.payload;
 			}
 
@@ -194,7 +199,7 @@ function TurretSessionPage() {
 
 		items.sort((a, b) => a.timestamp - b.timestamp);
 		return items;
-	}, [replayEvents]);
+	}, [replayEvents, replayLibStatus.state]);
 
 	useEffect(() => {
 		const controller = new AbortController();
@@ -202,11 +207,46 @@ function TurretSessionPage() {
 
 		async function loadAndMount() {
 			if (!playerHostRef.current) return;
+
+			// If there's nothing to play, don't even try loading rrweb libs.
+			// (This avoids showing "blocked" in sessions with no replay data.)
 			if (sortedSeqs.length === 0) {
+				setReplayLibStatus({ state: "idle" });
 				setReplayStatus({ state: "idle" });
 				(playerRef.current as any)?.$destroy?.();
 				playerRef.current = null;
 				playerHostRef.current.innerHTML = "";
+				setReplayEvents([]);
+				return;
+			}
+
+			// Load rrweb libraries lazily so the route can still render if a content
+			// blocker blocks rrweb requests.
+			let rrwebPlayerCtor: any;
+			try {
+				await import("rrweb-player/dist/style.css");
+				const mod = await import("rrweb-player");
+				rrwebPlayerCtor = (mod as any).default;
+				if (!active || controller.signal.aborted) return;
+				setReplayLibStatus({ state: "ready" });
+			} catch (err) {
+				if (!active || controller.signal.aborted) return;
+				const message =
+					err instanceof Error
+						? err.message
+						: "Replay library blocked by client";
+				setReplayLibStatus({
+					state: "blocked",
+					message,
+				});
+				setReplayStatus({
+					state: "error",
+					message: "Replay blocked (ad blocker or privacy extension)",
+				});
+				(playerRef.current as any)?.$destroy?.();
+				playerRef.current = null;
+				playerHostRef.current.innerHTML = "";
+				setReplayEvents([]);
 				return;
 			}
 
@@ -256,7 +296,7 @@ function TurretSessionPage() {
 
 			setReplayEvents(events);
 
-			playerRef.current = new rrwebPlayer({
+			playerRef.current = new rrwebPlayerCtor({
 				target: playerHostRef.current,
 				props: {
 					events,
@@ -307,15 +347,19 @@ function TurretSessionPage() {
 						</>
 					) : (
 						<div className="space-y-2">
-							{replayStatus.state === "error" ? (
-								<div className="text-sm text-destructive">
-									Failed to load replay: {replayStatus.message}
-								</div>
-							) : replayStatus.state === "loading" ? (
-								<div className="text-sm text-muted-foreground">
-									Loading replay… {replayStatus.loaded}/{replayStatus.total}
-								</div>
-							) : replayStatus.state === "ready" ? (
+						{replayStatus.state === "error" ? (
+							<div className="text-sm text-destructive">
+								Failed to load replay: {replayStatus.message}
+							</div>
+						) : replayLibStatus.state === "blocked" ? (
+							<div className="text-sm text-muted-foreground">
+								Replay is blocked by a browser extension.
+							</div>
+						) : replayStatus.state === "loading" ? (
+							<div className="text-sm text-muted-foreground">
+								Loading replay… {replayStatus.loaded}/{replayStatus.total}
+							</div>
+						) : replayStatus.state === "ready" ? (
 								<div className="text-xs text-muted-foreground">
 									Loaded {replayStatus.totalEvents} events
 								</div>

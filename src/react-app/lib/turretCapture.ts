@@ -4,7 +4,11 @@ import {
 	turretMarkCaptureBlocked,
 	turretUploadChunk,
 } from "./turretIngestApi";
-import { setLastRrwebTsMs, setTurretContext, clearTurretContext } from "./turretContext";
+import {
+	setLastRrwebTsMs,
+	setTurretContext,
+	clearTurretContext,
+} from "./turretContext";
 
 const JOURNEY_KEY = "turret:journey_id";
 
@@ -26,7 +30,9 @@ type TurretCaptureOptions = {
 	maxChunkBytes?: number;
 };
 
-function createTurretCapture(options?: TurretCaptureOptions): TurretCaptureHandle {
+function createTurretCapture(
+	options?: TurretCaptureOptions
+): TurretCaptureHandle {
 	const flushMs = options?.flushMs ?? 2000;
 	const maxEvents = options?.maxEvents ?? 200;
 	// Keep below worker cap (512KB) to account for JSON wrapper overhead.
@@ -126,7 +132,7 @@ function createTurretCapture(options?: TurretCaptureOptions): TurretCaptureHandl
 		// Important: rrweb import can be blocked by content blockers.
 		// In that case, capture should fail closed (no replay) without impacting the app.
 		try {
-			const rrweb = await import("rrweb");
+			const rrweb = await import("../../lib/replay");
 
 			const plugins: any[] = [];
 			if (initRes.console?.enabled) {
@@ -134,7 +140,8 @@ function createTurretCapture(options?: TurretCaptureOptions): TurretCaptureHandl
 					rrweb.getRecordConsolePlugin({
 						level: initRes.console.level as any,
 						lengthThreshold: initRes.console.lengthThreshold,
-						stringifyOptions: initRes.console.stringifyOptions as any,
+						stringifyOptions: initRes.console
+							.stringifyOptions as any,
 						logger: "console",
 					})
 				);
