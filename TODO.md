@@ -59,3 +59,4 @@
 - https://github.com/remotion-dev/skills
 - Support AI chat
     - https://help.shopify.com/en/manual/shopify-admin/productivity-tools/shopify-magic
+- https://github.com/stripe/ai

@@ -18,11 +18,12 @@ import {
 } from "@/components/ui/table";
 import { Area, AreaChart, Tooltip, XAxis, YAxis } from "recharts";
 
-import {
-	turretFeaturesQueryOptions,
-	turretSessionsQueryOptions,
-	turretDashboardUsersQueryOptions,
-} from "../../queries/turretQueries";
+	import {
+		turretFeaturesQueryOptions,
+		turretSessionsQueryOptions,
+		turretDashboardUsersQueryOptions,
+		turretUptimeQueryOptions,
+	} from "../../queries/turretQueries";
 
 import { requireTurretAdmin } from "../../lib/requireTurretAdmin";
 
@@ -45,6 +46,7 @@ function TurretDashboardPage() {
 	};
 
 	const featuresQuery = useQuery(turretFeaturesQueryOptions);
+	const uptimeQuery = useQuery(turretUptimeQueryOptions);
 
 	// Anchor time for this mount so the queryKey stays stable.
 	const [now] = useState(() => Date.now());
@@ -184,7 +186,7 @@ function TurretDashboardPage() {
 					<Button
 						type="button"
 						variant="outline"
-						onClick={() => navigate({ to: "/turret/settings" })}
+						onClick={() => navigate({ to: "/turret/settings" as any })}
 					>
 						Settings
 					</Button>
@@ -204,6 +206,57 @@ function TurretDashboardPage() {
 			</div>
 
 			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+				<Card>
+					<CardHeader>
+						<CardTitle>Uptime</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-2 text-sm">
+						{uptimeQuery.isLoading ? (
+							<div className="text-muted-foreground">Loading…</div>
+						) : uptimeQuery.isError ? (
+							<div className="text-muted-foreground">Failed to load.</div>
+						) : uptimeQuery.data?.status ? (
+							(() => {
+								const s = uptimeQuery.data.status;
+								const updated = s.updatedAtMs ? new Date(s.updatedAtMs) : null;
+								const overall = s.overall;
+								const color =
+									overall === "up"
+										? "text-emerald-700 dark:text-emerald-300"
+										: overall === "degraded"
+											? "text-amber-700 dark:text-amber-300"
+											: overall === "down"
+												? "text-rose-700 dark:text-rose-300"
+												: "text-muted-foreground";
+								return (
+									<>
+										<div className="flex items-center justify-between gap-3">
+											<div className="text-muted-foreground">Overall</div>
+											<div className={`font-semibold ${color}`}>{overall}</div>
+										</div>
+										<div className="flex items-center justify-between gap-3">
+											<div className="text-muted-foreground">Updated</div>
+											<div className="font-medium">
+												{updated ? updated.toLocaleTimeString() : "-"}
+											</div>
+										</div>
+										<div className="pt-1">
+											<Button
+												type="button"
+												variant="outline"
+												onClick={() => window.open("/uptime", "_blank")}
+											>
+												View public page
+											</Button>
+										</div>
+									</>
+								);
+							})()
+						) : (
+							<div className="text-muted-foreground">No data.</div>
+						)}
+					</CardContent>
+				</Card>
 				<Card>
 					<CardHeader>
 						<CardTitle>Active Users</CardTitle>

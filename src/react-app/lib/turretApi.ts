@@ -183,6 +183,27 @@ export type TurretDashboardUsersResponse = {
 	retentionDeltaPctWoW: number | null;
 };
 
+export type TurretUptimeService = {
+	id: string;
+	name: string;
+	status: "up" | "down" | "unknown";
+	checkedAtMs: number;
+	latencyMs: number | null;
+	httpStatus: number | null;
+	message: string | null;
+};
+
+export type TurretUptimeStatus = {
+	version: 1;
+	updatedAtMs: number;
+	overall: "up" | "degraded" | "down" | "unknown";
+	services: TurretUptimeService[];
+};
+
+export type TurretUptimeResponse = {
+	status: TurretUptimeStatus;
+};
+
 async function turretHealth(): Promise<{ ok: true }> {
 	const res = await internalTurretFetch("/health");
 	return jsonOrThrow(res) as Promise<{ ok: true }>;
@@ -287,6 +308,11 @@ async function getDashboardUsers(opts?: { to?: number }): Promise<TurretDashboar
 	return jsonOrThrow<TurretDashboardUsersResponse>(res);
 }
 
+async function getUptime(): Promise<TurretUptimeResponse> {
+	const res = await internalTurretFetch("/uptime");
+	return jsonOrThrow<TurretUptimeResponse>(res);
+}
+
 export {
 	turretHealth,
 	listSessions,
@@ -301,4 +327,5 @@ export {
 	getCompliance,
 	setCompliance,
 	getDashboardUsers,
+	getUptime,
 };

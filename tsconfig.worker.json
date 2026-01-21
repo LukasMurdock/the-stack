@@ -13,6 +13,7 @@
 	"include": [
 		"src/worker",
 		"src/worker.ts",
+		"src/uptime-worker.ts",
 		"src/bindings",
 		"src/error-tracker/index.ts",
 		"src/edge-errors"

@@ -6,6 +6,7 @@ import { routes as bootstrapRoutes } from "./routes/bootstrap";
 import { routes as internalTurretRoutes } from "./routes/internal-turret";
 import { routes as internalTurretFeaturesRoutes } from "./routes/internal-turret-features";
 import { routes as internalTurretComplianceRoutes } from "./routes/internal-turret-compliance";
+import { routes as internalTurretUptimeRoutes } from "./routes/internal-turret-uptime";
 import { routes as internalTurretIssuesRoutes } from "./routes/internal-turret-issues";
 import { routes as turretRoutes } from "./routes/turret";
 
@@ -19,6 +20,7 @@ const apiRoutes = api
 	.route("/", internalTurretRoutes)
 	.route("/", internalTurretFeaturesRoutes)
 	.route("/", internalTurretComplianceRoutes)
+	.route("/", internalTurretUptimeRoutes)
 	.route("/", internalTurretIssuesRoutes);
 
 function isAdminRole(role: unknown): boolean {

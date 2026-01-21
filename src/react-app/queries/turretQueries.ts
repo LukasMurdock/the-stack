@@ -12,6 +12,7 @@ import {
 	setFeatures,
 	turretHealth,
 	getDashboardUsers,
+	getUptime,
 	type TurretFeatures,
 	type TurretCompliancePolicy,
 	type TurretSessionsQuery,
@@ -88,6 +89,12 @@ const turretDashboardUsersQueryOptions = (input?: { to?: number }) =>
 		retry: false,
 	});
 
+const turretUptimeQueryOptions = queryOptions({
+	queryKey: ["turret", "uptime"],
+	queryFn: getUptime,
+	retry: false,
+});
+
 export {
 	turretHealthQueryOptions,
 	turretSessionsQueryOptions,
@@ -101,4 +108,5 @@ export {
 	turretComplianceQueryOptions,
 	turretComplianceMutation,
 	turretDashboardUsersQueryOptions,
+	turretUptimeQueryOptions,
 };

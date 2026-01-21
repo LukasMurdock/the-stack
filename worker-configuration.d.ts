@@ -8,6 +8,7 @@ declare namespace Cloudflare {
 	interface Env {
 		CORE_KV: KVNamespace;
 		TURRET_CFG: KVNamespace;
+		TURRET_UPTIME: KVNamespace;
 		PRODUCT_NAME: "The Stack";
 		EMAIL_FROM: "The Stack <[email protected]>";
 		APP_ENV: "local" | "production";
@@ -22,6 +23,7 @@ declare namespace Cloudflare {
 		TURRET_ANALYTICS: AnalyticsEngineDataset;
 		CF_VERSION_METADATA: WorkerVersionMetadata;
 		ASSETS: Fetcher;
+		UPTIME: Fetcher;
 	}
 }
 interface Env extends Cloudflare.Env {}

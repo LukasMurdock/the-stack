@@ -81,6 +81,15 @@
 		},
 		{
 			"binding": "TURRET_CFG"
+		},
+		{
+			"binding": "TURRET_UPTIME"
+		}
+	],
+	"services": [
+		{
+			"binding": "UPTIME",
+			"service": "the-stack-uptime-local"
 		}
 	],
 	"r2_buckets": [
@@ -121,6 +130,15 @@
 				},
 				{
 					"binding": "TURRET_CFG"
+				},
+				{
+					"binding": "TURRET_UPTIME"
+				}
+			],
+			"services": [
+				{
+					"binding": "UPTIME",
+					"service": "the-stack-uptime-production"
 				}
 			],
 			"r2_buckets": [
