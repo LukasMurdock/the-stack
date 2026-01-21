@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from "./routes/login"
 import { Route as IndexRouteImport } from "./routes/index"
 import { Route as TurretIndexRouteImport } from "./routes/turret/index"
 import { Route as ResetPasswordTokenRouteImport } from "./routes/reset-password/$token"
+import { Route as TurretSettingsIndexRouteImport } from "./routes/turret/settings/index"
 import { Route as TurretSessionsIndexRouteImport } from "./routes/turret/sessions/index"
 import { Route as TurretSessionsSessionIdRouteImport } from "./routes/turret/sessions/$sessionId"
 
@@ -48,6 +49,11 @@ const ResetPasswordTokenRoute = ResetPasswordTokenRouteImport.update({
   path: "/$token",
   getParentRoute: () => ResetPasswordRoute,
 } as any)
+const TurretSettingsIndexRoute = TurretSettingsIndexRouteImport.update({
+  id: "/turret/settings/",
+  path: "/turret/settings/",
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TurretSessionsIndexRoute = TurretSessionsIndexRouteImport.update({
   id: "/turret/sessions/",
   path: "/turret/sessions/",
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   "/turret/": typeof TurretIndexRoute
   "/turret/sessions/$sessionId": typeof TurretSessionsSessionIdRoute
   "/turret/sessions/": typeof TurretSessionsIndexRoute
+  "/turret/settings/": typeof TurretSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   "/turret": typeof TurretIndexRoute
   "/turret/sessions/$sessionId": typeof TurretSessionsSessionIdRoute
   "/turret/sessions": typeof TurretSessionsIndexRoute
+  "/turret/settings": typeof TurretSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   "/turret/": typeof TurretIndexRoute
   "/turret/sessions/$sessionId": typeof TurretSessionsSessionIdRoute
   "/turret/sessions/": typeof TurretSessionsIndexRoute
+  "/turret/settings/": typeof TurretSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | "/turret/"
     | "/turret/sessions/$sessionId"
     | "/turret/sessions/"
+    | "/turret/settings/"
   fileRoutesByTo: FileRoutesByTo
   to:
     | "/"
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | "/turret"
     | "/turret/sessions/$sessionId"
     | "/turret/sessions"
+    | "/turret/settings"
   id:
     | "__root__"
     | "/"
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | "/turret/"
     | "/turret/sessions/$sessionId"
     | "/turret/sessions/"
+    | "/turret/settings/"
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   TurretIndexRoute: typeof TurretIndexRoute
   TurretSessionsSessionIdRoute: typeof TurretSessionsSessionIdRoute
   TurretSessionsIndexRoute: typeof TurretSessionsIndexRoute
+  TurretSettingsIndexRoute: typeof TurretSettingsIndexRoute
 }
 
 declare module "@tanstack/react-router" {
@@ -177,6 +190,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof ResetPasswordTokenRouteImport
       parentRoute: typeof ResetPasswordRoute
     }
+    "/turret/settings/": {
+      id: "/turret/settings/"
+      path: "/turret/settings"
+      fullPath: "/turret/settings/"
+      preLoaderRoute: typeof TurretSettingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     "/turret/sessions/": {
       id: "/turret/sessions/"
       path: "/turret/sessions"
@@ -214,6 +234,7 @@ const rootRouteChildren: RootRouteChildren = {
   TurretIndexRoute: TurretIndexRoute,
   TurretSessionsSessionIdRoute: TurretSessionsSessionIdRoute,
   TurretSessionsIndexRoute: TurretSessionsIndexRoute,
+  TurretSettingsIndexRoute: TurretSettingsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

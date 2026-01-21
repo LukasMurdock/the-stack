@@ -1,16 +1,19 @@
 import { queryOptions } from "@tanstack/react-query";
 import {
 	getFeatures,
+	getCompliance,
 	getSessionBreadcrumbs,
 	getSessionChunks,
 	getSessionErrors,
 	getSessionMeta,
 	getRequestSpans,
 	listSessions,
+	setCompliance,
 	setFeatures,
 	turretHealth,
 	getDashboardUsers,
 	type TurretFeatures,
+	type TurretCompliancePolicy,
 	type TurretSessionsQuery,
 } from "../lib/turretApi";
 
@@ -70,6 +73,14 @@ const turretFeaturesQueryOptions = queryOptions({
 
 const turretFeaturesMutation = (next: TurretFeatures) => setFeatures(next);
 
+const turretComplianceQueryOptions = queryOptions({
+	queryKey: ["turret", "compliance"],
+	queryFn: getCompliance,
+	retry: false,
+});
+
+const turretComplianceMutation = (next: Partial<TurretCompliancePolicy>) => setCompliance(next);
+
 const turretDashboardUsersQueryOptions = (input?: { to?: number }) =>
 	queryOptions({
 		queryKey: ["turret", "dashboard", input],
@@ -87,5 +98,7 @@ export {
 	turretRequestSpansQueryOptions,
 	turretFeaturesQueryOptions,
 	turretFeaturesMutation,
+	turretComplianceQueryOptions,
+	turretComplianceMutation,
 	turretDashboardUsersQueryOptions,
 };

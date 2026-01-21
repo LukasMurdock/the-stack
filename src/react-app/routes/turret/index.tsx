@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,18 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChartContainer } from "@/components/ui/chart";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 import { Area, AreaChart, Tooltip, XAxis, YAxis } from "recharts";
 
 import {
 	turretFeaturesQueryOptions,
-	turretHealthQueryOptions,
 	turretSessionsQueryOptions,
 	turretDashboardUsersQueryOptions,
 } from "../../queries/turretQueries";
@@ -37,7 +44,6 @@ function TurretDashboardPage() {
 		limit: 50,
 	};
 
-	const healthQuery = useQuery(turretHealthQueryOptions);
 	const featuresQuery = useQuery(turretFeaturesQueryOptions);
 
 	// Anchor time for this mount so the queryKey stays stable.
@@ -51,12 +57,33 @@ function TurretDashboardPage() {
 			offset: 0,
 		})
 	);
+	const recentUsersQuery = useQuery(
+		turretSessionsQueryOptions({
+			from: now - 24 * 60 * 60 * 1000,
+			to: now,
+			limit: 200,
+			offset: 0,
+		})
+	);
 
 	const sessions = sessionsPreviewQuery.data?.sessions ?? [];
 	const errorCount = sessions.filter((s) => s.hasError).length;
 	const captureBlockedCount = sessions.filter((s) => s.captureBlocked).length;
 
 	const dashboard = dashboardUsersQuery.data;
+	const recentUserRows = useMemo(() => {
+		const sessions = recentUsersQuery.data?.sessions ?? [];
+		const out = [] as typeof sessions;
+		const seen = new Set<string>();
+		for (const s of sessions) {
+			const key = s.userId;
+			if (!key || seen.has(key)) continue;
+			seen.add(key);
+			out.push(s);
+			if (out.length >= 10) break;
+		}
+		return out;
+	}, [recentUsersQuery.data?.sessions]);
 
 	function formatCompact(n: number): string {
 		try {
@@ -88,6 +115,33 @@ function TurretDashboardPage() {
 				{formatPct(props.pct)} {props.label}
 			</div>
 		);
+	}
+
+	function formatUserDevice(uaRaw: string | null): string {
+		const ua = uaRaw ?? "";
+		if (!ua) return "-";
+		const isIOS = /iPhone|iPad|iPod/i.test(ua);
+		const isAndroid = /Android/i.test(ua);
+		const isMac = /Macintosh/i.test(ua);
+		const isWindows = /Windows/i.test(ua);
+		const isLinux = /Linux/i.test(ua) && !isAndroid;
+
+		let os = "";
+		if (isIOS) os = "iOS";
+		else if (isAndroid) os = "Android";
+		else if (isMac) os = "Mac";
+		else if (isWindows) os = "Windows";
+		else if (isLinux) os = "Linux";
+		else os = "Other";
+
+		let browser = "";
+		if (/Edg\//.test(ua)) browser = "Edge";
+		else if (/Firefox\//.test(ua)) browser = "Firefox";
+		else if (/Chrome\//.test(ua) && !/Chromium\//.test(ua)) browser = "Chrome";
+		else if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) browser = "Safari";
+		else browser = "Browser";
+
+		return `${browser} · ${os}`;
 	}
 
 	type Point = { weekStartMs: number; value: number };
@@ -127,6 +181,13 @@ function TurretDashboardPage() {
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => navigate({ to: "/turret/settings" })}
+					>
+						Settings
+					</Button>
 					<Button
 						type="button"
 						variant="outline"
@@ -262,18 +323,63 @@ function TurretDashboardPage() {
 
 				<Card>
 					<CardHeader>
-						<CardTitle>Access</CardTitle>
+						<CardTitle>Recent users</CardTitle>
 					</CardHeader>
-					<CardContent className="text-sm">
-						{healthQuery.isLoading ? (
-							<div className="text-muted-foreground">Checking…</div>
-						) : healthQuery.isError ? (
-							<div className="text-muted-foreground">Denied or not signed in</div>
+					<CardContent className="max-h-[260px] overflow-auto p-0">
+						{recentUsersQuery.isLoading ? (
+							<div className="px-6 py-4 text-sm text-muted-foreground">Loading…</div>
+						) : recentUsersQuery.isError ? (
+							<div className="px-6 py-4 text-sm text-muted-foreground">Failed to load.</div>
+						) : recentUserRows.length === 0 ? (
+							<div className="px-6 py-4 text-sm text-muted-foreground">No users in the last 24 hours.</div>
 						) : (
-							<div className="flex items-center gap-2">
-								<Badge variant="secondary">ok</Badge>
-								<div className="text-muted-foreground">Admin access confirmed</div>
-							</div>
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>Time</TableHead>
+										<TableHead>Email</TableHead>
+										<TableHead>Location</TableHead>
+										<TableHead>Device</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{recentUserRows.map((s) => {
+										const started = new Date(s.startedAt);
+										const time = started.toLocaleTimeString([], {
+											hour: "2-digit",
+											minute: "2-digit",
+										});
+										const email = s.userEmail ?? `${s.userId.slice(0, 8)}…`;
+										const location = [s.country, s.colo].filter(Boolean).join(" / ") || "-";
+										const device = formatUserDevice(s.userAgent);
+										return (
+											<TableRow
+												key={s.userId}
+												className="cursor-pointer"
+												onClick={() =>
+													navigate({
+														to: "/turret/sessions/$sessionId",
+														params: { sessionId: s.sessionId },
+													})
+												}
+												title={started.toLocaleString()}
+											>
+												<TableCell className="px-6">{time}</TableCell>
+												<TableCell className="max-w-[220px] truncate">
+													<div className="truncate font-medium">{email}</div>
+													{s.userEmail ? null : (
+														<div className="truncate text-xs text-muted-foreground">(email off)</div>
+													)}
+												</TableCell>
+												<TableCell>{location}</TableCell>
+												<TableCell className="max-w-[160px] truncate" title={s.userAgent ?? ""}>
+													{device}
+												</TableCell>
+											</TableRow>
+										);
+									})}
+								</TableBody>
+							</Table>
 						)}
 					</CardContent>
 				</Card>

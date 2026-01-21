@@ -108,9 +108,13 @@ export const turretSessionErrors = sqliteTable(
 		stack: text("stack"),
 		fingerprint: text("fingerprint"),
 		extraJson: text("extra_json"),
+		expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
 		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 	},
-	(table) => [index("turret_errors_sessionId_ts_idx").on(table.sessionId, table.ts)]
+	(table) => [
+		index("turret_errors_sessionId_ts_idx").on(table.sessionId, table.ts),
+		index("turret_errors_expiresAt_idx").on(table.expiresAt),
+	]
 );
 
 export const turretRequestBreadcrumbs = sqliteTable(

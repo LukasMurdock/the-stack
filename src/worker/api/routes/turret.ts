@@ -4,6 +4,7 @@ import { makeTurretDb } from "../../../bindings/d1/turret/db";
 import * as schema from "../../../bindings/d1/turret/schema";
 import { createAuth, type AuthEnv } from "../../auth";
 import { readTurretFeatures } from "../../turret/features";
+import { readTurretCompliance } from "../../turret/compliance";
 
 const turretApp = new OpenAPIHono();
 
@@ -356,47 +357,24 @@ async function getComplianceBundle(env: { TURRET_CFG?: { get(key: string, type: 
 	version: string;
 	retentionDays: number;
 	rrweb: unknown;
-	console: {
-		enabled: boolean;
-		level: string[];
-		lengthThreshold: number;
-		stringifyOptions: {
-			stringLengthLimit?: number;
-			numOfKeysLimit: number;
-			depthOfLimit: number;
-		};
-	};
+	console: unknown;
 }> {
-	// Minimal default policy. You can make this richer later.
-	const fallback = {
-		version: "v1",
-		retentionDays: 14,
-		rrweb: {
-			maskAllInputs: true,
-		},
-		console: {
-			enabled: true,
-			level: ["log", "info", "warn", "error"],
-			lengthThreshold: 200,
-			stringifyOptions: {
-				stringLengthLimit: 300,
-				numOfKeysLimit: 30,
-				depthOfLimit: 2,
+	if (!env.TURRET_CFG) {
+		// Should not happen in production, but keep a safe fallback.
+		return {
+			version: "v1",
+			retentionDays: 14,
+			rrweb: { maskAllInputs: true },
+			console: {
+				enabled: true,
+				level: ["log", "info", "warn", "error"],
+				lengthThreshold: 200,
+				stringifyOptions: { stringLengthLimit: 300, numOfKeysLimit: 30, depthOfLimit: 2 },
 			},
-		},
-	};
-
-	const cfg = (await env.TURRET_CFG?.get?.("cfg:compliance:active", "json")) as
-		| { version?: string; retentionDays?: number; rrweb?: unknown }
-		| null
-		| undefined;
-	if (!cfg) return fallback;
-	return {
-		version: cfg.version ?? fallback.version,
-		retentionDays: cfg.retentionDays ?? fallback.retentionDays,
-		rrweb: cfg.rrweb ?? fallback.rrweb,
-		console: (cfg as any).console ?? fallback.console,
-	};
+		};
+	}
+	const cfg = await readTurretCompliance(env as unknown as { TURRET_CFG: { get(key: string, type: "json"): Promise<unknown> } });
+	return cfg as unknown as { version: string; retentionDays: number; rrweb: unknown; console: unknown };
 }
 
 const postSessionInit = createRoute({
@@ -650,6 +628,18 @@ turretApp.openapi(postSessionError, async (c) => {
 	const now = Date.now();
 	const db = makeTurretDb(env.TURRET_DB);
 
+	let expiresAt = now + 24 * 60 * 60 * 1000;
+	try {
+		const session = await db.query.turretSessions.findFirst({
+			where: ((t: any, ops: any) => ops.eq(t.sessionId, sessionId)) as unknown as never,
+			columns: { retentionExpiresAt: true },
+		});
+		const ret = (session as any)?.retentionExpiresAt;
+		if (ret instanceof Date) expiresAt = ret.getTime();
+	} catch {
+		// keep default
+	}
+
 	await db.insert(schema.turretSessionErrors).values({
 		id: crypto.randomUUID(),
 		sessionId,
@@ -659,6 +649,7 @@ turretApp.openapi(postSessionError, async (c) => {
 		stack: body.stack ? body.stack.slice(0, 20000) : null,
 		fingerprint: body.fingerprint ? body.fingerprint.slice(0, 256) : null,
 		extraJson: body.extra ? JSON.stringify(body.extra) : null,
+		expiresAt: new Date(expiresAt),
 		createdAt: new Date(now),
 	});
 

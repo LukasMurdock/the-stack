@@ -34,6 +34,19 @@ type RrwebPlayerInstance = {
 	$destroy?: () => void;
 };
 
+function parseJsonObject(input: string | null): Record<string, unknown> | null {
+	if (!input) return null;
+	try {
+		const parsed = JSON.parse(input) as unknown;
+		if (!parsed || typeof parsed !== "object") return null;
+		return parsed as Record<string, unknown>;
+	} catch {
+		return null;
+	}
+}
+
+const CLOUDFLARE_TRACES_URL = "https://dash.cloudflare.com/?to=/:account/workers-and-pages/observability/traces";
+
 const Route = createFileRoute("/turret/sessions/$sessionId")({
 	beforeLoad: requireTurretAdmin,
 	component: TurretSessionPage,
@@ -47,6 +60,7 @@ function RequestBreadcrumbRow(props: {
 }) {
 	const spansQuery = useQuery(turretRequestSpansQueryOptions(props.breadcrumb.requestId));
 	const b = props.breadcrumb;
+	const traceUrl = CLOUDFLARE_TRACES_URL;
 
 	return (
 		<div className="rounded-md border bg-card p-3">
@@ -61,8 +75,39 @@ function RequestBreadcrumbRow(props: {
 					<div className="mt-1 text-xs text-muted-foreground">
 						{new Date(props.ts).toLocaleString()} · {b.requestId}
 					</div>
+					{b.rayId ? (
+						<div className="mt-1 text-xs text-muted-foreground">
+							ray {b.rayId}
+						</div>
+					) : null}
 				</div>
 				<div className="flex items-center gap-2">
+					{b.rayId ? (
+						<>
+							<button
+								type="button"
+								className="rounded-md border px-2.5 py-1 text-xs"
+								onClick={() => {
+									try {
+										void navigator.clipboard.writeText(b.rayId ?? "");
+									} catch {
+										// ignore
+									}
+								}}
+							>
+								Copy ray
+							</button>
+							<a
+								href={traceUrl}
+								target="_blank"
+								rel="noreferrer"
+								className="rounded-md border px-2.5 py-1 text-xs"
+								title="Open Cloudflare Traces (search by ray id)"
+							>
+								Trace
+							</a>
+						</>
+					) : null}
 					<details className="text-xs">
 						<summary className="cursor-pointer select-none text-muted-foreground">D1 spans</summary>
 						{spansQuery.isLoading ? (
@@ -452,25 +497,63 @@ function TurretSessionPage() {
 								<div className="space-y-2">
 									{errorsQuery.data.errors.map((e) => {
 										const ts = new Date(e.ts).getTime();
+										const expiresLabel = e.expiresAt
+											? new Date(e.expiresAt).toLocaleString()
+											: "legacy (no ttl)";
+										const extra = parseJsonObject(e.extraJson);
+										const rayId = typeof extra?.ray_id === "string" ? extra.ray_id : null;
 										return (
-									<div
-										key={e.id}
-										className="rounded-md border bg-card p-3"
-									>
+											<div
+												key={e.id}
+												className="rounded-md border bg-card p-3"
+											>
 										<div className="flex flex-wrap items-start justify-between gap-3">
 											<div className="min-w-0">
 												<div className="text-sm font-medium">
 													{e.message ?? "Error"}
 												</div>
-												<div className="mt-1 text-xs text-muted-foreground">
-													{e.source} · {new Date(ts).toLocaleString()}
+													<div className="mt-1 text-xs text-muted-foreground">
+														{e.source} · {new Date(ts).toLocaleString()}
+													</div>
+													<div className="mt-1 text-xs text-muted-foreground">
+														Expires: {expiresLabel}
+														{e.fingerprint ? ` · fp ${e.fingerprint}` : ""}
+													</div>
+													{rayId ? (
+														<div className="mt-1 text-xs text-muted-foreground">ray {rayId}</div>
+													) : null}
 												</div>
-											</div>
-											<div className="flex items-center gap-2">
-												<details className="text-xs">
-													<summary className="cursor-pointer select-none text-muted-foreground">Stack</summary>
-													{e.stack ? (
-														<pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-2 text-[11px] leading-snug">
+												<div className="flex items-center gap-2">
+													{rayId ? (
+														<>
+															<button
+																type="button"
+																className="rounded-md border px-2.5 py-1 text-xs"
+																onClick={() => {
+																	try {
+																		void navigator.clipboard.writeText(rayId);
+																	} catch {
+																		// ignore
+																	}
+																}}
+															>
+																Copy ray
+															</button>
+															<a
+																href={CLOUDFLARE_TRACES_URL}
+																target="_blank"
+																rel="noreferrer"
+																className="rounded-md border px-2.5 py-1 text-xs"
+																title="Open Cloudflare Traces (search by ray id)"
+															>
+																Trace
+															</a>
+														</>
+													) : null}
+													<details className="text-xs">
+														<summary className="cursor-pointer select-none text-muted-foreground">Stack</summary>
+														{e.stack ? (
+															<pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-2 text-[11px] leading-snug">
 															{e.stack}
 														</pre>
 													) : (

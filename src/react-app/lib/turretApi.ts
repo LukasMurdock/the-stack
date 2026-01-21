@@ -74,6 +74,7 @@ export type TurretSessionError = {
 	stack: string | null;
 	fingerprint: string | null;
 	extraJson: string | null;
+	expiresAt: string | null;
 	createdAt: string;
 };
 
@@ -140,6 +141,17 @@ export type TurretFeatures = {
 
 export type TurretFeaturesResponse = {
 	features: TurretFeatures;
+};
+
+export type TurretCompliancePolicy = {
+	version: string;
+	retentionDays: number;
+	rrweb: { maskAllInputs?: boolean } & Record<string, unknown>;
+	console: { enabled?: boolean } & Record<string, unknown>;
+};
+
+export type TurretComplianceResponse = {
+	policy: TurretCompliancePolicy;
 };
 
 export type TurretWeeklyPoint = {
@@ -254,6 +266,20 @@ async function setFeatures(input: TurretFeatures): Promise<TurretFeaturesRespons
 	return jsonOrThrow<TurretFeaturesResponse>(res);
 }
 
+async function getCompliance(): Promise<TurretComplianceResponse> {
+	const res = await internalTurretFetch("/compliance");
+	return jsonOrThrow<TurretComplianceResponse>(res);
+}
+
+async function setCompliance(input: Partial<TurretCompliancePolicy>): Promise<TurretComplianceResponse> {
+	const res = await internalTurretFetch("/compliance", {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(input),
+	});
+	return jsonOrThrow<TurretComplianceResponse>(res);
+}
+
 async function getDashboardUsers(opts?: { to?: number }): Promise<TurretDashboardUsersResponse> {
 	const url = new URL("/api/internal/turret/dashboard", window.location.origin);
 	if (opts?.to) url.searchParams.set("to", String(opts.to));
@@ -272,5 +298,7 @@ export {
 	getRequestSpans,
 	getFeatures,
 	setFeatures,
+	getCompliance,
+	setCompliance,
 	getDashboardUsers,
 };

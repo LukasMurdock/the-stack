@@ -74,6 +74,22 @@ async function recordWorkerError(args: {
 	}
 
 	try {
+		const now = Date.now();
+		let expiresAt = now + 24 * 60 * 60 * 1000;
+		if (sessionId) {
+			try {
+				const turretDb = makeTurretDb(dbBinding);
+				const session = await turretDb.query.turretSessions.findFirst({
+					where: ((t: any, ops: any) => ops.eq(t.sessionId, sessionId)) as unknown as never,
+					columns: { retentionExpiresAt: true },
+				});
+				const ret = (session as any)?.retentionExpiresAt;
+				if (ret instanceof Date) expiresAt = ret.getTime();
+			} catch {
+				// keep default
+			}
+		}
+
 		const turretDb = makeTurretDb(dbBinding);
 		await turretDb.insert(turretSchema.turretSessionErrors).values({
 			id: crypto.randomUUID(),
@@ -91,7 +107,8 @@ async function recordWorkerError(args: {
 				ray_id: rayId,
 				colo,
 			}),
-			createdAt: new Date(Date.now()),
+			expiresAt: new Date(expiresAt),
+			createdAt: new Date(now),
 		});
 
 		if (sessionId) {
@@ -413,6 +430,9 @@ export default {
 			.where(
 				sql`${turretSchema.turretRequestBreadcrumbs.expiresAt} < ${now}`
 			);
+		await turretDb
+			.delete(turretSchema.turretSessionErrors)
+			.where(sql`${turretSchema.turretSessionErrors.expiresAt} < ${now}`);
 
 		// Also cleanup old sessions/chunks/errors if you ever stop indexing them.
 		ctx.waitUntil(Promise.resolve());
