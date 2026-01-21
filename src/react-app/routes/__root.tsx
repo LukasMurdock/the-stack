@@ -74,6 +74,7 @@ function RootComponent() {
 						</Link>
 						<Link
 							to="/login"
+							search={{}}
 							activeProps={{
 								className: "font-semibold underline",
 							}}

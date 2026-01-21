@@ -26,6 +26,8 @@ import {
 	turretSessionMetaQueryOptions,
 } from "../../../queries/turretQueries";
 
+import { requireTurretAdmin } from "../../../lib/requireTurretAdmin";
+
 type RrwebPlayerInstance = {
 	getMetaData?: () => { startTime: number; totalTime?: number };
 	goto: (offset: number, play?: boolean) => void;
@@ -33,6 +35,7 @@ type RrwebPlayerInstance = {
 };
 
 const Route = createFileRoute("/turret/sessions/$sessionId")({
+	beforeLoad: requireTurretAdmin,
 	component: TurretSessionPage,
 });
 

@@ -55,7 +55,7 @@ function ResetPasswordTokenPage() {
 				return;
 			}
 
-			navigate({ to: "/login" });
+			navigate({ to: "/login", search: {} });
 		} finally {
 			setIsSubmitting(false);
 		}

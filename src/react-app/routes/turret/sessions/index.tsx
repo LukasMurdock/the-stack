@@ -23,13 +23,15 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { authClient } from "../../../lib/authClient";
+
 import {
 	turretFeaturesMutation,
 	turretFeaturesQueryOptions,
 	turretHealthQueryOptions,
 	turretSessionsQueryOptions,
 } from "../../../queries/turretQueries";
+
+import { requireTurretAdmin } from "../../../lib/requireTurretAdmin";
 
 type RangePreset = "15m" | "1h" | "24h" | "custom";
 
@@ -59,6 +61,7 @@ const Route = createFileRoute("/turret/sessions/")({
 			limit: typeof s.limit === "string" ? Number(s.limit) : 50,
 		}
 	},
+	beforeLoad: requireTurretAdmin,
 	component: TurretSessionsPage,
 });
 
@@ -211,7 +214,6 @@ function GroupedSessions(props: {
 
 function TurretSessionsPage() {
 	const navigate = useNavigate();
-	const sessionQuery = authClient.useSession();
 	const search = Route.useSearch();
 	// Anchor time so preset ranges don't change every render.
 	const [now] = useState(() => Date.now());
@@ -225,11 +227,6 @@ function TurretSessionsPage() {
 			void queryClient.invalidateQueries({ queryKey: ["turret", "features"] });
 		},
 	})
-
-	// Redirect behavior: if we know user isn't signed in.
-	if (sessionQuery.data && !sessionQuery.data.user) {
-		navigate({ to: "/login" });
-	}
 
 	const range = useMemo(() => {
 		if (search.preset === "custom") {

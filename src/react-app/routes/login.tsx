@@ -2,9 +2,13 @@ import {
 	Link,
 	createFileRoute,
 	useNavigate,
+	useRouter,
 } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { authClient } from "../lib/authClient";
+import { ApiError } from "../lib/apiClient";
+import { turretHealthQueryOptions } from "../queries/turretQueries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,12 +21,40 @@ import {
 } from "@/components/ui/field";
 
 const Route = createFileRoute("/login")({
+	validateSearch: (s: Record<string, unknown>) => {
+		const redirect = typeof s.redirect === "string" ? s.redirect : undefined;
+		return {
+			...(redirect ? { redirect } : {}),
+		};
+	},
 	component: LoginPage,
 });
 
+function safeRedirectTarget(href: string | undefined): string | null {
+	if (!href) return null;
+	try {
+		const u = new URL(href, window.location.origin);
+		if (u.origin !== window.location.origin) return null;
+		// This SPA is mounted under /app
+		if (!u.pathname.startsWith("/app")) return null;
+		return u.toString();
+	} catch {
+		return null;
+	}
+}
+
 function LoginPage() {
 	const navigate = useNavigate();
+	const router = useRouter();
 	const sessionQuery = authClient.useSession();
+	const search = Route.useSearch();
+	const redirectTarget = safeRedirectTarget(search.redirect);
+	const isTurretRedirect = Boolean(redirectTarget?.includes("/app/turret"));
+
+	const turretAccessQuery = useQuery({
+		...turretHealthQueryOptions,
+		enabled: Boolean(sessionQuery.data?.user && isTurretRedirect),
+	});
 
 	const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
 	const [email, setEmail] = useState("");
@@ -43,6 +75,15 @@ function LoginPage() {
 					</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-3">
+					{redirectTarget && (!isTurretRedirect || turretAccessQuery.isSuccess) ? (
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => router.history.push(redirectTarget)}
+						>
+							Continue
+						</Button>
+					) : null}
 					<Button type="button" onClick={() => navigate({ to: "/" })}>
 						Go home
 					</Button>
@@ -56,6 +97,14 @@ function LoginPage() {
 						Sign out
 					</Button>
 				</div>
+
+				{isTurretRedirect && turretAccessQuery.isError ? (
+					<div className="text-sm text-muted-foreground">
+						{turretAccessQuery.error instanceof ApiError && turretAccessQuery.error.status === 403
+							? "You do not have admin access to Turret."
+							: "Could not verify Turret access."}
+					</div>
+				) : null}
 			</section>
 		);
 	}
@@ -87,7 +136,11 @@ function LoginPage() {
 				}
 			}
 
-			navigate({ to: "/" });
+			if (redirectTarget) {
+				router.history.push(redirectTarget);
+			} else {
+				navigate({ to: "/" });
+			}
 		} finally {
 			setIsSubmitting(false);
 		}

@@ -17,7 +17,10 @@ import {
 	turretDashboardUsersQueryOptions,
 } from "../../queries/turretQueries";
 
+import { requireTurretAdmin } from "../../lib/requireTurretAdmin";
+
 const Route = createFileRoute("/turret/")({
+	beforeLoad: requireTurretAdmin,
 	component: TurretDashboardPage,
 });
 
