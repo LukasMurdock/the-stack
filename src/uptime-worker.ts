@@ -1,17 +1,8 @@
-type UptimeState = {
-	version: 1;
-	updatedAtMs: number;
-	overall: "up" | "degraded" | "down" | "unknown";
-	services: Array<{
-		id: string;
-		name: string;
-		status: "up" | "down" | "unknown";
-		checkedAtMs: number;
-		latencyMs: number | null;
-		httpStatus: number | null;
-		message: string | null;
-	}>;
-};
+import {
+	readTurretUptimeStatus,
+	writeTurretUptimeStatus,
+	type TurretUptimeStatus,
+} from "./worker/turret/uptime";
 
 type UptimeEnv = {
 	APP_ENV?: string;
@@ -20,9 +11,7 @@ type UptimeEnv = {
 	APP_URL?: string;
 };
 
-const STATUS_KEY = "uptime:status:v1";
-
-function computeOverall(services: UptimeState["services"]): UptimeState["overall"] {
+function computeOverall(services: TurretUptimeStatus["services"]): TurretUptimeStatus["overall"] {
 	if (services.length === 0) return "unknown";
 	const ups = services.filter((s) => s.status === "up").length;
 	const downs = services.filter((s) => s.status === "down").length;
@@ -32,20 +21,8 @@ function computeOverall(services: UptimeState["services"]): UptimeState["overall
 	return "unknown";
 }
 
-async function readState(env: UptimeEnv): Promise<UptimeState | null> {
-	try {
-		const raw = await env.TURRET_UPTIME.get(STATUS_KEY);
-		if (!raw) return null;
-		const parsed = JSON.parse(raw) as UptimeState;
-		if (!parsed || parsed.version !== 1) return null;
-		return parsed;
-	} catch {
-		return null;
-	}
-}
-
-async function writeState(env: UptimeEnv, state: UptimeState): Promise<void> {
-	await env.TURRET_UPTIME.put(STATUS_KEY, JSON.stringify(state));
+async function readState(env: UptimeEnv): Promise<TurretUptimeStatus> {
+	return await readTurretUptimeStatus(env);
 }
 
 async function checkViaFetcher(args: {
@@ -54,7 +31,7 @@ async function checkViaFetcher(args: {
 	id: string;
 	url: string;
 	timeoutMs: number;
-}): Promise<UptimeState["services"][number]> {
+}): Promise<TurretUptimeStatus["services"][number]> {
 	const startedAt = Date.now();
 	try {
 		const res = await args.fetcher.fetch(
@@ -94,7 +71,7 @@ async function checkViaInternet(args: {
 	id: string;
 	url: string;
 	timeoutMs: number;
-}): Promise<UptimeState["services"][number]> {
+}): Promise<TurretUptimeStatus["services"][number]> {
 	const startedAt = Date.now();
 	try {
 		const res = await fetch(args.url, {
@@ -127,8 +104,8 @@ async function checkViaInternet(args: {
 	}
 }
 
-async function runChecks(env: UptimeEnv): Promise<UptimeState> {
-	const services: UptimeState["services"] = [];
+async function runChecks(env: UptimeEnv): Promise<TurretUptimeStatus> {
+	const services: TurretUptimeStatus["services"] = [];
 
 	// 1) Internal check (service binding) - always works even without a public domain.
 	if (env.APP) {
@@ -178,7 +155,7 @@ async function runChecks(env: UptimeEnv): Promise<UptimeState> {
 		}
 	}
 
-	const state: UptimeState = {
+	const state: TurretUptimeStatus = {
 		version: 1,
 		updatedAtMs: Date.now(),
 		overall: computeOverall(services),
@@ -188,7 +165,7 @@ async function runChecks(env: UptimeEnv): Promise<UptimeState> {
 	return state;
 }
 
-function renderHtml(state: UptimeState | null): string {
+function renderHtml(state: TurretUptimeStatus): string {
 	const updatedAt = state?.updatedAtMs ? new Date(state.updatedAtMs).toISOString() : null;
 	const overall = state?.overall ?? "unknown";
 	const services = state?.services ?? [];
@@ -325,7 +302,7 @@ export default {
 		const state = await readState(env);
 
 		if (p === "/uptime.json") {
-			return new Response(JSON.stringify(state ?? { version: 1, overall: "unknown", updatedAtMs: 0, services: [] }), {
+			return new Response(JSON.stringify(state), {
 				status: 200,
 				headers: {
 					"Content-Type": "application/json; charset=utf-8",
@@ -335,7 +312,7 @@ export default {
 		}
 
 		if (p === "/internal/uptime.json") {
-			return new Response(JSON.stringify(state ?? { version: 1, overall: "unknown", updatedAtMs: 0, services: [] }), {
+			return new Response(JSON.stringify(state), {
 				status: 200,
 				headers: {
 					"Content-Type": "application/json; charset=utf-8",
@@ -361,7 +338,7 @@ export default {
 		ctx.waitUntil(
 			(async () => {
 				const state = await runChecks(env);
-				await writeState(env, state);
+				await writeTurretUptimeStatus(env, state);
 			})()
 		);
 	},

@@ -5,6 +5,7 @@ import * as schema from "../../../bindings/d1/turret/schema";
 import { createAuth, type AuthEnv } from "../../auth";
 import { readTurretFeatures } from "../../turret/features";
 import { readTurretCompliance } from "../../turret/compliance";
+import { fingerprintException } from "../../turret/fingerprinting";
 
 const turretApp = new OpenAPIHono();
 
@@ -628,6 +629,21 @@ turretApp.openapi(postSessionError, async (c) => {
 	const now = Date.now();
 	const db = makeTurretDb(env.TURRET_DB);
 
+	let computedFingerprint: string | null = body.fingerprint
+		? body.fingerprint.slice(0, 256)
+		: null;
+	if (!computedFingerprint) {
+		try {
+			computedFingerprint = (await fingerprintException({
+				platform: "client",
+				message: body.message,
+				stack: body.stack,
+			})).slice(0, 256);
+		} catch {
+			computedFingerprint = null;
+		}
+	}
+
 	let expiresAt = now + 24 * 60 * 60 * 1000;
 	try {
 		const session = await db.query.turretSessions.findFirst({
@@ -647,7 +663,7 @@ turretApp.openapi(postSessionError, async (c) => {
 		source: (body.source ?? "client").slice(0, 64),
 		message: body.message ? body.message.slice(0, 2000) : null,
 		stack: body.stack ? body.stack.slice(0, 20000) : null,
-		fingerprint: body.fingerprint ? body.fingerprint.slice(0, 256) : null,
+		fingerprint: computedFingerprint,
 		extraJson: body.extra ? JSON.stringify(body.extra) : null,
 		expiresAt: new Date(expiresAt),
 		createdAt: new Date(now),

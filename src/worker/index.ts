@@ -7,6 +7,7 @@ import * as turretSchema from "../bindings/d1/turret/schema";
 import { wrapD1Database } from "./observability/d1Proxy";
 import { api, apiRoutes } from "./api";
 import { createAuth, type AuthEnv } from "./auth";
+import { fingerprintException, fingerprintHttp5xx, normalizeApiPath } from "./turret/fingerprinting";
 
 type Bindings = AuthEnv & {
 	CF_VERSION_METADATA?: WorkerVersionMetadata;
@@ -90,6 +91,28 @@ async function recordWorkerError(args: {
 			}
 		}
 
+		const url = new URL(args.request.url);
+		const pathTemplate = normalizeApiPath(url.pathname);
+		let fp: string | null = null;
+		try {
+			fp =
+				args.kind === "http_5xx"
+					? await fingerprintHttp5xx({
+							method: args.request.method,
+							pathTemplate,
+							status: args.status ?? 500,
+						})
+					: await fingerprintException({
+							platform: "worker",
+							message,
+							stack,
+							method: args.request.method,
+							pathTemplate,
+						});
+		} catch {
+			fp = null;
+		}
+
 		const turretDb = makeTurretDb(dbBinding);
 		await turretDb.insert(turretSchema.turretSessionErrors).values({
 			id: crypto.randomUUID(),
@@ -98,7 +121,7 @@ async function recordWorkerError(args: {
 			source: "worker",
 			message: message ? message.slice(0, 2000) : null,
 			stack: stack ? stack.slice(0, 20000) : null,
-			fingerprint: null,
+			fingerprint: fp ? fp.slice(0, 256) : null,
 			extraJson: JSON.stringify({
 				kind: args.kind,
 				status: args.status,
@@ -146,17 +169,6 @@ app.use("/api/*", async (c, next) => {
 	const requestId =
 		request.headers.get("x-request-id") ?? crypto.randomUUID();
 	const path = url.pathname;
-
-	function normalizeApiPath(p: string): string {
-		let out = p;
-		out = out.replace(/\b\d+\b/g, ":id");
-		out = out.replace(
-			/\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g,
-			":id"
-		);
-		out = out.replace(/\b[0-9a-fA-F]{16,}\b/g, ":id");
-		return out;
-	}
 
 	const pathTemplate = normalizeApiPath(path);
 

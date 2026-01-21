@@ -1,8 +1,11 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { createAuth, type AuthEnv } from "../../auth";
+import { readTurretUptimeStatus } from "../../turret/uptime";
 
-type UptimeBindingEnv = {
-	UPTIME: Fetcher;
+type UptimeKVEnv = {
+	TURRET_UPTIME: {
+		get(key: string, type: "json"): Promise<unknown>;
+	};
 };
 
 const internalTurretUptimeApp = new OpenAPIHono();
@@ -82,13 +85,9 @@ const getUptime = createRoute({
 });
 
 internalTurretUptimeApp.openapi(getUptime, async (c) => {
-	const uptime = (c.env as unknown as UptimeBindingEnv).UPTIME;
-	const res = await uptime.fetch(new Request("https://uptime/internal/uptime.json", { method: "GET" }));
-	if (!res.ok) {
-		return c.json({ error: `Uptime worker error: HTTP ${res.status}` }, 502);
-	}
-
-	const status = (await res.json()) as z.infer<typeof UptimeStateSchema>;
+	const status = (await readTurretUptimeStatus(c.env as unknown as UptimeKVEnv)) as z.infer<
+		typeof UptimeStateSchema
+	>;
 	c.header("Cache-Control", "no-store");
 	return c.json({ status }, 200);
 });
