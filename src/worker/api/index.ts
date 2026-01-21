@@ -6,6 +6,7 @@ import { routes as bootstrapRoutes } from "./routes/bootstrap";
 import { routes as internalTurretRoutes } from "./routes/internal-turret";
 import { routes as internalTurretFeaturesRoutes } from "./routes/internal-turret-features";
 import { routes as internalTurretComplianceRoutes } from "./routes/internal-turret-compliance";
+import { routes as internalTurretIssuesRoutes } from "./routes/internal-turret-issues";
 import { routes as turretRoutes } from "./routes/turret";
 
 const api = new OpenAPIHono();
@@ -17,7 +18,8 @@ const apiRoutes = api
 	.route("/", turretRoutes)
 	.route("/", internalTurretRoutes)
 	.route("/", internalTurretFeaturesRoutes)
-	.route("/", internalTurretComplianceRoutes);
+	.route("/", internalTurretComplianceRoutes)
+	.route("/", internalTurretIssuesRoutes);
 
 function isAdminRole(role: unknown): boolean {
 	if (!role || typeof role !== "string") return false;

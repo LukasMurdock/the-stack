@@ -114,7 +114,20 @@ export const turretSessionErrors = sqliteTable(
 	(table) => [
 		index("turret_errors_sessionId_ts_idx").on(table.sessionId, table.ts),
 		index("turret_errors_expiresAt_idx").on(table.expiresAt),
+		index("turret_errors_fingerprint_ts_idx").on(table.fingerprint, table.ts),
 	]
+);
+
+export const turretIssueState = sqliteTable(
+	"turret_issue_state",
+	{
+		fingerprint: text("fingerprint").primaryKey(),
+		status: text("status").notNull().default("open"),
+		title: text("title"),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [index("turret_issue_state_status_updatedAt_idx").on(table.status, table.updatedAt)]
 );
 
 export const turretRequestBreadcrumbs = sqliteTable(

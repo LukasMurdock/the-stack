@@ -1,9 +1,15 @@
 - Turret
+    - Dashboard
+        - Is it up? (uptime/health checks)
+        - Is it slow? (latency visibility)
+        - What broke? (error tracking)
+        - What happened? (logs)
     - Sessions
-    - Errors
+        - what was the user actually doing? (replays attached to specific errors or complaints)
     - Feedback
     - Support
         - Unified inbox
+
 - Product docs (/docs)
     - top bar product name, logo | search | docs version select | dark mode
     - nested/grouped collapsible left sidebar
@@ -51,3 +57,5 @@
 - https://developers.cloudflare.com/workers/runtime-apis/bindings/worker-loader/
 - https://www.npmjs.com/package/hono-mcp-server
 - https://github.com/remotion-dev/skills
+- Support AI chat
+    - https://help.shopify.com/en/manual/shopify-admin/productivity-tools/shopify-magic
