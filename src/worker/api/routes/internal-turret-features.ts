@@ -1,9 +1,12 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { createAuth, type AuthEnv } from "../../auth";
+import { readTurretFeatures, writeTurretFeatures } from "../../turret/features";
 
-type KVNamespace = {
-	get(key: string, type: "json"): Promise<unknown>;
-	put(key: string, value: string): Promise<void>;
+type TurretCfgEnv = {
+	TURRET_CFG: {
+		get(key: string, type: "json"): Promise<unknown>;
+		put(key: string, value: string): Promise<void>;
+	};
 };
 
 const internalTurretFeaturesApp = new OpenAPIHono();
@@ -51,19 +54,6 @@ internalTurretFeaturesApp.use("/internal/turret/*", async (c, next) => {
 
 	await next();
 });
-
-const FEATURES_KEY = "cfg:turret:features";
-
-function normalizeFeatures(input: unknown): z.infer<typeof TurretFeaturesSchema> {
-	const obj = (input && typeof input === "object" ? (input as Record<string, unknown>) : {}) as Record<
-		string,
-		unknown
-	>;
-	return {
-		storeUserEmail: (obj.storeUserEmail as unknown) === true,
-	};
-}
-
 const getFeatures = createRoute({
 	method: "get",
 	path: "/internal/turret/features",
@@ -88,8 +78,8 @@ const getFeatures = createRoute({
 });
 
 internalTurretFeaturesApp.openapi(getFeatures, async (c) => {
-	const raw = await (c.env as { TURRET_CFG: KVNamespace }).TURRET_CFG.get(FEATURES_KEY, "json");
-	return c.json({ features: normalizeFeatures(raw) }, 200);
+	const features = await readTurretFeatures(c.env as unknown as TurretCfgEnv);
+	return c.json({ features }, 200);
 });
 
 const putFeatures = createRoute({
@@ -127,10 +117,12 @@ const putFeatures = createRoute({
 
 internalTurretFeaturesApp.openapi(putFeatures, async (c) => {
 	const body = c.req.valid("json");
+	const current = await readTurretFeatures(c.env as unknown as TurretCfgEnv);
 	const next = {
-		storeUserEmail: body.storeUserEmail === true,
+		...current,
+		...(body.storeUserEmail !== undefined ? { storeUserEmail: body.storeUserEmail } : {}),
 	};
-	await (c.env as { TURRET_CFG: KVNamespace }).TURRET_CFG.put(FEATURES_KEY, JSON.stringify(next));
+	await writeTurretFeatures(c.env as unknown as TurretCfgEnv, next);
 	return c.json({ features: next }, 200);
 });
 

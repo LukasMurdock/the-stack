@@ -9,6 +9,7 @@ async function internalTurretFetch(path: string, init?: RequestInit): Promise<Re
 
 export type TurretSessionsQuery = {
 	hasError?: boolean;
+	journeyId?: string;
 	q?: string;
 	from?: number;
 	to?: number;
@@ -30,6 +31,7 @@ export type TurretSession = {
 	endedAt: string | null;
 	initialUrl: string | null;
 	lastUrl: string | null;
+	journeyId: string | null;
 	userAgent: string | null;
 	country: string | null;
 	colo: string | null;
@@ -148,6 +150,7 @@ async function turretHealth(): Promise<{ ok: true }> {
 async function listSessions(query: TurretSessionsQuery): Promise<TurretSessionsResponse> {
 	const url = new URL("/api/internal/turret/sessions", window.location.origin);
 	if (query.hasError) url.searchParams.set("hasError", "1");
+	if (query.journeyId) url.searchParams.set("journeyId", query.journeyId);
 	if (query.q) url.searchParams.set("q", query.q);
 	if (query.from) url.searchParams.set("from", String(query.from));
 	if (query.to) url.searchParams.set("to", String(query.to));

@@ -170,6 +170,7 @@ const getSessions = createRoute({
 		query: z
 			.object({
 				hasError: z.string().optional(),
+				journeyId: z.string().optional(),
 				q: z.string().optional(),
 				from: z.string().optional(),
 				to: z.string().optional(),
@@ -311,7 +312,7 @@ internalTurretApp.openapi(getHealth, async (c) => {
 });
 
 internalTurretApp.openapi(getSessions, async (c) => {
-	const { hasError, q, from, to, limit: limitRaw, offset: offsetRaw } = c.req.valid("query");
+	const { hasError, journeyId, q, from, to, limit: limitRaw, offset: offsetRaw } = c.req.valid("query");
 	const limit = Number(limitRaw ?? "50");
 	const offset = Number(offsetRaw ?? "0");
 
@@ -327,6 +328,7 @@ internalTurretApp.openapi(getSessions, async (c) => {
 
 	type TurretSessionRow = {
 		hasError: unknown;
+		journeyId: unknown;
 		initialUrl: unknown;
 		lastUrl: unknown;
 		startedAt: unknown;
@@ -335,6 +337,7 @@ internalTurretApp.openapi(getSessions, async (c) => {
 	const filters: Array<(t: TurretSessionRow, ops: Ops) => unknown> = [];
 
 	if (hasError === "1") filters.push((t, ops) => ops.eq(t.hasError, true));
+	if (journeyId) filters.push((t, ops) => ops.eq(t.journeyId, journeyId));
 	if (q) {
 		const qEsc = escapeLike(q.trim());
 		filters.push((t, ops) => ops.or(ops.like(t.initialUrl, `%${qEsc}%`), ops.like(t.lastUrl, `%${qEsc}%`)));

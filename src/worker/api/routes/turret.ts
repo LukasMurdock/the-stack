@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { makeTurretDb } from "../../../bindings/d1/turret/db";
 import * as schema from "../../../bindings/d1/turret/schema";
 import { createAuth, type AuthEnv } from "../../auth";
+import { readTurretFeatures } from "../../turret/features";
 
 const turretApp = new OpenAPIHono();
 
@@ -473,11 +474,7 @@ turretApp.openapi(postSessionInit, async (c) => {
 
 	const initialUrl = init?.initial_url ?? c.req.header("Referer") ?? null;
 
-	const featuresRaw = (await env.TURRET_CFG.get(
-		"cfg:turret:features",
-		"json"
-	)) as { storeUserEmail?: boolean } | null;
-	const storeUserEmail = featuresRaw?.storeUserEmail === true;
+	const { storeUserEmail } = await readTurretFeatures(env);
 
 	const { id: versionId, tag: versionTag, timestamp: versionTimestamp } =
 		env.CF_VERSION_METADATA ?? {

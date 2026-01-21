@@ -404,6 +404,12 @@ function TurretSessionPage() {
 										<span className="text-muted-foreground">URL:</span>{" "}
 										{metaQuery.data.session.lastUrl ?? metaQuery.data.session.initialUrl ?? "-"}
 									</div>
+									<div className="flex flex-wrap items-center gap-2">
+										<div>
+											<span className="text-muted-foreground">Journey:</span>{" "}
+											{metaQuery.data.session.journeyId ?? "-"}
+										</div>
+									</div>
 									<div>
 										<span className="text-muted-foreground">Chunks:</span>{" "}
 										{metaQuery.data.session.chunkCount}
