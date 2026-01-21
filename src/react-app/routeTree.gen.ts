@@ -17,7 +17,9 @@ import { Route as TurretIndexRouteImport } from "./routes/turret/index"
 import { Route as ResetPasswordTokenRouteImport } from "./routes/reset-password/$token"
 import { Route as TurretSettingsIndexRouteImport } from "./routes/turret/settings/index"
 import { Route as TurretSessionsIndexRouteImport } from "./routes/turret/sessions/index"
+import { Route as TurretIssuesIndexRouteImport } from "./routes/turret/issues/index"
 import { Route as TurretSessionsSessionIdRouteImport } from "./routes/turret/sessions/$sessionId"
+import { Route as TurretIssuesFingerprintRouteImport } from "./routes/turret/issues/$fingerprint"
 
 const StatusRoute = StatusRouteImport.update({
   id: "/status",
@@ -59,9 +61,19 @@ const TurretSessionsIndexRoute = TurretSessionsIndexRouteImport.update({
   path: "/turret/sessions/",
   getParentRoute: () => rootRouteImport,
 } as any)
+const TurretIssuesIndexRoute = TurretIssuesIndexRouteImport.update({
+  id: "/turret/issues/",
+  path: "/turret/issues/",
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TurretSessionsSessionIdRoute = TurretSessionsSessionIdRouteImport.update({
   id: "/turret/sessions/$sessionId",
   path: "/turret/sessions/$sessionId",
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TurretIssuesFingerprintRoute = TurretIssuesFingerprintRouteImport.update({
+  id: "/turret/issues/$fingerprint",
+  path: "/turret/issues/$fingerprint",
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -72,7 +84,9 @@ export interface FileRoutesByFullPath {
   "/status": typeof StatusRoute
   "/reset-password/$token": typeof ResetPasswordTokenRoute
   "/turret/": typeof TurretIndexRoute
+  "/turret/issues/$fingerprint": typeof TurretIssuesFingerprintRoute
   "/turret/sessions/$sessionId": typeof TurretSessionsSessionIdRoute
+  "/turret/issues/": typeof TurretIssuesIndexRoute
   "/turret/sessions/": typeof TurretSessionsIndexRoute
   "/turret/settings/": typeof TurretSettingsIndexRoute
 }
@@ -83,7 +97,9 @@ export interface FileRoutesByTo {
   "/status": typeof StatusRoute
   "/reset-password/$token": typeof ResetPasswordTokenRoute
   "/turret": typeof TurretIndexRoute
+  "/turret/issues/$fingerprint": typeof TurretIssuesFingerprintRoute
   "/turret/sessions/$sessionId": typeof TurretSessionsSessionIdRoute
+  "/turret/issues": typeof TurretIssuesIndexRoute
   "/turret/sessions": typeof TurretSessionsIndexRoute
   "/turret/settings": typeof TurretSettingsIndexRoute
 }
@@ -95,7 +111,9 @@ export interface FileRoutesById {
   "/status": typeof StatusRoute
   "/reset-password/$token": typeof ResetPasswordTokenRoute
   "/turret/": typeof TurretIndexRoute
+  "/turret/issues/$fingerprint": typeof TurretIssuesFingerprintRoute
   "/turret/sessions/$sessionId": typeof TurretSessionsSessionIdRoute
+  "/turret/issues/": typeof TurretIssuesIndexRoute
   "/turret/sessions/": typeof TurretSessionsIndexRoute
   "/turret/settings/": typeof TurretSettingsIndexRoute
 }
@@ -108,7 +126,9 @@ export interface FileRouteTypes {
     | "/status"
     | "/reset-password/$token"
     | "/turret/"
+    | "/turret/issues/$fingerprint"
     | "/turret/sessions/$sessionId"
+    | "/turret/issues/"
     | "/turret/sessions/"
     | "/turret/settings/"
   fileRoutesByTo: FileRoutesByTo
@@ -119,7 +139,9 @@ export interface FileRouteTypes {
     | "/status"
     | "/reset-password/$token"
     | "/turret"
+    | "/turret/issues/$fingerprint"
     | "/turret/sessions/$sessionId"
+    | "/turret/issues"
     | "/turret/sessions"
     | "/turret/settings"
   id:
@@ -130,7 +152,9 @@ export interface FileRouteTypes {
     | "/status"
     | "/reset-password/$token"
     | "/turret/"
+    | "/turret/issues/$fingerprint"
     | "/turret/sessions/$sessionId"
+    | "/turret/issues/"
     | "/turret/sessions/"
     | "/turret/settings/"
   fileRoutesById: FileRoutesById
@@ -141,7 +165,9 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRouteWithChildren
   StatusRoute: typeof StatusRoute
   TurretIndexRoute: typeof TurretIndexRoute
+  TurretIssuesFingerprintRoute: typeof TurretIssuesFingerprintRoute
   TurretSessionsSessionIdRoute: typeof TurretSessionsSessionIdRoute
+  TurretIssuesIndexRoute: typeof TurretIssuesIndexRoute
   TurretSessionsIndexRoute: typeof TurretSessionsIndexRoute
   TurretSettingsIndexRoute: typeof TurretSettingsIndexRoute
 }
@@ -204,11 +230,25 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof TurretSessionsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    "/turret/issues/": {
+      id: "/turret/issues/"
+      path: "/turret/issues"
+      fullPath: "/turret/issues/"
+      preLoaderRoute: typeof TurretIssuesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     "/turret/sessions/$sessionId": {
       id: "/turret/sessions/$sessionId"
       path: "/turret/sessions/$sessionId"
       fullPath: "/turret/sessions/$sessionId"
       preLoaderRoute: typeof TurretSessionsSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/turret/issues/$fingerprint": {
+      id: "/turret/issues/$fingerprint"
+      path: "/turret/issues/$fingerprint"
+      fullPath: "/turret/issues/$fingerprint"
+      preLoaderRoute: typeof TurretIssuesFingerprintRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -232,7 +272,9 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRouteWithChildren,
   StatusRoute: StatusRoute,
   TurretIndexRoute: TurretIndexRoute,
+  TurretIssuesFingerprintRoute: TurretIssuesFingerprintRoute,
   TurretSessionsSessionIdRoute: TurretSessionsSessionIdRoute,
+  TurretIssuesIndexRoute: TurretIssuesIndexRoute,
   TurretSessionsIndexRoute: TurretSessionsIndexRoute,
   TurretSettingsIndexRoute: TurretSettingsIndexRoute,
 }

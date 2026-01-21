@@ -186,7 +186,19 @@ function TurretDashboardPage() {
 					<Button
 						type="button"
 						variant="outline"
-						onClick={() => navigate({ to: "/turret/settings" as any })}
+						onClick={() =>
+							navigate({
+								to: "/turret/issues",
+								search: { status: "open", preset: "24h", q: "", from: undefined, to: undefined, offset: 0, limit: 50 },
+							})
+						}
+					>
+						Issues
+					</Button>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => navigate({ to: "/turret/settings" })}
 					>
 						Settings
 					</Button>

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/empty";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import {
 	getSessionChunk,
 	type TurretReplayChunkPayload,
@@ -162,6 +163,7 @@ function RequestBreadcrumbRow(props: {
 }
 
 function TurretSessionPage() {
+	const navigate = useNavigate();
 	const { sessionId } = Route.useParams();
 	const metaQuery = useQuery(turretSessionMetaQueryOptions(sessionId));
 	const chunksQuery = useQuery(turretSessionChunksQueryOptions(sessionId));
@@ -368,11 +370,37 @@ function TurretSessionPage() {
 
 	return (
 		<section className="space-y-4">
-			<div className="space-y-1">
-				<h1 className="text-2xl font-semibold tracking-tight">Session</h1>
-				<p className="text-sm text-muted-foreground">
-					{sessionId}
-				</p>
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div className="space-y-1">
+					<h1 className="text-2xl font-semibold tracking-tight">Session</h1>
+					<p className="text-sm text-muted-foreground">{sessionId}</p>
+				</div>
+				<div className="flex items-center gap-2">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() =>
+							navigate({
+								to: "/turret/sessions",
+								search: { q: "", hasError: false, groupBy: "none", preset: "1h", from: undefined, to: undefined, offset: 0, limit: 50 },
+							})
+						}
+					>
+						Sessions
+					</Button>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() =>
+							navigate({
+								to: "/turret/issues",
+								search: { status: "open", preset: "24h", q: "", from: undefined, to: undefined, offset: 0, limit: 50 },
+							})
+						}
+					>
+						Issues
+					</Button>
+				</div>
 			</div>
 
 			<Card>

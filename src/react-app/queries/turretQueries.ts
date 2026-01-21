@@ -13,9 +13,14 @@ import {
 	turretHealth,
 	getDashboardUsers,
 	getUptime,
+	listIssues,
+	getIssue,
+	getIssueTrend,
+	getIssueEvents,
 	type TurretFeatures,
 	type TurretCompliancePolicy,
 	type TurretSessionsQuery,
+	type TurretIssueStatus,
 } from "../lib/turretApi";
 
 const turretHealthQueryOptions = queryOptions({
@@ -89,6 +94,44 @@ const turretDashboardUsersQueryOptions = (input?: { to?: number }) =>
 		retry: false,
 	});
 
+const turretIssuesQueryOptions = (input: {
+	status?: TurretIssueStatus;
+	q?: string;
+	from?: number;
+	to?: number;
+	limit?: number;
+	offset?: number;
+}) =>
+	queryOptions({
+		queryKey: ["turret", "issues", input],
+		queryFn: () => listIssues(input),
+		retry: false,
+	});
+
+const turretIssueQueryOptions = (fingerprint: string) =>
+	queryOptions({
+		queryKey: ["turret", "issue", fingerprint],
+		queryFn: () => getIssue(fingerprint),
+		retry: false,
+	});
+
+const turretIssueTrendQueryOptions = (
+	fingerprint: string,
+	input?: { from?: number; to?: number; bucket?: "hour" | "day" }
+) =>
+	queryOptions({
+		queryKey: ["turret", "issue", fingerprint, "trend", input],
+		queryFn: () => getIssueTrend(fingerprint, input),
+		retry: false,
+	});
+
+const turretIssueEventsQueryOptions = (fingerprint: string, input?: { limit?: number; offset?: number }) =>
+	queryOptions({
+		queryKey: ["turret", "issue", fingerprint, "events", input],
+		queryFn: () => getIssueEvents(fingerprint, input),
+		retry: false,
+	});
+
 const turretUptimeQueryOptions = queryOptions({
 	queryKey: ["turret", "uptime"],
 	queryFn: getUptime,
@@ -109,4 +152,8 @@ export {
 	turretComplianceMutation,
 	turretDashboardUsersQueryOptions,
 	turretUptimeQueryOptions,
+	turretIssuesQueryOptions,
+	turretIssueQueryOptions,
+	turretIssueTrendQueryOptions,
+	turretIssueEventsQueryOptions,
 };

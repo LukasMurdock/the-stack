@@ -299,11 +299,33 @@ function TurretSessionsPage() {
 
 	return (
 		<section className="space-y-4">
-			<div className="space-y-1">
-				<h1 className="text-2xl font-semibold tracking-tight">Sessions</h1>
-				<p className="text-sm text-muted-foreground">
-					Session replay, errors, and request breadcrumbs.
-				</p>
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div className="space-y-1">
+					<h1 className="text-2xl font-semibold tracking-tight">Sessions</h1>
+					<p className="text-sm text-muted-foreground">
+						Session replay, errors, and request breadcrumbs.
+					</p>
+				</div>
+				<div className="flex items-center gap-2">
+					<Button type="button" variant="outline" onClick={() => navigate({ to: "/turret" })}>
+						Dashboard
+					</Button>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() =>
+							navigate({
+								to: "/turret/issues",
+								search: { status: "open", preset: "24h", q: "", from: undefined, to: undefined, offset: 0, limit: 50 },
+							})
+						}
+					>
+						Issues
+					</Button>
+					<Button type="button" variant="outline" onClick={() => navigate({ to: "/turret/settings" })}>
+						Settings
+					</Button>
+				</div>
 			</div>
 
 			<Card>

@@ -93,7 +93,31 @@ function TurretSettingsPage() {
 				</div>
 				<div className="flex items-center gap-2">
 					<Button type="button" variant="outline" onClick={() => navigate({ to: "/turret" })}>
-						Back to dashboard
+						Dashboard
+					</Button>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() =>
+							navigate({
+								to: "/turret/sessions",
+								search: { q: "", hasError: false, groupBy: "none", preset: "1h", from: undefined, to: undefined, offset: 0, limit: 50 },
+							})
+						}
+					>
+						Sessions
+					</Button>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() =>
+							navigate({
+								to: "/turret/issues",
+								search: { status: "open", preset: "24h", q: "", from: undefined, to: undefined, offset: 0, limit: 50 },
+							})
+						}
+					>
+						Issues
 					</Button>
 				</div>
 			</div>

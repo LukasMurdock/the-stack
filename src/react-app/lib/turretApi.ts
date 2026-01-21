@@ -204,6 +204,84 @@ export type TurretUptimeResponse = {
 	status: TurretUptimeStatus;
 };
 
+export type TurretIssueStatus = "open" | "resolved" | "ignored";
+
+export type TurretIssueSample = {
+	errorId: string | null;
+	sessionId: string | null;
+	source: string | null;
+	message: string | null;
+	ts: number | null;
+};
+
+export type TurretIssueListItem = {
+	fingerprint: string;
+	status: TurretIssueStatus;
+	title: string | null;
+	firstSeenAt: number;
+	lastSeenAt: number;
+	occurrences: number;
+	sessionsAffected: number;
+	sample: TurretIssueSample;
+};
+
+export type TurretIssuesListResponse = {
+	issues: TurretIssueListItem[];
+	limit: number;
+	offset: number;
+};
+
+export type TurretIssueDetail = {
+	fingerprint: string;
+	status: TurretIssueStatus;
+	title: string | null;
+	firstSeenAt: number;
+	lastSeenAt: number;
+	occurrencesTotal: number;
+	sessionsAffectedTotal: number;
+	sample: TurretIssueSample;
+};
+
+export type TurretIssueDetailResponse = {
+	issue: TurretIssueDetail;
+};
+
+export type TurretIssueTrendPoint = {
+	bucketStartMs: number;
+	count: number;
+};
+
+export type TurretIssueTrendResponse = {
+	bucket: "hour" | "day";
+	from: number;
+	to: number;
+	points: TurretIssueTrendPoint[];
+};
+
+export type TurretIssueEvent = {
+	id: string;
+	sessionId: string | null;
+	ts: number;
+	source: string;
+	message: string | null;
+	stack: string | null;
+	fingerprint: string | null;
+	extraJson: string | null;
+	expiresAt: number | null;
+	createdAt: number;
+};
+
+export type TurretIssueEventsResponse = {
+	events: TurretIssueEvent[];
+	limit: number;
+	offset: number;
+};
+
+export type TurretIssueUpdate = {
+	status?: TurretIssueStatus;
+	title?: string | null;
+};
+
 async function turretHealth(): Promise<{ ok: true }> {
 	const res = await internalTurretFetch("/health");
 	return jsonOrThrow(res) as Promise<{ ok: true }>;
@@ -313,6 +391,68 @@ async function getUptime(): Promise<TurretUptimeResponse> {
 	return jsonOrThrow<TurretUptimeResponse>(res);
 }
 
+async function listIssues(input: {
+	status?: TurretIssueStatus;
+	q?: string;
+	from?: number;
+	to?: number;
+	limit?: number;
+	offset?: number;
+}): Promise<TurretIssuesListResponse> {
+	const url = new URL("/api/internal/turret/issues", window.location.origin);
+	if (input.status) url.searchParams.set("status", input.status);
+	if (input.q) url.searchParams.set("q", input.q);
+	if (input.from) url.searchParams.set("from", String(input.from));
+	if (input.to) url.searchParams.set("to", String(input.to));
+	url.searchParams.set("limit", String(input.limit ?? 50));
+	url.searchParams.set("offset", String(input.offset ?? 0));
+	const res = await fetch(url.toString(), { credentials: "include" });
+	return jsonOrThrow<TurretIssuesListResponse>(res);
+}
+
+async function getIssue(fingerprint: string): Promise<TurretIssueDetailResponse> {
+	const res = await internalTurretFetch(`/issue/${encodeURIComponent(fingerprint)}`);
+	return jsonOrThrow<TurretIssueDetailResponse>(res);
+}
+
+async function getIssueTrend(
+	fingerprint: string,
+	input?: { from?: number; to?: number; bucket?: "hour" | "day" }
+): Promise<TurretIssueTrendResponse> {
+	const url = new URL(
+		`/api/internal/turret/issue/${encodeURIComponent(fingerprint)}/trend`,
+		window.location.origin
+	);
+	if (input?.from) url.searchParams.set("from", String(input.from));
+	if (input?.to) url.searchParams.set("to", String(input.to));
+	if (input?.bucket) url.searchParams.set("bucket", input.bucket);
+	const res = await fetch(url.toString(), { credentials: "include" });
+	return jsonOrThrow<TurretIssueTrendResponse>(res);
+}
+
+async function getIssueEvents(
+	fingerprint: string,
+	input?: { limit?: number; offset?: number }
+): Promise<TurretIssueEventsResponse> {
+	const url = new URL(
+		`/api/internal/turret/issue/${encodeURIComponent(fingerprint)}/events`,
+		window.location.origin
+	);
+	url.searchParams.set("limit", String(input?.limit ?? 50));
+	url.searchParams.set("offset", String(input?.offset ?? 0));
+	const res = await fetch(url.toString(), { credentials: "include" });
+	return jsonOrThrow<TurretIssueEventsResponse>(res);
+}
+
+async function patchIssue(fingerprint: string, update: TurretIssueUpdate): Promise<TurretIssueDetailResponse> {
+	const res = await internalTurretFetch(`/issue/${encodeURIComponent(fingerprint)}`, {
+		method: "PATCH",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(update),
+	});
+	return jsonOrThrow<TurretIssueDetailResponse>(res);
+}
+
 export {
 	turretHealth,
 	listSessions,
@@ -328,4 +468,9 @@ export {
 	setCompliance,
 	getDashboardUsers,
 	getUptime,
+	listIssues,
+	getIssue,
+	getIssueTrend,
+	getIssueEvents,
+	patchIssue,
 };
