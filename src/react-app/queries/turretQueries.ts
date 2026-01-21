@@ -9,6 +9,7 @@ import {
 	listSessions,
 	setFeatures,
 	turretHealth,
+	getDashboardUsers,
 	type TurretFeatures,
 	type TurretSessionsQuery,
 } from "../lib/turretApi";
@@ -69,6 +70,13 @@ const turretFeaturesQueryOptions = queryOptions({
 
 const turretFeaturesMutation = (next: TurretFeatures) => setFeatures(next);
 
+const turretDashboardUsersQueryOptions = (input?: { to?: number }) =>
+	queryOptions({
+		queryKey: ["turret", "dashboard", input],
+		queryFn: () => getDashboardUsers(input),
+		retry: false,
+	});
+
 export {
 	turretHealthQueryOptions,
 	turretSessionsQueryOptions,
@@ -79,4 +87,5 @@ export {
 	turretRequestSpansQueryOptions,
 	turretFeaturesQueryOptions,
 	turretFeaturesMutation,
+	turretDashboardUsersQueryOptions,
 };

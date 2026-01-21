@@ -1,4 +1,5 @@
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const turretSessions = sqliteTable(
 	"turret_sessions",
@@ -41,6 +42,43 @@ export const turretSessions = sqliteTable(
 		index("turret_sessions_workerVersionTag_idx").on(table.workerVersionTag),
 		index("turret_sessions_rrwebStartTsMs_idx").on(table.rrwebStartTsMs),
 		index("turret_sessions_rrwebLastTsMs_idx").on(table.rrwebLastTsMs),
+	]
+);
+
+// Minimal user profile cache for Turret analytics.
+// NOTE: this is not the auth user table; it's a Turret-side copy of signup time.
+export const turretUserProfile = sqliteTable(
+	"turret_user_profile",
+	{
+		userId: text("user_id").primaryKey(),
+		signedUpAtMs: integer("signed_up_at_ms").notNull(),
+		signedUpWeekStartMs: integer("signed_up_week_start_ms").notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull(),
+	},
+	(table) => [
+		index("turret_user_profile_signedUpWeek_idx").on(table.signedUpWeekStartMs),
+	]
+);
+
+// One row per (user, week) indicating the user had any Turret activity that week.
+export const turretUserActivityWeekly = sqliteTable(
+	"turret_user_activity_weekly",
+	{
+		userId: text("user_id").notNull(),
+		weekStartMs: integer("week_start_ms").notNull(),
+		firstSeenAt: integer("first_seen_at", { mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("turret_user_activity_weekly_user_week_unique").on(table.userId, table.weekStartMs),
+		index("turret_user_activity_weekly_weekStart_idx").on(table.weekStartMs),
+		index("turret_user_activity_weekly_userId_idx").on(table.userId),
 	]
 );
 

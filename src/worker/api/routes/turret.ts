@@ -247,6 +247,15 @@ function requiredSameOrigin(appUrl: string | undefined, req: Request): string | 
 	return null;
 }
 
+function startOfUtcWeekMs(ms: number): number {
+	// Monday 00:00:00 UTC
+	const d = new Date(ms);
+	const day = d.getUTCDay();
+	const daysSinceMonday = (day + 6) % 7;
+	const startOfDay = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+	return startOfDay - daysSinceMonday * 24 * 60 * 60 * 1000;
+}
+
 turretApp.use("/turret/*", async (c, next) => {
 	const reason = requiredSameOrigin((c.env as { APP_URL?: string }).APP_URL, c.req.raw);
 	if (reason) {
@@ -435,6 +444,7 @@ turretApp.openapi(postSessionInit, async (c) => {
 	const now = Date.now();
 	const env = c.env as unknown as AuthEnv & {
 		APP_URL?: string;
+		CORE_DB: D1Database;
 		TURRET_CFG: { get(key: string, type: "json"): Promise<unknown> };
 		TURRET_DB: D1Database;
 		TURRET_SIGNING_KEY?: string;
@@ -510,6 +520,45 @@ turretApp.openapi(postSessionInit, async (c) => {
 		retentionExpiresAt: new Date(retentionExpiresAt),
 		endedAt: null,
 	});
+
+	// Best-effort analytics side effects.
+	// - cache user signup week in TURRET_DB for retention calculations
+	// - record weekly activity bit for this user
+	try {
+		const userId = (session.user as unknown as { id: string }).id;
+		const weekStartMs = startOfUtcWeekMs(now);
+		await env.TURRET_DB.prepare(
+			"INSERT OR IGNORE INTO turret_user_activity_weekly (user_id, week_start_ms, first_seen_at) VALUES (?, ?, ?)"
+		)
+			.bind(userId, weekStartMs, now)
+			.run();
+
+		const existingProfile = await env.TURRET_DB.prepare(
+			"SELECT user_id FROM turret_user_profile WHERE user_id = ? LIMIT 1"
+		)
+			.bind(userId)
+			.first();
+		if (!existingProfile) {
+			const row = (await env.CORE_DB.prepare(
+				"SELECT created_at FROM auth_user WHERE id = ? LIMIT 1"
+			)
+				.bind(userId)
+				.first()) as unknown as { created_at?: unknown } | null;
+			if (row?.created_at != null) {
+				const signedUpAtMs = Number(row.created_at);
+				if (Number.isFinite(signedUpAtMs)) {
+					const signedUpWeekStartMs = startOfUtcWeekMs(signedUpAtMs);
+					await env.TURRET_DB.prepare(
+						"INSERT OR IGNORE INTO turret_user_profile (user_id, signed_up_at_ms, signed_up_week_start_ms, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+					)
+						.bind(userId, signedUpAtMs, signedUpWeekStartMs, now, now)
+						.run();
+				}
+			}
+		}
+	} catch {
+		// ignore
+	}
 
 		env.TURRET_ANALYTICS?.writeDataPoint({
 			blobs: [

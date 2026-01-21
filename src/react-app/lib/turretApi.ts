@@ -142,6 +142,35 @@ export type TurretFeaturesResponse = {
 	features: TurretFeatures;
 };
 
+export type TurretWeeklyPoint = {
+	weekStartMs: number;
+	value: number;
+};
+
+export type TurretWeeklyPointNullable = {
+	weekStartMs: number;
+	value: number | null;
+};
+
+export type TurretDashboardUsersResponse = {
+	activeUsers24h: number;
+	activeUsersPrev24h: number;
+	activeUsersDeltaPct: number | null;
+
+	newUsers24h: number;
+
+	totalUsersNow: number;
+	totalUsersPrevWeek: number;
+	totalUsersDeltaPct: number | null;
+
+	seriesTotalUsersWeekly: TurretWeeklyPoint[];
+	seriesNewUsersWeekly: TurretWeeklyPoint[];
+	seriesNewUserRetentionWeeklyPct: TurretWeeklyPointNullable[];
+
+	newUsersDeltaPctWoW: number | null;
+	retentionDeltaPctWoW: number | null;
+};
+
 async function turretHealth(): Promise<{ ok: true }> {
 	const res = await internalTurretFetch("/health");
 	return jsonOrThrow(res) as Promise<{ ok: true }>;
@@ -225,6 +254,13 @@ async function setFeatures(input: TurretFeatures): Promise<TurretFeaturesRespons
 	return jsonOrThrow<TurretFeaturesResponse>(res);
 }
 
+async function getDashboardUsers(opts?: { to?: number }): Promise<TurretDashboardUsersResponse> {
+	const url = new URL("/api/internal/turret/dashboard", window.location.origin);
+	if (opts?.to) url.searchParams.set("to", String(opts.to));
+	const res = await fetch(url.toString(), { credentials: "include" });
+	return jsonOrThrow<TurretDashboardUsersResponse>(res);
+}
+
 export {
 	turretHealth,
 	listSessions,
@@ -236,4 +272,5 @@ export {
 	getRequestSpans,
 	getFeatures,
 	setFeatures,
+	getDashboardUsers,
 };
