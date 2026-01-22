@@ -13,17 +13,17 @@ import { Route as StatusRouteImport } from "./routes/status"
 import { Route as ResetPasswordRouteImport } from "./routes/reset-password"
 import { Route as LoginRouteImport } from "./routes/login"
 import { Route as IndexRouteImport } from "./routes/index"
-import { Route as TurretIndexRouteImport } from "./routes/turret/index"
 import { Route as Ts_adminIndexRouteImport } from "./routes/ts_admin/index"
 import { Route as Ts_adminUsersRouteImport } from "./routes/ts_admin/users"
 import { Route as ResetPasswordTokenRouteImport } from "./routes/reset-password/$token"
-import { Route as TurretSettingsIndexRouteImport } from "./routes/turret/settings/index"
-import { Route as TurretSessionsIndexRouteImport } from "./routes/turret/sessions/index"
-import { Route as TurretIssuesIndexRouteImport } from "./routes/turret/issues/index"
 import { Route as Ts_adminUsersIndexRouteImport } from "./routes/ts_admin/users/index"
-import { Route as TurretSessionsSessionIdRouteImport } from "./routes/turret/sessions/$sessionId"
-import { Route as TurretIssuesFingerprintRouteImport } from "./routes/turret/issues/$fingerprint"
+import { Route as Ts_adminTurretIndexRouteImport } from "./routes/ts_admin/turret/index"
 import { Route as Ts_adminUsersUserIdRouteImport } from "./routes/ts_admin/users/$userId"
+import { Route as Ts_adminTurretSettingsIndexRouteImport } from "./routes/ts_admin/turret/settings/index"
+import { Route as Ts_adminTurretSessionsIndexRouteImport } from "./routes/ts_admin/turret/sessions/index"
+import { Route as Ts_adminTurretIssuesIndexRouteImport } from "./routes/ts_admin/turret/issues/index"
+import { Route as Ts_adminTurretSessionsSessionIdRouteImport } from "./routes/ts_admin/turret/sessions/$sessionId"
+import { Route as Ts_adminTurretIssuesFingerprintRouteImport } from "./routes/ts_admin/turret/issues/$fingerprint"
 
 const StatusRoute = StatusRouteImport.update({
   id: "/status",
@@ -45,11 +45,6 @@ const IndexRoute = IndexRouteImport.update({
   path: "/",
   getParentRoute: () => rootRouteImport,
 } as any)
-const TurretIndexRoute = TurretIndexRouteImport.update({
-  id: "/turret/",
-  path: "/turret/",
-  getParentRoute: () => rootRouteImport,
-} as any)
 const Ts_adminIndexRoute = Ts_adminIndexRouteImport.update({
   id: "/ts_admin/",
   path: "/ts_admin/",
@@ -65,34 +60,14 @@ const ResetPasswordTokenRoute = ResetPasswordTokenRouteImport.update({
   path: "/$token",
   getParentRoute: () => ResetPasswordRoute,
 } as any)
-const TurretSettingsIndexRoute = TurretSettingsIndexRouteImport.update({
-  id: "/turret/settings/",
-  path: "/turret/settings/",
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TurretSessionsIndexRoute = TurretSessionsIndexRouteImport.update({
-  id: "/turret/sessions/",
-  path: "/turret/sessions/",
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TurretIssuesIndexRoute = TurretIssuesIndexRouteImport.update({
-  id: "/turret/issues/",
-  path: "/turret/issues/",
-  getParentRoute: () => rootRouteImport,
-} as any)
 const Ts_adminUsersIndexRoute = Ts_adminUsersIndexRouteImport.update({
   id: "/",
   path: "/",
   getParentRoute: () => Ts_adminUsersRoute,
 } as any)
-const TurretSessionsSessionIdRoute = TurretSessionsSessionIdRouteImport.update({
-  id: "/turret/sessions/$sessionId",
-  path: "/turret/sessions/$sessionId",
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TurretIssuesFingerprintRoute = TurretIssuesFingerprintRouteImport.update({
-  id: "/turret/issues/$fingerprint",
-  path: "/turret/issues/$fingerprint",
+const Ts_adminTurretIndexRoute = Ts_adminTurretIndexRouteImport.update({
+  id: "/ts_admin/turret/",
+  path: "/ts_admin/turret/",
   getParentRoute: () => rootRouteImport,
 } as any)
 const Ts_adminUsersUserIdRoute = Ts_adminUsersUserIdRouteImport.update({
@@ -100,6 +75,36 @@ const Ts_adminUsersUserIdRoute = Ts_adminUsersUserIdRouteImport.update({
   path: "/$userId",
   getParentRoute: () => Ts_adminUsersRoute,
 } as any)
+const Ts_adminTurretSettingsIndexRoute =
+  Ts_adminTurretSettingsIndexRouteImport.update({
+    id: "/ts_admin/turret/settings/",
+    path: "/ts_admin/turret/settings/",
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Ts_adminTurretSessionsIndexRoute =
+  Ts_adminTurretSessionsIndexRouteImport.update({
+    id: "/ts_admin/turret/sessions/",
+    path: "/ts_admin/turret/sessions/",
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Ts_adminTurretIssuesIndexRoute =
+  Ts_adminTurretIssuesIndexRouteImport.update({
+    id: "/ts_admin/turret/issues/",
+    path: "/ts_admin/turret/issues/",
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Ts_adminTurretSessionsSessionIdRoute =
+  Ts_adminTurretSessionsSessionIdRouteImport.update({
+    id: "/ts_admin/turret/sessions/$sessionId",
+    path: "/ts_admin/turret/sessions/$sessionId",
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Ts_adminTurretIssuesFingerprintRoute =
+  Ts_adminTurretIssuesFingerprintRouteImport.update({
+    id: "/ts_admin/turret/issues/$fingerprint",
+    path: "/ts_admin/turret/issues/$fingerprint",
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
@@ -109,14 +114,14 @@ export interface FileRoutesByFullPath {
   "/reset-password/$token": typeof ResetPasswordTokenRoute
   "/ts_admin/users": typeof Ts_adminUsersRouteWithChildren
   "/ts_admin/": typeof Ts_adminIndexRoute
-  "/turret/": typeof TurretIndexRoute
   "/ts_admin/users/$userId": typeof Ts_adminUsersUserIdRoute
-  "/turret/issues/$fingerprint": typeof TurretIssuesFingerprintRoute
-  "/turret/sessions/$sessionId": typeof TurretSessionsSessionIdRoute
+  "/ts_admin/turret/": typeof Ts_adminTurretIndexRoute
   "/ts_admin/users/": typeof Ts_adminUsersIndexRoute
-  "/turret/issues/": typeof TurretIssuesIndexRoute
-  "/turret/sessions/": typeof TurretSessionsIndexRoute
-  "/turret/settings/": typeof TurretSettingsIndexRoute
+  "/ts_admin/turret/issues/$fingerprint": typeof Ts_adminTurretIssuesFingerprintRoute
+  "/ts_admin/turret/sessions/$sessionId": typeof Ts_adminTurretSessionsSessionIdRoute
+  "/ts_admin/turret/issues/": typeof Ts_adminTurretIssuesIndexRoute
+  "/ts_admin/turret/sessions/": typeof Ts_adminTurretSessionsIndexRoute
+  "/ts_admin/turret/settings/": typeof Ts_adminTurretSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute
@@ -125,14 +130,14 @@ export interface FileRoutesByTo {
   "/status": typeof StatusRoute
   "/reset-password/$token": typeof ResetPasswordTokenRoute
   "/ts_admin": typeof Ts_adminIndexRoute
-  "/turret": typeof TurretIndexRoute
   "/ts_admin/users/$userId": typeof Ts_adminUsersUserIdRoute
-  "/turret/issues/$fingerprint": typeof TurretIssuesFingerprintRoute
-  "/turret/sessions/$sessionId": typeof TurretSessionsSessionIdRoute
+  "/ts_admin/turret": typeof Ts_adminTurretIndexRoute
   "/ts_admin/users": typeof Ts_adminUsersIndexRoute
-  "/turret/issues": typeof TurretIssuesIndexRoute
-  "/turret/sessions": typeof TurretSessionsIndexRoute
-  "/turret/settings": typeof TurretSettingsIndexRoute
+  "/ts_admin/turret/issues/$fingerprint": typeof Ts_adminTurretIssuesFingerprintRoute
+  "/ts_admin/turret/sessions/$sessionId": typeof Ts_adminTurretSessionsSessionIdRoute
+  "/ts_admin/turret/issues": typeof Ts_adminTurretIssuesIndexRoute
+  "/ts_admin/turret/sessions": typeof Ts_adminTurretSessionsIndexRoute
+  "/ts_admin/turret/settings": typeof Ts_adminTurretSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -143,14 +148,14 @@ export interface FileRoutesById {
   "/reset-password/$token": typeof ResetPasswordTokenRoute
   "/ts_admin/users": typeof Ts_adminUsersRouteWithChildren
   "/ts_admin/": typeof Ts_adminIndexRoute
-  "/turret/": typeof TurretIndexRoute
   "/ts_admin/users/$userId": typeof Ts_adminUsersUserIdRoute
-  "/turret/issues/$fingerprint": typeof TurretIssuesFingerprintRoute
-  "/turret/sessions/$sessionId": typeof TurretSessionsSessionIdRoute
+  "/ts_admin/turret/": typeof Ts_adminTurretIndexRoute
   "/ts_admin/users/": typeof Ts_adminUsersIndexRoute
-  "/turret/issues/": typeof TurretIssuesIndexRoute
-  "/turret/sessions/": typeof TurretSessionsIndexRoute
-  "/turret/settings/": typeof TurretSettingsIndexRoute
+  "/ts_admin/turret/issues/$fingerprint": typeof Ts_adminTurretIssuesFingerprintRoute
+  "/ts_admin/turret/sessions/$sessionId": typeof Ts_adminTurretSessionsSessionIdRoute
+  "/ts_admin/turret/issues/": typeof Ts_adminTurretIssuesIndexRoute
+  "/ts_admin/turret/sessions/": typeof Ts_adminTurretSessionsIndexRoute
+  "/ts_admin/turret/settings/": typeof Ts_adminTurretSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -162,14 +167,14 @@ export interface FileRouteTypes {
     | "/reset-password/$token"
     | "/ts_admin/users"
     | "/ts_admin/"
-    | "/turret/"
     | "/ts_admin/users/$userId"
-    | "/turret/issues/$fingerprint"
-    | "/turret/sessions/$sessionId"
+    | "/ts_admin/turret/"
     | "/ts_admin/users/"
-    | "/turret/issues/"
-    | "/turret/sessions/"
-    | "/turret/settings/"
+    | "/ts_admin/turret/issues/$fingerprint"
+    | "/ts_admin/turret/sessions/$sessionId"
+    | "/ts_admin/turret/issues/"
+    | "/ts_admin/turret/sessions/"
+    | "/ts_admin/turret/settings/"
   fileRoutesByTo: FileRoutesByTo
   to:
     | "/"
@@ -178,14 +183,14 @@ export interface FileRouteTypes {
     | "/status"
     | "/reset-password/$token"
     | "/ts_admin"
-    | "/turret"
     | "/ts_admin/users/$userId"
-    | "/turret/issues/$fingerprint"
-    | "/turret/sessions/$sessionId"
+    | "/ts_admin/turret"
     | "/ts_admin/users"
-    | "/turret/issues"
-    | "/turret/sessions"
-    | "/turret/settings"
+    | "/ts_admin/turret/issues/$fingerprint"
+    | "/ts_admin/turret/sessions/$sessionId"
+    | "/ts_admin/turret/issues"
+    | "/ts_admin/turret/sessions"
+    | "/ts_admin/turret/settings"
   id:
     | "__root__"
     | "/"
@@ -195,14 +200,14 @@ export interface FileRouteTypes {
     | "/reset-password/$token"
     | "/ts_admin/users"
     | "/ts_admin/"
-    | "/turret/"
     | "/ts_admin/users/$userId"
-    | "/turret/issues/$fingerprint"
-    | "/turret/sessions/$sessionId"
+    | "/ts_admin/turret/"
     | "/ts_admin/users/"
-    | "/turret/issues/"
-    | "/turret/sessions/"
-    | "/turret/settings/"
+    | "/ts_admin/turret/issues/$fingerprint"
+    | "/ts_admin/turret/sessions/$sessionId"
+    | "/ts_admin/turret/issues/"
+    | "/ts_admin/turret/sessions/"
+    | "/ts_admin/turret/settings/"
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -212,12 +217,12 @@ export interface RootRouteChildren {
   StatusRoute: typeof StatusRoute
   Ts_adminUsersRoute: typeof Ts_adminUsersRouteWithChildren
   Ts_adminIndexRoute: typeof Ts_adminIndexRoute
-  TurretIndexRoute: typeof TurretIndexRoute
-  TurretIssuesFingerprintRoute: typeof TurretIssuesFingerprintRoute
-  TurretSessionsSessionIdRoute: typeof TurretSessionsSessionIdRoute
-  TurretIssuesIndexRoute: typeof TurretIssuesIndexRoute
-  TurretSessionsIndexRoute: typeof TurretSessionsIndexRoute
-  TurretSettingsIndexRoute: typeof TurretSettingsIndexRoute
+  Ts_adminTurretIndexRoute: typeof Ts_adminTurretIndexRoute
+  Ts_adminTurretIssuesFingerprintRoute: typeof Ts_adminTurretIssuesFingerprintRoute
+  Ts_adminTurretSessionsSessionIdRoute: typeof Ts_adminTurretSessionsSessionIdRoute
+  Ts_adminTurretIssuesIndexRoute: typeof Ts_adminTurretIssuesIndexRoute
+  Ts_adminTurretSessionsIndexRoute: typeof Ts_adminTurretSessionsIndexRoute
+  Ts_adminTurretSettingsIndexRoute: typeof Ts_adminTurretSettingsIndexRoute
 }
 
 declare module "@tanstack/react-router" {
@@ -250,13 +255,6 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/turret/": {
-      id: "/turret/"
-      path: "/turret"
-      fullPath: "/turret/"
-      preLoaderRoute: typeof TurretIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     "/ts_admin/": {
       id: "/ts_admin/"
       path: "/ts_admin"
@@ -278,27 +276,6 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof ResetPasswordTokenRouteImport
       parentRoute: typeof ResetPasswordRoute
     }
-    "/turret/settings/": {
-      id: "/turret/settings/"
-      path: "/turret/settings"
-      fullPath: "/turret/settings/"
-      preLoaderRoute: typeof TurretSettingsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    "/turret/sessions/": {
-      id: "/turret/sessions/"
-      path: "/turret/sessions"
-      fullPath: "/turret/sessions/"
-      preLoaderRoute: typeof TurretSessionsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    "/turret/issues/": {
-      id: "/turret/issues/"
-      path: "/turret/issues"
-      fullPath: "/turret/issues/"
-      preLoaderRoute: typeof TurretIssuesIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     "/ts_admin/users/": {
       id: "/ts_admin/users/"
       path: "/"
@@ -306,18 +283,11 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof Ts_adminUsersIndexRouteImport
       parentRoute: typeof Ts_adminUsersRoute
     }
-    "/turret/sessions/$sessionId": {
-      id: "/turret/sessions/$sessionId"
-      path: "/turret/sessions/$sessionId"
-      fullPath: "/turret/sessions/$sessionId"
-      preLoaderRoute: typeof TurretSessionsSessionIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    "/turret/issues/$fingerprint": {
-      id: "/turret/issues/$fingerprint"
-      path: "/turret/issues/$fingerprint"
-      fullPath: "/turret/issues/$fingerprint"
-      preLoaderRoute: typeof TurretIssuesFingerprintRouteImport
+    "/ts_admin/turret/": {
+      id: "/ts_admin/turret/"
+      path: "/ts_admin/turret"
+      fullPath: "/ts_admin/turret/"
+      preLoaderRoute: typeof Ts_adminTurretIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     "/ts_admin/users/$userId": {
@@ -326,6 +296,41 @@ declare module "@tanstack/react-router" {
       fullPath: "/ts_admin/users/$userId"
       preLoaderRoute: typeof Ts_adminUsersUserIdRouteImport
       parentRoute: typeof Ts_adminUsersRoute
+    }
+    "/ts_admin/turret/settings/": {
+      id: "/ts_admin/turret/settings/"
+      path: "/ts_admin/turret/settings"
+      fullPath: "/ts_admin/turret/settings/"
+      preLoaderRoute: typeof Ts_adminTurretSettingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/ts_admin/turret/sessions/": {
+      id: "/ts_admin/turret/sessions/"
+      path: "/ts_admin/turret/sessions"
+      fullPath: "/ts_admin/turret/sessions/"
+      preLoaderRoute: typeof Ts_adminTurretSessionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/ts_admin/turret/issues/": {
+      id: "/ts_admin/turret/issues/"
+      path: "/ts_admin/turret/issues"
+      fullPath: "/ts_admin/turret/issues/"
+      preLoaderRoute: typeof Ts_adminTurretIssuesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/ts_admin/turret/sessions/$sessionId": {
+      id: "/ts_admin/turret/sessions/$sessionId"
+      path: "/ts_admin/turret/sessions/$sessionId"
+      fullPath: "/ts_admin/turret/sessions/$sessionId"
+      preLoaderRoute: typeof Ts_adminTurretSessionsSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/ts_admin/turret/issues/$fingerprint": {
+      id: "/ts_admin/turret/issues/$fingerprint"
+      path: "/ts_admin/turret/issues/$fingerprint"
+      fullPath: "/ts_admin/turret/issues/$fingerprint"
+      preLoaderRoute: typeof Ts_adminTurretIssuesFingerprintRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -363,12 +368,12 @@ const rootRouteChildren: RootRouteChildren = {
   StatusRoute: StatusRoute,
   Ts_adminUsersRoute: Ts_adminUsersRouteWithChildren,
   Ts_adminIndexRoute: Ts_adminIndexRoute,
-  TurretIndexRoute: TurretIndexRoute,
-  TurretIssuesFingerprintRoute: TurretIssuesFingerprintRoute,
-  TurretSessionsSessionIdRoute: TurretSessionsSessionIdRoute,
-  TurretIssuesIndexRoute: TurretIssuesIndexRoute,
-  TurretSessionsIndexRoute: TurretSessionsIndexRoute,
-  TurretSettingsIndexRoute: TurretSettingsIndexRoute,
+  Ts_adminTurretIndexRoute: Ts_adminTurretIndexRoute,
+  Ts_adminTurretIssuesFingerprintRoute: Ts_adminTurretIssuesFingerprintRoute,
+  Ts_adminTurretSessionsSessionIdRoute: Ts_adminTurretSessionsSessionIdRoute,
+  Ts_adminTurretIssuesIndexRoute: Ts_adminTurretIssuesIndexRoute,
+  Ts_adminTurretSessionsIndexRoute: Ts_adminTurretSessionsIndexRoute,
+  Ts_adminTurretSettingsIndexRoute: Ts_adminTurretSettingsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

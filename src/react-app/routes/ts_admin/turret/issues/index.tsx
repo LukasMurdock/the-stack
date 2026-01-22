@@ -22,9 +22,9 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 
-import { requireTurretAdmin } from "../../../lib/requireTurretAdmin";
-import { turretIssuesQueryOptions } from "../../../queries/turretQueries";
-import type { TurretIssueStatus } from "../../../lib/turretApi";
+import { requireTurretAdmin } from "../../../../lib/requireTurretAdmin";
+import { turretIssuesQueryOptions } from "../../../../queries/turretQueries";
+import type { TurretIssueStatus } from "../../../../lib/turretApi";
 
 type RangePreset = "24h" | "7d" | "30d" | "custom";
 
@@ -56,16 +56,16 @@ function fromLocalDatetimeValue(v: string): number | undefined {
 	return Number.isNaN(ms) ? undefined : ms;
 }
 
-const Route = createFileRoute("/turret/issues/")({
+const Route = createFileRoute("/ts_admin/turret/issues/")({
 	validateSearch: (s: Record<string, unknown>) => {
 		const status: TurretIssueStatus =
 			s.status === "resolved" || s.status === "ignored" || s.status === "open"
 				? (s.status as TurretIssueStatus)
-				: "open";
+				: "open"
 		const preset: RangePreset =
 			s.preset === "24h" || s.preset === "7d" || s.preset === "30d" || s.preset === "custom"
 				? (s.preset as RangePreset)
-				: "24h";
+				: "24h"
 		return {
 			status,
 			preset,
@@ -74,7 +74,7 @@ const Route = createFileRoute("/turret/issues/")({
 			to: typeof s.to === "string" ? Number(s.to) : undefined,
 			offset: typeof s.offset === "string" ? Number(s.offset) : 0,
 			limit: typeof s.limit === "string" ? Number(s.limit) : 50,
-		};
+		}
 	},
 	beforeLoad: requireTurretAdmin,
 	component: TurretIssuesPage,
@@ -99,7 +99,7 @@ function TurretIssuesPage() {
 			limit: search.limit,
 			offset: search.offset,
 		})
-	);
+	)
 
 	const [qInput, setQInput] = useState(search.q);
 	useEffect(() => {
@@ -108,19 +108,19 @@ function TurretIssuesPage() {
 
 	function setStatus(status: TurretIssueStatus) {
 		navigate({
-			to: "/turret/issues",
+			to: "/ts_admin/turret/issues",
 			search: {
 				...search,
 				status,
 				offset: 0,
 			},
-		});
+		})
 	}
 
 	function setPreset(preset: RangePreset) {
 		const next = preset === "custom" ? { from: search.from, to: search.to } : presetToRange(preset, now);
 		navigate({
-			to: "/turret/issues",
+			to: "/ts_admin/turret/issues",
 			search: {
 				...search,
 				preset,
@@ -128,18 +128,18 @@ function TurretIssuesPage() {
 				to: next.to,
 				offset: 0,
 			},
-		});
+		})
 	}
 
 	function applyFilters() {
 		navigate({
-			to: "/turret/issues",
+			to: "/ts_admin/turret/issues",
 			search: {
 				...search,
 				q: qInput,
 				offset: 0,
 			},
-		});
+		})
 	}
 
 	function formatRangeLabel(): string {
@@ -157,13 +157,13 @@ function TurretIssuesPage() {
 					<p className="text-sm text-muted-foreground">Grouped errors by fingerprint (time-windowed).</p>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button type="button" variant="outline" onClick={() => navigate({ to: "/turret" })}>
+					<Button type="button" variant="outline" onClick={() => navigate({ to: "/ts_admin/turret" })}>
 						Dashboard
 					</Button>
-					<Button type="button" variant="outline" onClick={() => navigate({ to: "/turret/sessions", search: { q: "", hasError: false, groupBy: "none", preset: "1h", from: undefined, to: undefined, offset: 0, limit: 50 } })}>
+					<Button type="button" variant="outline" onClick={() => navigate({ to: "/ts_admin/turret/sessions", search: { q: "", hasError: false, groupBy: "none", preset: "1h", from: undefined, to: undefined, offset: 0, limit: 50 } })}>
 						Sessions
 					</Button>
-					<Button type="button" variant="outline" onClick={() => navigate({ to: "/turret/settings" })}>
+					<Button type="button" variant="outline" onClick={() => navigate({ to: "/ts_admin/turret/settings" })}>
 						Settings
 					</Button>
 				</div>
@@ -209,7 +209,7 @@ function TurretIssuesPage() {
 									value={toLocalDatetimeValue(search.from)}
 									onChange={(e) => {
 										const nextFrom = fromLocalDatetimeValue(e.target.value);
-										navigate({ to: "/turret/issues", search: { ...search, from: nextFrom } });
+								navigate({ to: "/ts_admin/turret/issues", search: { ...search, from: nextFrom } });
 									}}
 								/>
 							</div>
@@ -220,7 +220,7 @@ function TurretIssuesPage() {
 									value={toLocalDatetimeValue(search.to)}
 									onChange={(e) => {
 										const nextTo = fromLocalDatetimeValue(e.target.value);
-										navigate({ to: "/turret/issues", search: { ...search, to: nextTo } });
+								navigate({ to: "/ts_admin/turret/issues", search: { ...search, to: nextTo } });
 									}}
 								/>
 							</div>
@@ -285,7 +285,7 @@ function TurretIssuesPage() {
 											className="cursor-pointer"
 											onClick={() =>
 												navigate({
-													to: "/turret/issues/$fingerprint",
+									to: "/ts_admin/turret/issues/$fingerprint",
 													params: { fingerprint: i.fingerprint },
 													search: { preset: "7d", bucket: "day", from: undefined, to: undefined, eventsOffset: 0, eventsLimit: 50 },
 												})
@@ -304,7 +304,7 @@ function TurretIssuesPage() {
 											<TableCell>{i.occurrences.toLocaleString()}</TableCell>
 											<TableCell>{i.sessionsAffected.toLocaleString()}</TableCell>
 										</TableRow>
-									);
+									)
 								})}
 							</TableBody>
 						</Table>
@@ -317,7 +317,7 @@ function TurretIssuesPage() {
 								disabled={search.offset <= 0}
 								onClick={() =>
 									navigate({
-										to: "/turret/issues",
+									to: "/ts_admin/turret/issues",
 										search: { ...search, offset: Math.max(0, search.offset - search.limit) },
 									})
 								}
@@ -333,7 +333,7 @@ function TurretIssuesPage() {
 								disabled={issuesQuery.data.issues.length < search.limit}
 								onClick={() =>
 									navigate({
-										to: "/turret/issues",
+									to: "/ts_admin/turret/issues",
 										search: { ...search, offset: search.offset + search.limit },
 									})
 								}
@@ -346,7 +346,7 @@ function TurretIssuesPage() {
 				</CardContent>
 			</Card>
 		</section>
-	);
+	)
 }
 
 export { Route };

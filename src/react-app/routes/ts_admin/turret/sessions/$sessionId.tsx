@@ -18,16 +18,16 @@ import {
 	getSessionChunk,
 	type TurretReplayChunkPayload,
 	type TurretRequestBreadcrumb,
-} from "../../../lib/turretApi";
+} from "../../../../lib/turretApi";
 import {
 	turretRequestSpansQueryOptions,
 	turretSessionBreadcrumbsQueryOptions,
 	turretSessionChunksQueryOptions,
 	turretSessionErrorsQueryOptions,
 	turretSessionMetaQueryOptions,
-} from "../../../queries/turretQueries";
+} from "../../../../queries/turretQueries";
 
-import { requireTurretAdmin } from "../../../lib/requireTurretAdmin";
+import { requireTurretAdmin } from "../../../../lib/requireTurretAdmin";
 
 type RrwebPlayerInstance = {
 	getMetaData?: () => { startTime: number; totalTime?: number };
@@ -48,7 +48,7 @@ function parseJsonObject(input: string | null): Record<string, unknown> | null {
 
 const CLOUDFLARE_TRACES_URL = "https://dash.cloudflare.com/?to=/:account/workers-and-pages/observability/traces";
 
-const Route = createFileRoute("/turret/sessions/$sessionId")({
+const Route = createFileRoute("/ts_admin/turret/sessions/$sessionId")({
 	beforeLoad: requireTurretAdmin,
 	component: TurretSessionPage,
 });
@@ -145,7 +145,7 @@ function RequestBreadcrumbRow(props: {
 						disabled={!props.replayReady}
 						onClick={() => {
 							const player = props.playerRef.current;
-							if (!player) return;
+							if (!player) return
 							const meta = player.getMetaData?.();
 							if (!meta || typeof meta.startTime !== "number") return;
 							const startTime = meta.startTime;
@@ -159,7 +159,7 @@ function RequestBreadcrumbRow(props: {
 				</div>
 			</div>
 		</div>
-	);
+	)
 }
 
 function TurretSessionPage() {
@@ -175,7 +175,7 @@ function TurretSessionPage() {
 			limit: breadcrumbsLimit,
 			offset: breadcrumbsOffset,
 		})
-	);
+	)
 
 	const playerHostRef = useRef<HTMLDivElement | null>(null);
 	const playerRef = useRef<RrwebPlayerInstance | null>(null);
@@ -207,7 +207,7 @@ function TurretSessionPage() {
 		level: string;
 		payload: unknown[];
 		trace: string[];
-	};
+	}
 
 	const consoleItems = useMemo(() => {
 		if (replayLibStatus.state !== "ready") return [];
@@ -230,21 +230,21 @@ function TurretSessionPage() {
 				? logData.payload.map((s: unknown) => {
 					if (typeof s === "string") {
 						try {
-							return JSON.parse(s);
+							return JSON.parse(s)
 						} catch {
-							return s;
+							return s
 						}
 					}
-					return s;
+					return s
 				})
-				: [];
+				: []
 
 			items.push({
 				timestamp: ts,
 				level: String(logData.level ?? "log"),
 				payload,
 				trace: Array.isArray(logData.trace) ? logData.trace.map(String) : [],
-			});
+			})
 		}
 
 		items.sort((a, b) => a.timestamp - b.timestamp);
@@ -267,7 +267,7 @@ function TurretSessionPage() {
 				playerRef.current = null;
 				playerHostRef.current.innerHTML = "";
 				setReplayEvents([]);
-				return;
+				return
 			}
 
 			// Load rrweb libraries lazily so the route can still render if a content
@@ -304,7 +304,7 @@ function TurretSessionPage() {
 				state: "loading",
 				loaded: 0,
 				total: sortedSeqs.length,
-			});
+			})
 
 			const events: eventWithTime[] = [];
 			for (let i = 0; i < sortedSeqs.length; i++) {
@@ -314,15 +314,15 @@ function TurretSessionPage() {
 				try {
 					payload = await getSessionChunk(sessionId, seq, {
 						signal: controller.signal,
-					});
+					})
 				} catch (err) {
 					if (!active || controller.signal.aborted) return;
 					setReplayStatus({
 						state: "error",
 						message:
 							err instanceof Error ? err.message : "Failed to load replay chunk",
-					});
-					return;
+					})
+					return
 				}
 
 				if (!active || controller.signal.aborted) return;
@@ -335,7 +335,7 @@ function TurretSessionPage() {
 					state: "loading",
 					loaded: i + 1,
 					total: sortedSeqs.length,
-				});
+				})
 			}
 
 			if (!active || controller.signal.aborted) return;
@@ -353,7 +353,7 @@ function TurretSessionPage() {
 					autoPlay: false,
 					showController: true,
 				},
-			});
+			})
 
 			setReplayStatus({ state: "ready", totalEvents: events.length });
 		}
@@ -365,7 +365,7 @@ function TurretSessionPage() {
 			controller.abort();
 			(playerRef.current as any)?.$destroy?.();
 			playerRef.current = null;
-		};
+		}
 	}, [sessionId, sortedSeqs]);
 
 	return (
@@ -381,7 +381,7 @@ function TurretSessionPage() {
 						variant="outline"
 						onClick={() =>
 							navigate({
-								to: "/turret/sessions",
+								to: "/ts_admin/turret/sessions",
 								search: { q: "", hasError: false, groupBy: "none", preset: "1h", from: undefined, to: undefined, offset: 0, limit: 50 },
 							})
 						}
@@ -393,7 +393,7 @@ function TurretSessionPage() {
 						variant="outline"
 						onClick={() =>
 							navigate({
-								to: "/turret/issues",
+								to: "/ts_admin/turret/issues",
 								search: { status: "open", preset: "24h", q: "", from: undefined, to: undefined, offset: 0, limit: 50 },
 							})
 						}
@@ -527,7 +527,7 @@ function TurretSessionPage() {
 										const ts = new Date(e.ts).getTime();
 										const expiresLabel = e.expiresAt
 											? new Date(e.expiresAt).toLocaleString()
-											: "legacy (no ttl)";
+											: "legacy (no ttl)"
 										const extra = parseJsonObject(e.extraJson);
 										const rayId = typeof extra?.ray_id === "string" ? extra.ray_id : null;
 										return (
@@ -559,7 +559,7 @@ function TurretSessionPage() {
 																className="rounded-md border px-2.5 py-1 text-xs"
 																onClick={() => {
 																	try {
-																		void navigator.clipboard.writeText(rayId);
+																		void navigator.clipboard.writeText(rayId)
 																	} catch {
 																		// ignore
 																	}
@@ -593,14 +593,14 @@ function TurretSessionPage() {
 													className="rounded-md border px-2.5 py-1 text-xs"
 													disabled={replayStatus.state !== "ready"}
 													onClick={() => {
-														const player = playerRef.current;
-														if (!player) return;
-														const meta = player.getMetaData?.();
+														const player = playerRef.current
+														if (!player) return
+														const meta = player.getMetaData?.()
 														if (!meta || typeof meta.startTime !== "number") return;
-														const startTime = meta.startTime;
+														const startTime = meta.startTime
 														const totalTime = typeof meta.totalTime === "number" ? meta.totalTime : Infinity;
 														const offset = Math.max(0, Math.min(totalTime, ts - startTime));
-														player.goto(offset, false);
+														player.goto(offset, false)
 													}}
 												>
 													Jump
@@ -608,7 +608,7 @@ function TurretSessionPage() {
 											</div>
 										</div>
 									</div>
-										);
+										)
 									})}
 								</div>
 							)}
@@ -633,7 +633,7 @@ function TurretSessionPage() {
 							) : (
 								<div className="space-y-2">
 									{consoleItems.map((item, idx) => {
-										const ts = item.timestamp;
+										const ts = item.timestamp
 										return (
 											<div key={`${ts}-${idx}`} className="rounded-md border bg-card p-3">
 												<div className="flex flex-wrap items-start justify-between gap-3">
@@ -643,11 +643,11 @@ function TurretSessionPage() {
 																{item.level}
 															</span>
 															{item.payload.map((p) => {
-																if (typeof p === "string") return p;
+																if (typeof p === "string") return p
 																try {
-																	return JSON.stringify(p);
+																	return JSON.stringify(p)
 																} catch {
-																	return String(p);
+																	return String(p)
 																}
 															})
 															.join(" ")}
@@ -674,14 +674,14 @@ function TurretSessionPage() {
 															className="rounded-md border px-2.5 py-1 text-xs"
 															disabled={replayStatus.state !== "ready"}
 															onClick={() => {
-																const player = playerRef.current;
-																if (!player) return;
-																const meta = player.getMetaData?.();
+																const player = playerRef.current
+																if (!player) return
+																const meta = player.getMetaData?.()
 																if (!meta || typeof meta.startTime !== "number") return;
-																const startTime = meta.startTime;
+																const startTime = meta.startTime
 																const totalTime = typeof meta.totalTime === "number" ? meta.totalTime : Infinity;
 																const offset = Math.max(0, Math.min(totalTime, ts - startTime));
-																player.goto(offset, false);
+																player.goto(offset, false)
 															}}
 														>
 															Jump
@@ -689,7 +689,7 @@ function TurretSessionPage() {
 													</div>
 												</div>
 											</div>
-										);
+										)
 									})}
 								</div>
 							)}
@@ -740,7 +740,7 @@ function TurretSessionPage() {
 												replayReady={replayStatus.state === "ready"}
 												playerRef={playerRef}
 											/>
-										);
+										)
 									})}
 									<div className="flex items-center justify-between pt-2">
 										<div className="text-xs text-muted-foreground">
@@ -772,7 +772,7 @@ function TurretSessionPage() {
 				</TabsContent>
 			</Tabs>
 		</section>
-	);
+	)
 }
 
 export { Route };

@@ -28,16 +28,16 @@ import {
 	turretFeaturesMutation,
 	turretFeaturesQueryOptions,
 	turretSessionsQueryOptions,
-} from "../../../queries/turretQueries";
+} from "../../../../queries/turretQueries";
 
-import { requireTurretAdmin } from "../../../lib/requireTurretAdmin";
+import { requireTurretAdmin } from "../../../../lib/requireTurretAdmin";
 
 type RangePreset = "15m" | "1h" | "24h" | "custom";
 
 type GroupBy = "none" | "user";
 
 
-const Route = createFileRoute("/turret/sessions/")({
+const Route = createFileRoute("/ts_admin/turret/sessions/")({
 	validateSearch: (s: Record<string, unknown>) => {
 		const legacyGrouped = s.grouped === true || s.grouped === "true" || s.grouped === "1";
 		const groupBy: GroupBy =
@@ -45,7 +45,7 @@ const Route = createFileRoute("/turret/sessions/")({
 				? (s.groupBy as GroupBy)
 				: legacyGrouped
 					? "user"
-					: "none";
+					: "none"
 		return {
 			q: typeof s.q === "string" ? s.q : "",
 			hasError: s.hasError === "1",
@@ -252,30 +252,30 @@ function TurretSessionsPage() {
 
 	function applyFilters() {
 		navigate({
-			to: "/turret/sessions",
+			to: "/ts_admin/turret/sessions",
 			search: {
 				...search,
 				q: qInput,
 				offset: 0,
 			},
-		});
+		})
 	}
 
 	function setGroupBy(groupBy: GroupBy) {
 		navigate({
-			to: "/turret/sessions",
+			to: "/ts_admin/turret/sessions",
 			search: {
 				...search,
 				groupBy,
 				offset: 0,
 			},
-		});
+		})
 	}
 
 	function setPreset(preset: RangePreset) {
 		const next = preset === "custom" ? { from: search.from, to: search.to } : presetToRange(preset, now);
 		navigate({
-			to: "/turret/sessions",
+			to: "/ts_admin/turret/sessions",
 			search: {
 				...search,
 				preset,
@@ -283,18 +283,18 @@ function TurretSessionsPage() {
 				to: next.to,
 				offset: 0,
 			},
-		});
+		})
 	}
 
 	function setHasError(hasError: boolean) {
 		navigate({
-			to: "/turret/sessions",
+			to: "/ts_admin/turret/sessions",
 			search: {
 				...search,
 				hasError,
 				offset: 0,
 			},
-		});
+		})
 	}
 
 	return (
@@ -307,7 +307,7 @@ function TurretSessionsPage() {
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button type="button" variant="outline" onClick={() => navigate({ to: "/turret" })}>
+					<Button type="button" variant="outline" onClick={() => navigate({ to: "/ts_admin/turret" })}>
 						Dashboard
 					</Button>
 					<Button
@@ -315,14 +315,14 @@ function TurretSessionsPage() {
 						variant="outline"
 						onClick={() =>
 							navigate({
-								to: "/turret/issues",
+								to: "/ts_admin/turret/issues",
 								search: { status: "open", preset: "24h", q: "", from: undefined, to: undefined, offset: 0, limit: 50 },
 							})
 						}
 					>
 						Issues
 					</Button>
-					<Button type="button" variant="outline" onClick={() => navigate({ to: "/turret/settings" })}>
+					<Button type="button" variant="outline" onClick={() => navigate({ to: "/ts_admin/turret/settings" })}>
 						Settings
 					</Button>
 				</div>
@@ -394,12 +394,12 @@ function TurretSessionsPage() {
 												onChange={(e) => {
 												const nextFrom = fromLocalDatetimeValue(e.target.value);
 												navigate({
-													to: "/turret/sessions",
-													search: {
-														...search,
-														from: nextFrom,
-													},
-												});
+												to: "/ts_admin/turret/sessions",
+												search: {
+													...search,
+													from: nextFrom,
+												},
+											})
 											}}
 										/>
 							</div>
@@ -411,12 +411,12 @@ function TurretSessionsPage() {
 												onChange={(e) => {
 												const nextTo = fromLocalDatetimeValue(e.target.value);
 												navigate({
-													to: "/turret/sessions",
-													search: {
-														...search,
-														to: nextTo,
-													},
-												});
+												to: "/ts_admin/turret/sessions",
+												search: {
+													...search,
+													to: nextTo,
+												},
+											})
 											}}
 										/>
 							</div>
@@ -489,15 +489,15 @@ function TurretSessionsPage() {
 							<EmptyContent />
 						</Empty>
 					) : search.groupBy === "user" ? (
-						<GroupedSessions
-							sessions={sessionsQuery.data?.sessions ?? []}
-							onOpenSession={(id: string) =>
-								navigate({
-									to: "/turret/sessions/$sessionId",
-									params: { sessionId: id },
-								})
-							}
-						/>
+							<GroupedSessions
+								sessions={sessionsQuery.data?.sessions ?? []}
+								onOpenSession={(id: string) =>
+									navigate({
+										to: "/ts_admin/turret/sessions/$sessionId",
+										params: { sessionId: id },
+									})
+								}
+							/>
 					) : (
 						<Table>
 							<TableHeader>
@@ -521,11 +521,11 @@ function TurretSessionsPage() {
 											key={s.sessionId}
 											className="cursor-pointer"
 											onClick={() =>
-												navigate({
-													to: "/turret/sessions/$sessionId",
-													params: { sessionId: s.sessionId },
-												})
-											}
+														navigate({
+														to: "/ts_admin/turret/sessions/$sessionId",
+														params: { sessionId: s.sessionId },
+													})
+												}
 										>
 											<TableCell>
 												<div className="font-medium">
@@ -592,7 +592,7 @@ function TurretSessionsPage() {
 								disabled={search.offset <= 0}
 									onClick={() =>
 									navigate({
-										to: "/turret/sessions",
+										to: "/ts_admin/turret/sessions",
 										search: {
 											...search,
 											offset: Math.max(0, search.offset - search.limit),
@@ -611,7 +611,7 @@ function TurretSessionsPage() {
 								disabled={sessionsQuery.data.sessions.length < search.limit}
 									onClick={() =>
 									navigate({
-										to: "/turret/sessions",
+										to: "/ts_admin/turret/sessions",
 										search: {
 											...search,
 											offset: search.offset + search.limit,
@@ -631,7 +631,7 @@ function TurretSessionsPage() {
 				Tip: use Filters + Group to narrow down sessions quickly.
 			</div>
 		</section>
-	);
+	)
 }
 
 export { Route };

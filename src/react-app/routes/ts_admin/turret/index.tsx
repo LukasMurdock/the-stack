@@ -18,16 +18,17 @@ import {
 } from "@/components/ui/table";
 import { Area, AreaChart, Tooltip, XAxis, YAxis } from "recharts";
 
-	import {
-		turretFeaturesQueryOptions,
-		turretSessionsQueryOptions,
-		turretDashboardUsersQueryOptions,
-		turretUptimeQueryOptions,
-	} from "../../queries/turretQueries";
 
-import { requireTurretAdmin } from "../../lib/requireTurretAdmin";
+import {
+	turretFeaturesQueryOptions,
+	turretSessionsQueryOptions,
+	turretDashboardUsersQueryOptions,
+	turretUptimeQueryOptions,
+} from "../../../queries/turretQueries";
 
-const Route = createFileRoute("/turret/")({
+import { requireTurretAdmin } from "../../../lib/requireTurretAdmin";
+
+const Route = createFileRoute("/ts_admin/turret/")({
 	beforeLoad: requireTurretAdmin,
 	component: TurretDashboardPage,
 });
@@ -58,7 +59,7 @@ function TurretDashboardPage() {
 			limit: 10,
 			offset: 0,
 		})
-	);
+	)
 	const recentUsersQuery = useQuery(
 		turretSessionsQueryOptions({
 			from: now - 24 * 60 * 60 * 1000,
@@ -66,7 +67,7 @@ function TurretDashboardPage() {
 			limit: 200,
 			offset: 0,
 		})
-	);
+	)
 
 	const sessions = sessionsPreviewQuery.data?.sessions ?? [];
 	const errorCount = sessions.filter((s) => s.hasError).length;
@@ -116,7 +117,7 @@ function TurretDashboardPage() {
 			>
 				{formatPct(props.pct)} {props.label}
 			</div>
-		);
+		)
 	}
 
 	function formatUserDevice(uaRaw: string | null): string {
@@ -170,7 +171,7 @@ function TurretDashboardPage() {
 					/>
 				</AreaChart>
 			</ChartContainer>
-		);
+		)
 	}
 
 	return (
@@ -188,7 +189,7 @@ function TurretDashboardPage() {
 						variant="outline"
 						onClick={() =>
 							navigate({
-								to: "/turret/issues",
+								to: "/ts_admin/turret/issues",
 								search: { status: "open", preset: "24h", q: "", from: undefined, to: undefined, offset: 0, limit: 50 },
 							})
 						}
@@ -198,7 +199,7 @@ function TurretDashboardPage() {
 					<Button
 						type="button"
 						variant="outline"
-						onClick={() => navigate({ to: "/turret/settings" })}
+						onClick={() => navigate({ to: "/ts_admin/turret/settings" })}
 					>
 						Settings
 					</Button>
@@ -207,7 +208,7 @@ function TurretDashboardPage() {
 						variant="outline"
 						onClick={() =>
 							navigate({
-								to: "/turret/sessions",
+								to: "/ts_admin/turret/sessions",
 								search: defaultSessionsSearch,
 							})
 						}
@@ -239,7 +240,7 @@ function TurretDashboardPage() {
 											? "text-amber-700 dark:text-amber-300"
 											: overall === "down"
 												? "text-rose-700 dark:text-rose-300"
-												: "text-muted-foreground";
+												: "text-muted-foreground"
 								return (
 									<>
 										<div className="flex items-center justify-between gap-3">
@@ -262,7 +263,7 @@ function TurretDashboardPage() {
 											</Button>
 										</div>
 									</>
-								);
+								)
 							})()
 						) : (
 							<div className="text-muted-foreground">No data.</div>
@@ -363,8 +364,8 @@ function TurretDashboardPage() {
 															const v =
 																dashboard.seriesNewUserRetentionWeeklyPct[
 																	dashboard.seriesNewUserRetentionWeeklyPct.length - 1
-																]?.value;
-															return v == null ? "-" : `${v.toFixed(1)}%`;
+																]?.value
+															return v == null ? "-" : "${v.toFixed(1)}%"
 														})()
 													: "-"}
 										</div>
@@ -413,7 +414,7 @@ function TurretDashboardPage() {
 										const time = started.toLocaleTimeString([], {
 											hour: "2-digit",
 											minute: "2-digit",
-										});
+										})
 										const email = s.userEmail ?? `${s.userId.slice(0, 8)}…`;
 										const location = [s.country, s.colo].filter(Boolean).join(" / ") || "-";
 										const device = formatUserDevice(s.userAgent);
@@ -423,7 +424,7 @@ function TurretDashboardPage() {
 												className="cursor-pointer"
 												onClick={() =>
 													navigate({
-														to: "/turret/sessions/$sessionId",
+												to: "/ts_admin/turret/sessions/$sessionId",
 														params: { sessionId: s.sessionId },
 													})
 												}
@@ -441,7 +442,7 @@ function TurretDashboardPage() {
 													{device}
 												</TableCell>
 											</TableRow>
-										);
+										)
 									})}
 								</TableBody>
 							</Table>
@@ -517,7 +518,7 @@ function TurretDashboardPage() {
 									className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/20"
 									onClick={() =>
 										navigate({
-											to: "/turret/sessions/$sessionId",
+											to: "/ts_admin/turret/sessions/$sessionId",
 											params: { sessionId: s.sessionId },
 										})
 									}
@@ -541,7 +542,7 @@ function TurretDashboardPage() {
 				</CardContent>
 			</Card>
 		</section>
-	);
+	)
 }
 
 export { Route };

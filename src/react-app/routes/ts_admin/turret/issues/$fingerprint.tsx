@@ -24,13 +24,13 @@ import {
 } from "@/components/ui/table";
 import { Area, AreaChart, Tooltip, XAxis, YAxis } from "recharts";
 
-import { requireTurretAdmin } from "../../../lib/requireTurretAdmin";
+import { requireTurretAdmin } from "../../../../lib/requireTurretAdmin";
 import {
 	turretIssueEventsQueryOptions,
 	turretIssueQueryOptions,
 	turretIssueTrendQueryOptions,
-} from "../../../queries/turretQueries";
-import { patchIssue, type TurretIssueStatus } from "../../../lib/turretApi";
+} from "../../../../queries/turretQueries";
+import { patchIssue, type TurretIssueStatus } from "../../../../lib/turretApi";
 
 const CLOUDFLARE_TRACES_URL = "https://dash.cloudflare.com/?to=/:account/workers-and-pages/observability/traces";
 
@@ -75,12 +75,12 @@ function parseJsonObject(input: string | null): Record<string, unknown> | null {
 	}
 }
 
-const Route = createFileRoute("/turret/issues/$fingerprint")({
+const Route = createFileRoute("/ts_admin/turret/issues/$fingerprint")({
 	validateSearch: (s: Record<string, unknown>) => {
 		const preset: RangePreset =
 			s.preset === "24h" || s.preset === "7d" || s.preset === "30d" || s.preset === "custom"
 				? (s.preset as RangePreset)
-				: "7d";
+				: "7d"
 		const bucket: "hour" | "day" = s.bucket === "hour" || s.bucket === "day" ? (s.bucket as any) : (preset === "24h" ? "hour" : "day");
 		return {
 			preset,
@@ -89,7 +89,7 @@ const Route = createFileRoute("/turret/issues/$fingerprint")({
 			to: typeof s.to === "string" ? Number(s.to) : undefined,
 			eventsOffset: typeof s.eventsOffset === "string" ? Number(s.eventsOffset) : 0,
 			eventsLimit: typeof s.eventsLimit === "string" ? Number(s.eventsLimit) : 50,
-		};
+		}
 	},
 	beforeLoad: requireTurretAdmin,
 	component: TurretIssueDetailPage,
@@ -114,13 +114,13 @@ function TurretIssueDetailPage() {
 			to: range.to,
 			bucket: search.bucket,
 		})
-	);
+	)
 	const eventsQuery = useQuery(
 		turretIssueEventsQueryOptions(fingerprint, {
 			limit: search.eventsLimit,
 			offset: search.eventsOffset,
 		})
-	);
+	)
 
 	const issue = issueQuery.data?.issue;
 
@@ -139,13 +139,13 @@ function TurretIssueDetailPage() {
 		await qc.invalidateQueries({ queryKey: ["turret", "issue", fingerprint, "trend"] });
 		await qc.invalidateQueries({ queryKey: ["turret", "issue", fingerprint, "events"] });
 	},
-	});
+	})
 
 	function setPreset(preset: RangePreset) {
 		const next = preset === "custom" ? { from: search.from, to: search.to } : presetToRange(preset, now);
 		const nextBucket = preset === "24h" ? "hour" : "day";
 		navigate({
-			to: "/turret/issues/$fingerprint",
+			to: "/ts_admin/turret/issues/$fingerprint",
 			params: { fingerprint },
 			search: {
 				...search,
@@ -154,7 +154,7 @@ function TurretIssueDetailPage() {
 				from: next.from,
 				to: next.to,
 			},
-		});
+		})
 	}
 
 	function saveTitle() {
@@ -181,23 +181,23 @@ function TurretIssueDetailPage() {
 						type="button"
 						variant="outline"
 						onClick={() =>
-							navigate({
-								to: "/turret/issues",
+								navigate({
+								to: "/ts_admin/turret/issues",
 								search: { status: "open", preset: "24h", q: "", from: undefined, to: undefined, offset: 0, limit: 50 },
 							})
 						}
 					>
 						Back to inbox
 					</Button>
-					<Button type="button" variant="outline" onClick={() => navigate({ to: "/turret" })}>
+					<Button type="button" variant="outline" onClick={() => navigate({ to: "/ts_admin/turret" })}>
 						Dashboard
 					</Button>
 					<Button
 						type="button"
 						variant="outline"
 						onClick={() =>
-							navigate({
-								to: "/turret/sessions",
+								navigate({
+								to: "/ts_admin/turret/sessions",
 								search: { q: "", hasError: false, groupBy: "none", preset: "1h", from: undefined, to: undefined, offset: 0, limit: 50 },
 							})
 						}
@@ -325,7 +325,7 @@ function TurretIssueDetailPage() {
 									value={toLocalDatetimeValue(search.from)}
 									onChange={(e) => {
 										const nextFrom = fromLocalDatetimeValue(e.target.value);
-										navigate({ to: "/turret/issues/$fingerprint", params: { fingerprint }, search: { ...search, from: nextFrom } });
+									navigate({ to: "/ts_admin/turret/issues/$fingerprint", params: { fingerprint }, search: { ...search, from: nextFrom } });
 									}}
 								/>
 							</div>
@@ -336,7 +336,7 @@ function TurretIssueDetailPage() {
 									value={toLocalDatetimeValue(search.to)}
 									onChange={(e) => {
 										const nextTo = fromLocalDatetimeValue(e.target.value);
-										navigate({ to: "/turret/issues/$fingerprint", params: { fingerprint }, search: { ...search, to: nextTo } });
+									navigate({ to: "/ts_admin/turret/issues/$fingerprint", params: { fingerprint }, search: { ...search, to: nextTo } });
 									}}
 								/>
 							</div>
@@ -355,10 +355,10 @@ function TurretIssueDetailPage() {
 								<XAxis
 									dataKey="bucketStartMs"
 									tickFormatter={(v) => {
-										const d = new Date(Number(v));
+										const d = new Date(Number(v))
 										return search.bucket === "hour"
 											? d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
-											: d.toLocaleDateString();
+											: d.toLocaleDateString()
 									}}
 									minTickGap={24}
 								/>
@@ -428,7 +428,7 @@ function TurretIssueDetailPage() {
 															type="button"
 															onClick={() =>
 																navigate({
-																	to: "/turret/sessions/$sessionId",
+													to: "/ts_admin/turret/sessions/$sessionId",
 																	params: { sessionId: e.sessionId as string },
 																})
 															}
@@ -447,7 +447,7 @@ function TurretIssueDetailPage() {
 																className="rounded-md border px-2.5 py-1 text-xs"
 																onClick={() => {
 																	try {
-																		void navigator.clipboard.writeText(rayId);
+																		void navigator.clipboard.writeText(rayId)
 																	} catch {
 																		// ignore
 																	}
@@ -470,7 +470,7 @@ function TurretIssueDetailPage() {
 													)}
 												</TableCell>
 											</TableRow>
-										);
+										)
 									})}
 								</TableBody>
 							</Table>
@@ -481,7 +481,7 @@ function TurretIssueDetailPage() {
 									disabled={search.eventsOffset <= 0}
 									onClick={() =>
 										navigate({
-											to: "/turret/issues/$fingerprint",
+											to: "/ts_admin/turret/issues/$fingerprint",
 											params: { fingerprint },
 											search: { ...search, eventsOffset: Math.max(0, search.eventsOffset - search.eventsLimit) },
 									})
@@ -498,7 +498,7 @@ function TurretIssueDetailPage() {
 									disabled={eventsQuery.data.events.length < search.eventsLimit}
 									onClick={() =>
 										navigate({
-											to: "/turret/issues/$fingerprint",
+											to: "/ts_admin/turret/issues/$fingerprint",
 											params: { fingerprint },
 											search: { ...search, eventsOffset: search.eventsOffset + search.eventsLimit },
 									})
@@ -513,7 +513,7 @@ function TurretIssueDetailPage() {
 				</CardContent>
 			</Card>
 		</section>
-	);
+	)
 }
 
 export { Route };

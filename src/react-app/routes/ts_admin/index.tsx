@@ -28,6 +28,9 @@ function TsAdminIndexPage() {
 					<Button asChild variant="outline">
 						<Link to="/ts_admin/users">Users</Link>
 					</Button>
+					<Button asChild variant="outline">
+						<Link to="/ts_admin/turret">Turret</Link>
+					</Button>
 				</CardContent>
 			</Card>
 		</section>

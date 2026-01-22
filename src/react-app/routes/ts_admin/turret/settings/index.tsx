@@ -14,11 +14,11 @@ import {
 	turretComplianceQueryOptions,
 	turretFeaturesMutation,
 	turretFeaturesQueryOptions,
-} from "../../../queries/turretQueries";
-import { requireTurretAdmin } from "../../../lib/requireTurretAdmin";
-import type { TurretCompliancePolicy } from "../../../lib/turretApi";
+} from "../../../../queries/turretQueries";
+import { requireTurretAdmin } from "../../../../lib/requireTurretAdmin";
+import type { TurretCompliancePolicy } from "../../../../lib/turretApi";
 
-const Route = createFileRoute("/turret/settings/")({
+const Route = createFileRoute("/ts_admin/turret/settings/")({
 	beforeLoad: requireTurretAdmin,
 	component: TurretSettingsPage,
 });
@@ -35,21 +35,21 @@ function TurretSettingsPage() {
 		onSuccess: async () => {
 			await qc.invalidateQueries({ queryKey: ["turret", "features"] });
 		},
-	});
+	})
 
 	const complianceMutation = useMutation({
 		mutationFn: turretComplianceMutation,
 		onSuccess: async () => {
 			await qc.invalidateQueries({ queryKey: ["turret", "compliance"] });
 		},
-	});
+	})
 
 	const policy = complianceQuery.data?.policy;
 	const [draft, setDraft] = useState<Pick<TurretCompliancePolicy, "retentionDays" | "rrweb" | "console">>({
 		retentionDays: 14,
 		rrweb: { maskAllInputs: true },
 		console: { enabled: true },
-	});
+	})
 	const [savedAt, setSavedAt] = useState<number | null>(null);
 
 	useEffect(() => {
@@ -58,7 +58,7 @@ function TurretSettingsPage() {
 			retentionDays: policy.retentionDays,
 			rrweb: { ...policy.rrweb },
 			console: { ...policy.console },
-		});
+		})
 	}, [policy]);
 
 	const isDirty = useMemo(() => {
@@ -71,7 +71,7 @@ function TurretSettingsPage() {
 			policy.retentionDays !== draft.retentionDays ||
 			maskCurrent !== maskDraft ||
 			consoleCurrent !== consoleDraft
-		);
+		)
 	}, [policy, draft]);
 
 	async function saveCompliance() {
@@ -80,7 +80,7 @@ function TurretSettingsPage() {
 			retentionDays: draft.retentionDays,
 			rrweb: { maskAllInputs: Boolean((draft.rrweb as any)?.maskAllInputs) },
 			console: { enabled: Boolean((draft.console as any)?.enabled) },
-		});
+		})
 		setSavedAt(Date.now());
 	}
 
@@ -92,7 +92,7 @@ function TurretSettingsPage() {
 					<p className="text-sm text-muted-foreground">Configure privacy and capture policy.</p>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button type="button" variant="outline" onClick={() => navigate({ to: "/turret" })}>
+					<Button type="button" variant="outline" onClick={() => navigate({ to: "/ts_admin/turret" })}>
 						Dashboard
 					</Button>
 					<Button
@@ -100,7 +100,7 @@ function TurretSettingsPage() {
 						variant="outline"
 						onClick={() =>
 							navigate({
-								to: "/turret/sessions",
+								to: "/ts_admin/turret/sessions",
 								search: { q: "", hasError: false, groupBy: "none", preset: "1h", from: undefined, to: undefined, offset: 0, limit: 50 },
 							})
 						}
@@ -112,7 +112,7 @@ function TurretSettingsPage() {
 						variant="outline"
 						onClick={() =>
 							navigate({
-								to: "/turret/issues",
+								to: "/ts_admin/turret/issues",
 								search: { status: "open", preset: "24h", q: "", from: undefined, to: undefined, offset: 0, limit: 50 },
 							})
 						}
@@ -233,7 +233,7 @@ function TurretSettingsPage() {
 				</Card>
 			</div>
 		</section>
-	);
+	)
 }
 
 export { Route };

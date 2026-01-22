@@ -49,7 +49,7 @@ function LoginPage() {
 	const sessionQuery = authClient.useSession();
 	const search = Route.useSearch();
 	const redirectTarget = safeRedirectTarget(search.redirect);
-	const isTurretRedirect = Boolean(redirectTarget?.includes("/app/turret"));
+	const isTurretRedirect = Boolean(redirectTarget?.includes("/app/ts_admin/turret"));
 
 	const turretAccessQuery = useQuery({
 		...turretHealthQueryOptions,
