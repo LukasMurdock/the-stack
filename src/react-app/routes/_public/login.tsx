@@ -6,9 +6,9 @@ import {
 } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { authClient } from "../lib/authClient";
-import { ApiError } from "../lib/apiClient";
-import { turretHealthQueryOptions } from "../queries/turretQueries";
+import { authClient } from "../../lib/authClient";
+import { ApiError } from "../../lib/apiClient";
+import { turretHealthQueryOptions } from "../../queries/turretQueries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,12 +20,12 @@ import {
 	FieldError,
 } from "@/components/ui/field";
 
-const Route = createFileRoute("/login")({
+const Route = createFileRoute("/_public/login")({
 	validateSearch: (s: Record<string, unknown>) => {
 		const redirect = typeof s.redirect === "string" ? s.redirect : undefined;
 		return {
 			...(redirect ? { redirect } : {}),
-		};
+		}
 	},
 	component: LoginPage,
 });
@@ -54,7 +54,7 @@ function LoginPage() {
 	const turretAccessQuery = useQuery({
 		...turretHealthQueryOptions,
 		enabled: Boolean(sessionQuery.data?.user && isTurretRedirect),
-	});
+	})
 
 	const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
 	const [email, setEmail] = useState("");
@@ -106,7 +106,7 @@ function LoginPage() {
 					</div>
 				) : null}
 			</section>
-		);
+		)
 	}
 
 	async function handleEmailSubmit(e: React.FormEvent) {
@@ -120,19 +120,19 @@ function LoginPage() {
 					email,
 					password,
 					name,
-				});
+				})
 				if (signUpError) {
 					setError(signUpError.message ?? "Sign up failed");
-					return;
+					return
 				}
 			} else {
 				const { error: signInError } = await authClient.signIn.email({
 					email,
 					password,
-				});
+				})
 				if (signInError) {
 					setError(signInError.message ?? "Sign in failed");
-					return;
+					return
 				}
 			}
 
@@ -257,16 +257,16 @@ function LoginPage() {
 					variant="outline"
 					disabled={isSubmitting}
 					onClick={async () => {
-						setError(null);
+						setError(null)
 						setIsSubmitting(true);
 						try {
 							await authClient.signIn.social({
 								provider: "google",
-							});
+							})
 						} catch (e) {
 							setError(
 								e instanceof Error ? e.message : String(e)
-							);
+							)
 						} finally {
 							setIsSubmitting(false);
 						}
@@ -276,7 +276,7 @@ function LoginPage() {
 				</Button>
 			</FieldGroup>
 		</section>
-	);
+	)
 }
 
 export { Route };

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { authClient } from "../lib/authClient";
+import { authClient } from "../../lib/authClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,11 +11,11 @@ import {
 	FieldError,
 } from "@/components/ui/field";
 
-const Route = createFileRoute("/reset-password")({
+const Route = createFileRoute("/_public/reset-password")({
 	validateSearch: (search: Record<string, unknown>) => {
 		return {
 			token: typeof search.token === "string" ? search.token : undefined,
-		};
+		}
 	},
 	component: ResetPasswordPage,
 });
@@ -48,11 +48,11 @@ function ResetPasswordPage() {
 			const { error: requestError } = await authClient.requestPasswordReset({
 				email,
 				redirectTo,
-			});
+			})
 
 			if (requestError) {
 				setError(requestError.message ?? "Could not request password reset");
-				return;
+				return
 			}
 
 			setRequestSent(true);
@@ -67,17 +67,17 @@ function ResetPasswordPage() {
 
 		if (!token) {
 			setError("Missing token. Please use the link from your email.");
-			return;
+			return
 		}
 
 		if (password.length < 8) {
 			setError("Password must be at least 8 characters.");
-			return;
+			return
 		}
 
 		if (password !== confirm) {
 			setError("Passwords do not match.");
-			return;
+			return
 		}
 
 		setIsSubmitting(true);
@@ -85,11 +85,11 @@ function ResetPasswordPage() {
 			const { error: resetError } = await authClient.resetPassword({
 				newPassword: password,
 				token,
-			});
+			})
 
 			if (resetError) {
 				setError(resetError.message ?? "Could not reset password");
-				return;
+				return
 			}
 
 			navigate({ to: "/login", search: {} });
@@ -182,7 +182,7 @@ function ResetPasswordPage() {
 				)}
 			</FieldGroup>
 		</section>
-	);
+	)
 }
 
 export { Route };

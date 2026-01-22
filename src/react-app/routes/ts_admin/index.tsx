@@ -1,12 +1,9 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 
-import { requireCoreAdmin } from "../../lib/requireCoreAdmin";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 const Route = createFileRoute("/ts_admin/")({
-	beforeLoad: requireCoreAdmin,
 	component: TsAdminIndexPage,
 });
 

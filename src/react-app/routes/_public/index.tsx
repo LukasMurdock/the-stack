@@ -3,12 +3,12 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { nameQueryOptions } from "../queries/nameQuery";
-import { apiClient } from "../lib/apiClient";
-import { getTurretContext } from "../lib/turretContext";
-import { reportError } from "../lib/error-tracker";
+import { nameQueryOptions } from "../../queries/nameQuery";
+import { apiClient } from "../../lib/apiClient";
+import { getTurretContext } from "../../lib/turretContext";
+import { reportError } from "../../lib/error-tracker";
 
-const Route = createFileRoute("/")({
+const Route = createFileRoute("/_public/")({
 	loader: ({ context }) =>
 		context.queryClient.ensureQueryData(nameQueryOptions),
 	component: HomePage,
@@ -96,7 +96,7 @@ function HomePage() {
 							reportError(new Error("Intentional UI test error"), {
 								source: "window",
 								extra: { kind: "manual" },
-							});
+							})
 						}}
 					>
 						Report UI error
@@ -139,7 +139,7 @@ function HomePage() {
 				</div>
 			</div>
 		</section>
-	);
+	)
 }
 
 export { Route };

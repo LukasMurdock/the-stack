@@ -20,9 +20,9 @@ import { Area, AreaChart, Tooltip, XAxis, YAxis } from "recharts";
 
 
 import {
-	turretFeaturesQueryOptions,
 	turretSessionsQueryOptions,
 	turretDashboardUsersQueryOptions,
+	turretIssuesQueryOptions,
 	turretUptimeQueryOptions,
 } from "../../../queries/turretQueries";
 
@@ -45,12 +45,19 @@ function TurretDashboardPage() {
 		offset: 0,
 		limit: 50,
 	};
-
-	const featuresQuery = useQuery(turretFeaturesQueryOptions);
 	const uptimeQuery = useQuery(turretUptimeQueryOptions);
 
 	// Anchor time for this mount so the queryKey stays stable.
 	const [now] = useState(() => Date.now());
+	const openIssuesQuery = useQuery(
+		turretIssuesQueryOptions({
+			status: "open",
+			from: now - 24 * 60 * 60 * 1000,
+			to: now,
+			limit: 50,
+			offset: 0,
+		})
+	);
 	const dashboardUsersQuery = useQuery(turretDashboardUsersQueryOptions({ to: now }));
 	const sessionsPreviewQuery = useQuery(
 		turretSessionsQueryOptions({
@@ -72,6 +79,17 @@ function TurretDashboardPage() {
 	const sessions = sessionsPreviewQuery.data?.sessions ?? [];
 	const errorCount = sessions.filter((s) => s.hasError).length;
 	const captureBlockedCount = sessions.filter((s) => s.captureBlocked).length;
+	const openIssuesCount = openIssuesQuery.data?.issues.length;
+	const openIssuesLabel =
+		openIssuesQuery.isLoading
+			? "…"
+			: openIssuesQuery.isError
+				? "-"
+				: openIssuesCount != null
+					? openIssuesCount >= 50
+						? "50+"
+						: String(openIssuesCount)
+					: "-";
 
 	const dashboard = dashboardUsersQuery.data;
 	const recentUserRows = useMemo(() => {
@@ -478,21 +496,43 @@ function TurretDashboardPage() {
 
 				<Card>
 					<CardHeader>
-						<CardTitle>Privacy</CardTitle>
+						<CardTitle>Errors</CardTitle>
 					</CardHeader>
-					<CardContent className="text-sm">
-						<div className="flex items-center justify-between gap-3">
-							<div className="text-muted-foreground">Store emails</div>
-							<div className="font-medium">
-								{featuresQuery.isLoading
-									? "…"
-									: featuresQuery.data?.features.storeUserEmail
-										? "enabled"
-										: "disabled"}
-							</div>
+					<CardContent className="space-y-3 text-sm">
+						<div className="space-y-1">
+							<div className="text-xs text-muted-foreground">Open issues (last 24h)</div>
+							<div className="text-3xl font-semibold tabular-nums">{openIssuesLabel}</div>
 						</div>
-						<div className="mt-2 text-xs text-muted-foreground">
-							Change this in Sessions (Filters).
+						<Separator />
+						<div className="flex items-center justify-between gap-3">
+							<div className="text-muted-foreground">Error sessions (1h)</div>
+							<div className="font-medium">{sessionsPreviewQuery.isLoading ? "…" : errorCount}</div>
+						</div>
+						<div className="flex flex-wrap gap-2 pt-1">
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() =>
+									navigate({
+										to: "/ts_admin/turret/issues",
+										search: { status: "open", preset: "24h", q: "", from: undefined, to: undefined, offset: 0, limit: 50 },
+									})
+								}
+							>
+								Open inbox
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() =>
+									navigate({
+										to: "/ts_admin/turret/sessions",
+										search: { ...defaultSessionsSearch, hasError: true, offset: 0 },
+									})
+								}
+							>
+								View error sessions
+							</Button>
 						</div>
 					</CardContent>
 				</Card>

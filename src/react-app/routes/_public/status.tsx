@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { healthQueryOptions } from "../queries/healthQuery";
-import { nameQueryOptions } from "../queries/nameQuery";
+import { healthQueryOptions } from "../../queries/healthQuery";
+import { nameQueryOptions } from "../../queries/nameQuery";
 
-const Route = createFileRoute("/status")({
+const Route = createFileRoute("/_public/status")({
 	loader: ({ context }) =>
 		Promise.all([
 			context.queryClient.ensureQueryData(nameQueryOptions),
@@ -68,7 +68,7 @@ function StatusPage() {
 				</div>
 			</div>
 		</section>
-	);
+	)
 }
 
 export { Route };
