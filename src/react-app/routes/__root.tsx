@@ -29,6 +29,7 @@ const Route = createRootRouteWithContext<RouterContext>()({
 });
 
 function RootComponent() {
+	const router = useRouter();
 	const location = useRouterState({
 		select: (s) => s.location,
 	});
@@ -47,8 +48,41 @@ function RootComponent() {
 		}
 	}, [sessionQuery.data?.user]);
 
+	const impersonatedBy =
+		(sessionQuery.data as any)?.session?.impersonatedBy ?? null;
+	const isImpersonating = Boolean(impersonatedBy);
+
 	return (
 		<div className="min-h-dvh bg-background text-foreground">
+			{isImpersonating ? (
+				<div className="border-b bg-amber-50 text-amber-900">
+					<div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm">
+						<div className="min-w-0">
+							<span className="font-medium">Impersonating</span>{" "}
+							<span className="text-amber-900/80">
+								Admin session: {(impersonatedBy as string).slice(0, 8)}…
+							</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<button
+								className="rounded-md border border-amber-200 bg-white px-3 py-1.5 text-sm"
+								onClick={async () => {
+									try {
+										await authClient.admin.stopImpersonating({} as any);
+										await sessionQuery.refetch();
+										router.invalidate();
+									} catch {
+										// ignore
+									}
+								}}
+								type="button"
+							>
+								Stop impersonating
+							</button>
+						</div>
+					</div>
+				</div>
+			) : null}
 			<header className="border-b">
 				<div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4">
 					<div className="text-lg font-semibold tracking-tight">
