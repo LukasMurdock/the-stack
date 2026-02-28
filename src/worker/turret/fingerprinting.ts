@@ -1,6 +1,7 @@
 type ExceptionPlatform = "worker" | "client";
 
-const UUID_RE = /\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g;
+const UUID_RE =
+	/\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g;
 const LONG_HEX_RE = /\b[0-9a-fA-F]{16,}\b/g;
 const LONG_NUM_RE = /\b\d{5,}\b/g;
 const WS_RE = /\s+/g;
@@ -37,7 +38,10 @@ function normalizeStackKey(stack: string): string {
 		out = out.replace(/:(\d+):(\d+)/g, ":#:#");
 		out = out.replace(/:(\d+)\b/g, ":#");
 		// Normalize hashed asset names (common bundlers).
-		out = out.replace(/(-|\.)[0-9a-fA-F]{6,}(?=\.(js|mjs|cjs|css|map)\b)/g, "$1:hash");
+		out = out.replace(
+			/(-|\.)[0-9a-fA-F]{6,}(?=\.(js|mjs|cjs|css|map)\b)/g,
+			"$1:hash"
+		);
 		return out;
 	});
 
@@ -70,15 +74,13 @@ async function fingerprintException(input: {
 	pathTemplate?: string;
 }): Promise<string> {
 	const msgNorm = normalizeMessage(input.message ?? "unknown").slice(0, 300);
-	const stackKey = input.stack ? normalizeStackKey(input.stack).slice(0, 800) : "";
+	const stackKey = input.stack
+		? normalizeStackKey(input.stack).slice(0, 800)
+		: "";
 	const method = input.method ? input.method : "";
 	const path = input.pathTemplate ? input.pathTemplate : "";
 	const signature = `v1|${input.platform}|exception|${method}|${path}|${msgNorm}|${stackKey}`;
 	return `v1:${await sha256Hex(signature)}`;
 }
 
-export {
-	normalizeApiPath,
-	fingerprintHttp5xx,
-	fingerprintException,
-};
+export { normalizeApiPath, fingerprintHttp5xx, fingerprintException };

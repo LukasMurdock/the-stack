@@ -35,21 +35,23 @@ function TurretSettingsPage() {
 		onSuccess: async () => {
 			await qc.invalidateQueries({ queryKey: ["turret", "features"] });
 		},
-	})
+	});
 
 	const complianceMutation = useMutation({
 		mutationFn: turretComplianceMutation,
 		onSuccess: async () => {
 			await qc.invalidateQueries({ queryKey: ["turret", "compliance"] });
 		},
-	})
+	});
 
 	const policy = complianceQuery.data?.policy;
-	const [draft, setDraft] = useState<Pick<TurretCompliancePolicy, "retentionDays" | "rrweb" | "console">>({
+	const [draft, setDraft] = useState<
+		Pick<TurretCompliancePolicy, "retentionDays" | "rrweb" | "console">
+	>({
 		retentionDays: 14,
 		rrweb: { maskAllInputs: true },
 		console: { enabled: true },
-	})
+	});
 	const [savedAt, setSavedAt] = useState<number | null>(null);
 
 	useEffect(() => {
@@ -58,7 +60,7 @@ function TurretSettingsPage() {
 			retentionDays: policy.retentionDays,
 			rrweb: { ...policy.rrweb },
 			console: { ...policy.console },
-		})
+		});
 	}, [policy]);
 
 	const isDirty = useMemo(() => {
@@ -71,16 +73,18 @@ function TurretSettingsPage() {
 			policy.retentionDays !== draft.retentionDays ||
 			maskCurrent !== maskDraft ||
 			consoleCurrent !== consoleDraft
-		)
+		);
 	}, [policy, draft]);
 
 	async function saveCompliance() {
 		setSavedAt(null);
 		await complianceMutation.mutateAsync({
 			retentionDays: draft.retentionDays,
-			rrweb: { maskAllInputs: Boolean((draft.rrweb as any)?.maskAllInputs) },
+			rrweb: {
+				maskAllInputs: Boolean((draft.rrweb as any)?.maskAllInputs),
+			},
 			console: { enabled: Boolean((draft.console as any)?.enabled) },
-		})
+		});
 		setSavedAt(Date.now());
 	}
 
@@ -88,11 +92,19 @@ function TurretSettingsPage() {
 		<section className="space-y-4">
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div className="space-y-1">
-					<h1 className="text-2xl font-semibold tracking-tight">Turret settings</h1>
-					<p className="text-sm text-muted-foreground">Configure privacy and capture policy.</p>
+					<h1 className="text-2xl font-semibold tracking-tight">
+						Turret settings
+					</h1>
+					<p className="text-sm text-muted-foreground">
+						Configure privacy and capture policy.
+					</p>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button type="button" variant="outline" onClick={() => navigate({ to: "/ts_admin/turret" })}>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => navigate({ to: "/ts_admin/turret" })}
+					>
 						Dashboard
 					</Button>
 					<Button
@@ -101,7 +113,16 @@ function TurretSettingsPage() {
 						onClick={() =>
 							navigate({
 								to: "/ts_admin/turret/sessions",
-								search: { q: "", hasError: false, groupBy: "none", preset: "1h", from: undefined, to: undefined, offset: 0, limit: 50 },
+								search: {
+									q: "",
+									hasError: false,
+									groupBy: "none",
+									preset: "1h",
+									from: undefined,
+									to: undefined,
+									offset: 0,
+									limit: 50,
+								},
 							})
 						}
 					>
@@ -113,7 +134,15 @@ function TurretSettingsPage() {
 						onClick={() =>
 							navigate({
 								to: "/ts_admin/turret/issues",
-								search: { status: "open", preset: "24h", q: "", from: undefined, to: undefined, offset: 0, limit: 50 },
+								search: {
+									status: "open",
+									preset: "24h",
+									q: "",
+									from: undefined,
+									to: undefined,
+									offset: 0,
+									limit: 50,
+								},
 							})
 						}
 					>
@@ -130,17 +159,28 @@ function TurretSettingsPage() {
 					<CardContent className="space-y-4">
 						<div className="flex items-start justify-between gap-4">
 							<div className="space-y-1">
-								<Label htmlFor="storeUserEmail">Store user email</Label>
+								<Label htmlFor="storeUserEmail">
+									Store user email
+								</Label>
 								<div className="text-xs text-muted-foreground">
-									If disabled, new sessions will not persist emails. Existing stored emails are not deleted.
+									If disabled, new sessions will not persist
+									emails. Existing stored emails are not
+									deleted.
 								</div>
 							</div>
 							<Switch
 								id="storeUserEmail"
-								disabled={featuresQuery.isLoading || featuresMutation.isPending}
-								checked={Boolean(featuresQuery.data?.features.storeUserEmail)}
+								disabled={
+									featuresQuery.isLoading ||
+									featuresMutation.isPending
+								}
+								checked={Boolean(
+									featuresQuery.data?.features.storeUserEmail
+								)}
 								onCheckedChange={(checked) =>
-									featuresMutation.mutate({ storeUserEmail: checked })
+									featuresMutation.mutate({
+										storeUserEmail: checked,
+									})
 								}
 							/>
 						</div>
@@ -153,13 +193,19 @@ function TurretSettingsPage() {
 					</CardHeader>
 					<CardContent className="space-y-4">
 						{complianceQuery.isLoading ? (
-							<div className="text-sm text-muted-foreground">Loading…</div>
+							<div className="text-sm text-muted-foreground">
+								Loading…
+							</div>
 						) : complianceQuery.isError ? (
-							<div className="text-sm text-muted-foreground">Failed to load policy.</div>
+							<div className="text-sm text-muted-foreground">
+								Failed to load policy.
+							</div>
 						) : (
 							<>
 								<div className="space-y-2">
-									<Label htmlFor="retentionDays">Retention days</Label>
+									<Label htmlFor="retentionDays">
+										Retention days
+									</Label>
 									<Input
 										id="retentionDays"
 										type="number"
@@ -170,28 +216,43 @@ function TurretSettingsPage() {
 										onChange={(e) =>
 											setDraft((d) => ({
 												...d,
-												retentionDays: Number(e.target.value || 0),
+												retentionDays: Number(
+													e.target.value || 0
+												),
 											}))
 										}
 									/>
-									<div className="text-xs text-muted-foreground">Controls how long Turret keeps session data.</div>
+									<div className="text-xs text-muted-foreground">
+										Controls how long Turret keeps session
+										data.
+									</div>
 								</div>
 
 								<Separator />
 
 								<div className="flex items-start justify-between gap-4">
 									<div className="space-y-1">
-										<Label htmlFor="maskAllInputs">Mask all inputs</Label>
-										<div className="text-xs text-muted-foreground">Hides keystrokes and form values in rrweb.</div>
+										<Label htmlFor="maskAllInputs">
+											Mask all inputs
+										</Label>
+										<div className="text-xs text-muted-foreground">
+											Hides keystrokes and form values in
+											rrweb.
+										</div>
 									</div>
 									<Switch
 										id="maskAllInputs"
 										disabled={complianceMutation.isPending}
-										checked={Boolean((draft.rrweb as any)?.maskAllInputs)}
+										checked={Boolean(
+											(draft.rrweb as any)?.maskAllInputs
+										)}
 										onCheckedChange={(checked) =>
 											setDraft((d) => ({
 												...d,
-												rrweb: { ...(d.rrweb as any), maskAllInputs: checked },
+												rrweb: {
+													...(d.rrweb as any),
+													maskAllInputs: checked,
+												},
 											}))
 										}
 									/>
@@ -199,17 +260,27 @@ function TurretSettingsPage() {
 
 								<div className="flex items-start justify-between gap-4">
 									<div className="space-y-1">
-										<Label htmlFor="consoleEnabled">Console capture</Label>
-										<div className="text-xs text-muted-foreground">Capture client console logs for sessions.</div>
+										<Label htmlFor="consoleEnabled">
+											Console capture
+										</Label>
+										<div className="text-xs text-muted-foreground">
+											Capture client console logs for
+											sessions.
+										</div>
 									</div>
 									<Switch
 										id="consoleEnabled"
 										disabled={complianceMutation.isPending}
-										checked={Boolean((draft.console as any)?.enabled)}
+										checked={Boolean(
+											(draft.console as any)?.enabled
+										)}
 										onCheckedChange={(checked) =>
 											setDraft((d) => ({
 												...d,
-												console: { ...(d.console as any), enabled: checked },
+												console: {
+													...(d.console as any),
+													enabled: checked,
+												},
 											}))
 										}
 									/>
@@ -223,7 +294,14 @@ function TurretSettingsPage() {
 												? "Unsaved changes"
 												: ""}
 									</div>
-									<Button type="button" disabled={!isDirty || complianceMutation.isPending} onClick={saveCompliance}>
+									<Button
+										type="button"
+										disabled={
+											!isDirty ||
+											complianceMutation.isPending
+										}
+										onClick={saveCompliance}
+									>
 										Save policy
 									</Button>
 								</div>
@@ -233,7 +311,7 @@ function TurretSettingsPage() {
 				</Card>
 			</div>
 		</section>
-	)
+	);
 }
 
 export { Route };

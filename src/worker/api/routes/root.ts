@@ -1,4 +1,9 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import {
+	isOpenSignupMode,
+	resolveAuthSignupMode,
+} from "../../auth-signup-mode";
+import { resolveTurretModeStatus } from "../../turret/mode";
 
 const rootApp = new OpenAPIHono();
 
@@ -30,6 +35,25 @@ const rootRoutes = rootApp.openapi(getRoot, (c) => {
 const HealthResponseSchema = z
 	.object({
 		ok: z.boolean().openapi({ example: true }),
+		auth: z.object({
+			signupMode: z
+				.enum(["invite_only", "open"])
+				.openapi({ example: "invite_only" }),
+			selfSignUpEnabled: z.boolean().openapi({ example: false }),
+		}),
+		turret: z.object({
+			configuredMode: z
+				.enum(["off", "basic", "full"])
+				.openapi({ example: "full" }),
+			effectiveMode: z
+				.enum(["off", "basic", "full"])
+				.openapi({ example: "basic" }),
+			ingestEnabled: z.boolean().openapi({ example: false }),
+			reason: z
+				.string()
+				.nullable()
+				.openapi({ example: "missing_turret_signing_key" }),
+		}),
 	})
 	.openapi("HealthResponse");
 
@@ -70,7 +94,26 @@ const getFail = createRoute({
 
 const routes = rootRoutes
 	.openapi(getHealth, (c) => {
-		return c.json({ ok: true }, 200);
+		const signupMode = resolveAuthSignupMode(
+			(c.env as { AUTH_SIGNUP_MODE?: string }).AUTH_SIGNUP_MODE
+		);
+		const turretMode = resolveTurretModeStatus({
+			modeRaw: (c.env as { TURRET_MODE?: string }).TURRET_MODE,
+			hasSigningKey: Boolean(
+				(c.env as { TURRET_SIGNING_KEY?: string }).TURRET_SIGNING_KEY
+			),
+		});
+		return c.json(
+			{
+				ok: true,
+				auth: {
+					signupMode,
+					selfSignUpEnabled: isOpenSignupMode(signupMode),
+				},
+				turret: turretMode,
+			},
+			200
+		);
 	})
 	.openapi(getThrow, () => {
 		throw new Error("Intentional test error");

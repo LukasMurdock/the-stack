@@ -6,15 +6,19 @@ import { createAuth, type AuthEnv } from "../../auth";
 import { readTurretFeatures } from "../../turret/features";
 import { readTurretCompliance } from "../../turret/compliance";
 import { fingerprintException } from "../../turret/fingerprinting";
+import {
+	resolveTurretModeStatus,
+	type TurretModeStatus,
+} from "../../turret/mode";
 
 const turretApp = new OpenAPIHono();
 
 type D1Database = globalThis.D1Database;
 
-
 const ErrorResponseSchema = z
 	.object({
 		error: z.string(),
+		code: z.string().optional(),
 	})
 	.openapi("ErrorResponse");
 
@@ -34,7 +38,9 @@ const InitResponseSchema = z
 		console: z
 			.object({
 				enabled: z.boolean().default(true),
-				level: z.array(z.string()).default(["log", "info", "warn", "error"]),
+				level: z
+					.array(z.string())
+					.default(["log", "info", "warn", "error"]),
 				lengthThreshold: z.number().int().min(0).default(200),
 				stringifyOptions: z
 					.object({
@@ -114,6 +120,14 @@ const postSessionBlocked = createRoute({
 				},
 			},
 		},
+		503: {
+			description: "Turret ingestion unavailable",
+			content: {
+				"application/json": {
+					schema: ErrorResponseSchema,
+				},
+			},
+		},
 	},
 });
 
@@ -136,6 +150,21 @@ const TurretErrorBodySchema = z
 		extra: z.record(z.string(), z.unknown()).optional(),
 	})
 	.openapi("TurretErrorBody");
+
+const TurretFeedbackKindSchema = z
+	.enum(["bug", "idea", "praise", "other"])
+	.openapi("TurretFeedbackKind");
+
+const TurretFeedbackBodySchema = z
+	.object({
+		ts: z.number(),
+		kind: TurretFeedbackKindSchema,
+		message: z.string().min(1).max(4000),
+		url: z.string().optional(),
+		contact: z.string().optional(),
+		extra: z.record(z.string(), z.unknown()).optional(),
+	})
+	.openapi("TurretFeedbackBody");
 
 const postSessionError = createRoute({
 	method: "post",
@@ -163,6 +192,10 @@ const postSessionError = createRoute({
 		},
 		500: {
 			description: "Server misconfigured",
+			content: { "application/json": { schema: ErrorResponseSchema } },
+		},
+		503: {
+			description: "Turret ingestion unavailable",
 			content: { "application/json": { schema: ErrorResponseSchema } },
 		},
 	},
@@ -233,10 +266,60 @@ const postSessionChunk = createRoute({
 				},
 			},
 		},
+		503: {
+			description: "Turret ingestion unavailable",
+			content: {
+				"application/json": {
+					schema: ErrorResponseSchema,
+				},
+			},
+		},
 	},
 });
 
-function requiredSameOrigin(appUrl: string | undefined, req: Request): string | null {
+const postSessionFeedback = createRoute({
+	method: "post",
+	path: "/turret/session/{id}/feedback",
+	request: {
+		params: z.object({
+			id: z.string().openapi({ example: "<session-id>" }),
+		}),
+		headers: z.object({
+			authorization: z.string().openapi({ example: "Bearer <token>" }),
+		}),
+		body: {
+			required: true,
+			content: {
+				"application/json": {
+					schema: TurretFeedbackBodySchema,
+				},
+			},
+		},
+	},
+	responses: {
+		200: {
+			description: "Submit user feedback for a session",
+			content: { "application/json": { schema: OkResponseSchema } },
+		},
+		401: {
+			description: "Unauthorized",
+			content: { "application/json": { schema: ErrorResponseSchema } },
+		},
+		500: {
+			description: "Server misconfigured",
+			content: { "application/json": { schema: ErrorResponseSchema } },
+		},
+		503: {
+			description: "Turret ingestion unavailable",
+			content: { "application/json": { schema: ErrorResponseSchema } },
+		},
+	},
+});
+
+function requiredSameOrigin(
+	appUrl: string | undefined,
+	req: Request
+): string | null {
 	if (!appUrl) return "APP_URL not set";
 	const allowedOrigin = new URL(appUrl).origin;
 
@@ -254,18 +337,23 @@ function startOfUtcWeekMs(ms: number): number {
 	const d = new Date(ms);
 	const day = d.getUTCDay();
 	const daysSinceMonday = (day + 6) % 7;
-	const startOfDay = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+	const startOfDay = Date.UTC(
+		d.getUTCFullYear(),
+		d.getUTCMonth(),
+		d.getUTCDate()
+	);
 	return startOfDay - daysSinceMonday * 24 * 60 * 60 * 1000;
 }
 
 turretApp.use("/turret/*", async (c, next) => {
-	const reason = requiredSameOrigin((c.env as { APP_URL?: string }).APP_URL, c.req.raw);
+	const reason = requiredSameOrigin(
+		(c.env as { APP_URL?: string }).APP_URL,
+		c.req.raw
+	);
 	if (reason) {
-		return c.json(
-			{ error: "Forbidden" },
-			403,
-			{ "Cache-Control": "no-store" }
-		);
+		return c.json({ error: "Forbidden" }, 403, {
+			"Cache-Control": "no-store",
+		});
 	}
 	await next();
 });
@@ -284,13 +372,17 @@ type UploadTokenPayload = {
 
 function base64UrlEncode(bytes: Uint8Array): string {
 	let binary = "";
-	for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+	for (let i = 0; i < bytes.length; i++)
+		binary += String.fromCharCode(bytes[i]);
 	const b64 = btoa(binary);
 	return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 function base64UrlDecodeToBytes(b64url: string): Uint8Array {
-	const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(b64url.length / 4) * 4, "=");
+	const b64 = b64url
+		.replace(/-/g, "+")
+		.replace(/_/g, "/")
+		.padEnd(Math.ceil(b64url.length / 4) * 4, "=");
 	const binary = atob(b64);
 	const bytes = new Uint8Array(binary.length);
 	for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -306,7 +398,11 @@ async function hmacSha256Hex(key: string, data: string): Promise<string> {
 		false,
 		["sign"]
 	);
-	const sig = await crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(data));
+	const sig = await crypto.subtle.sign(
+		"HMAC",
+		cryptoKey,
+		new TextEncoder().encode(data)
+	);
 	const bytes = new Uint8Array(sig);
 	let hex = "";
 	for (const b of bytes) hex += b.toString(16).padStart(2, "0");
@@ -321,7 +417,10 @@ function timingSafeEqual(a: string, b: string): boolean {
 	return diff === 0;
 }
 
-async function signUploadToken(key: string, payload: UploadTokenPayload): Promise<string> {
+async function signUploadToken(
+	key: string,
+	payload: UploadTokenPayload
+): Promise<string> {
 	const payloadJson = JSON.stringify(payload);
 	const payloadB64 = base64UrlEncode(new TextEncoder().encode(payloadJson));
 	const sigHex = await hmacSha256Hex(key, payloadB64);
@@ -340,7 +439,9 @@ async function verifyUploadToken(
 	const expected = await hmacSha256Hex(key, payloadB64);
 	if (!timingSafeEqual(sigHex, expected)) return null;
 
-	const payloadJson = new TextDecoder().decode(base64UrlDecodeToBytes(payloadB64));
+	const payloadJson = new TextDecoder().decode(
+		base64UrlDecodeToBytes(payloadB64)
+	);
 	let payload: UploadTokenPayload;
 	try {
 		payload = JSON.parse(payloadJson) as UploadTokenPayload;
@@ -354,7 +455,9 @@ async function verifyUploadToken(
 	return payload;
 }
 
-async function getComplianceBundle(env: { TURRET_CFG?: { get(key: string, type: "json"): Promise<unknown> } }): Promise<{
+async function getComplianceBundle(env: {
+	TURRET_CFG?: { get(key: string, type: "json"): Promise<unknown> };
+}): Promise<{
 	version: string;
 	retentionDays: number;
 	rrweb: unknown;
@@ -370,12 +473,49 @@ async function getComplianceBundle(env: { TURRET_CFG?: { get(key: string, type: 
 				enabled: true,
 				level: ["log", "info", "warn", "error"],
 				lengthThreshold: 200,
-				stringifyOptions: { stringLengthLimit: 300, numOfKeysLimit: 30, depthOfLimit: 2 },
+				stringifyOptions: {
+					stringLengthLimit: 300,
+					numOfKeysLimit: 30,
+					depthOfLimit: 2,
+				},
 			},
 		};
 	}
-	const cfg = await readTurretCompliance(env as unknown as { TURRET_CFG: { get(key: string, type: "json"): Promise<unknown> } });
-	return cfg as unknown as { version: string; retentionDays: number; rrweb: unknown; console: unknown };
+	const cfg = await readTurretCompliance(
+		env as unknown as {
+			TURRET_CFG: { get(key: string, type: "json"): Promise<unknown> };
+		}
+	);
+	return cfg as unknown as {
+		version: string;
+		retentionDays: number;
+		rrweb: unknown;
+		console: unknown;
+	};
+}
+
+function disabledIngestResponse(mode: TurretModeStatus): {
+	error: string;
+	code: string;
+} {
+	if (mode.effectiveMode === "off") {
+		return {
+			error: "Turret ingestion is disabled",
+			code: "TURRET_DISABLED",
+		};
+	}
+
+	if (mode.reason === "missing_turret_signing_key") {
+		return {
+			error: "Turret ingestion unavailable: missing signing key",
+			code: "TURRET_DEGRADED_MISSING_SIGNING_KEY",
+		};
+	}
+
+	return {
+		error: "Turret ingestion is disabled in basic mode",
+		code: "TURRET_BASIC_NO_INGEST",
+	};
 }
 
 const postSessionInit = createRoute({
@@ -416,6 +556,14 @@ const postSessionInit = createRoute({
 				},
 			},
 		},
+		503: {
+			description: "Turret ingestion unavailable",
+			content: {
+				"application/json": {
+					schema: ErrorResponseSchema,
+				},
+			},
+		},
 	},
 });
 
@@ -423,15 +571,33 @@ turretApp.openapi(postSessionInit, async (c) => {
 	const now = Date.now();
 	const env = c.env as unknown as AuthEnv & {
 		APP_URL?: string;
+		TURRET_MODE?: string;
 		CORE_DB: D1Database;
 		TURRET_CFG: { get(key: string, type: "json"): Promise<unknown> };
 		TURRET_DB: D1Database;
 		TURRET_SIGNING_KEY?: string;
-		TURRET_REPLAY_BUCKET: { put(key: string, value: string, options: { httpMetadata: { contentType: string } }): Promise<void> };
-		TURRET_ANALYTICS?: { writeDataPoint(input: { blobs: string[]; doubles: number[] }): void };
+		TURRET_REPLAY_BUCKET: {
+			put(
+				key: string,
+				value: string,
+				options: { httpMetadata: { contentType: string } }
+			): Promise<void>;
+		};
+		TURRET_ANALYTICS?: {
+			writeDataPoint(input: { blobs: string[]; doubles: number[] }): void;
+		};
 		CF_VERSION_METADATA?: { id?: string; tag?: string; timestamp?: string };
 	};
 	const policy = await getComplianceBundle(env);
+	const mode = resolveTurretModeStatus({
+		modeRaw: env.TURRET_MODE,
+		hasSigningKey: Boolean(env.TURRET_SIGNING_KEY),
+	});
+	if (!mode.ingestEnabled) {
+		return c.json(disabledIngestResponse(mode), 503, {
+			"Cache-Control": "no-store",
+		});
+	}
 
 	const contentType = c.req.header("Content-Type") ?? "";
 	let init: z.infer<typeof InitBodySchema> | undefined;
@@ -449,7 +615,11 @@ turretApp.openapi(postSessionInit, async (c) => {
 
 	const sessionId = crypto.randomUUID();
 	const signingKey = env.TURRET_SIGNING_KEY as string | undefined;
-	if (!signingKey) return c.json({ error: "Server misconfigured" }, 500);
+	if (!signingKey) {
+		return c.json(disabledIngestResponse(mode), 503, {
+			"Cache-Control": "no-store",
+		});
+	}
 
 	const exp = now + 15 * 60 * 1000;
 	const uploadToken = await signUploadToken(signingKey, {
@@ -465,12 +635,15 @@ turretApp.openapi(postSessionInit, async (c) => {
 
 	const { storeUserEmail } = await readTurretFeatures(env);
 
-	const { id: versionId, tag: versionTag, timestamp: versionTimestamp } =
-		env.CF_VERSION_METADATA ?? {
-			id: "",
-			tag: "",
-			timestamp: "",
-		};
+	const {
+		id: versionId,
+		tag: versionTag,
+		timestamp: versionTimestamp,
+	} = env.CF_VERSION_METADATA ?? {
+		id: "",
+		tag: "",
+		timestamp: "",
+	};
 
 	await db.insert(schema.turretSessions).values({
 		sessionId,
@@ -483,13 +656,18 @@ turretApp.openapi(postSessionInit, async (c) => {
 		lastUrl: initialUrl,
 		journeyId: init?.journey_id ?? null,
 		userId: (session.user as unknown as { id: string }).id,
-		userEmail: storeUserEmail ? (session.user as unknown as { email?: string | null }).email ?? null : null,
+		userEmail: storeUserEmail
+			? ((session.user as unknown as { email?: string | null }).email ??
+				null)
+			: null,
 		workerVersionId: versionId || null,
 		workerVersionTag: versionTag || null,
 		workerVersionTimestamp: versionTimestamp || null,
 		userAgent: c.req.header("User-Agent") ?? null,
-		country: ((c.req.raw as unknown as { cf?: { country?: string } }).cf?.country ?? null) as string | null,
-		colo: ((c.req.raw as unknown as { cf?: { colo?: string } }).cf?.colo ?? null) as string | null,
+		country: ((c.req.raw as unknown as { cf?: { country?: string } }).cf
+			?.country ?? null) as string | null,
+		colo: ((c.req.raw as unknown as { cf?: { colo?: string } }).cf?.colo ??
+			null) as string | null,
 		hasError: false,
 		captureBlocked: false,
 		captureBlockedReason: null,
@@ -530,7 +708,13 @@ turretApp.openapi(postSessionInit, async (c) => {
 					await env.TURRET_DB.prepare(
 						"INSERT OR IGNORE INTO turret_user_profile (user_id, signed_up_at_ms, signed_up_week_start_ms, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
 					)
-						.bind(userId, signedUpAtMs, signedUpWeekStartMs, now, now)
+						.bind(
+							userId,
+							signedUpAtMs,
+							signedUpWeekStartMs,
+							now,
+							now
+						)
 						.run();
 				}
 			}
@@ -539,15 +723,15 @@ turretApp.openapi(postSessionInit, async (c) => {
 		// ignore
 	}
 
-		env.TURRET_ANALYTICS?.writeDataPoint({
-			blobs: [
-				"session_init",
-				policy.version,
-				((c.req.raw as unknown as { cf?: { colo?: string } }).cf?.colo ?? "") as string,
-			],
-			doubles: [1],
-		});
-
+	env.TURRET_ANALYTICS?.writeDataPoint({
+		blobs: [
+			"session_init",
+			policy.version,
+			((c.req.raw as unknown as { cf?: { colo?: string } }).cf?.colo ??
+				"") as string,
+		],
+		doubles: [1],
+	});
 
 	return c.json(
 		{
@@ -573,17 +757,31 @@ turretApp.openapi(postSessionBlocked, async (c) => {
 	const env = c.env as unknown as {
 		TURRET_DB: D1Database;
 		TURRET_SIGNING_KEY?: string;
-		TURRET_ANALYTICS?: { writeDataPoint(input: { blobs: string[]; doubles: number[] }): void };
+		TURRET_MODE?: string;
+		TURRET_ANALYTICS?: {
+			writeDataPoint(input: { blobs: string[]; doubles: number[] }): void;
+		};
 	};
+	const mode = resolveTurretModeStatus({
+		modeRaw: env.TURRET_MODE,
+		hasSigningKey: Boolean(env.TURRET_SIGNING_KEY),
+	});
+	if (!mode.ingestEnabled) {
+		return c.json(disabledIngestResponse(mode), 503, {
+			"Cache-Control": "no-store",
+		});
+	}
+
 	const signingKey = env.TURRET_SIGNING_KEY;
-	if (!signingKey) return c.json({ error: "Server misconfigured" }, 500);
+	if (!signingKey) return c.json(disabledIngestResponse(mode), 503);
 
 	const token = getBearerToken(c.req.raw);
 	if (!token) return c.json({ error: "Unauthorized" }, 401);
 
 	const { id: sessionId } = c.req.valid("param");
 	const payload = await verifyUploadToken(signingKey, token, Date.now());
-	if (!payload || payload.sid !== sessionId) return c.json({ error: "Unauthorized" }, 401);
+	if (!payload || payload.sid !== sessionId)
+		return c.json({ error: "Unauthorized" }, 401);
 
 	const body = c.req.valid("json");
 	const reason = (body.reason ?? "rrweb_import_failed").slice(0, 64);
@@ -613,17 +811,31 @@ turretApp.openapi(postSessionError, async (c) => {
 	const env = c.env as unknown as {
 		TURRET_DB: D1Database;
 		TURRET_SIGNING_KEY?: string;
-		TURRET_ANALYTICS?: { writeDataPoint(input: { blobs: string[]; doubles: number[] }): void };
+		TURRET_MODE?: string;
+		TURRET_ANALYTICS?: {
+			writeDataPoint(input: { blobs: string[]; doubles: number[] }): void;
+		};
 	};
+	const mode = resolveTurretModeStatus({
+		modeRaw: env.TURRET_MODE,
+		hasSigningKey: Boolean(env.TURRET_SIGNING_KEY),
+	});
+	if (!mode.ingestEnabled) {
+		return c.json(disabledIngestResponse(mode), 503, {
+			"Cache-Control": "no-store",
+		});
+	}
+
 	const signingKey = env.TURRET_SIGNING_KEY;
-	if (!signingKey) return c.json({ error: "Server misconfigured" }, 500);
+	if (!signingKey) return c.json(disabledIngestResponse(mode), 503);
 
 	const token = getBearerToken(c.req.raw);
 	if (!token) return c.json({ error: "Unauthorized" }, 401);
 
 	const { id: sessionId } = c.req.valid("param");
 	const payload = await verifyUploadToken(signingKey, token, Date.now());
-	if (!payload || payload.sid !== sessionId) return c.json({ error: "Unauthorized" }, 401);
+	if (!payload || payload.sid !== sessionId)
+		return c.json({ error: "Unauthorized" }, 401);
 
 	const body = c.req.valid("json");
 	const now = Date.now();
@@ -634,11 +846,13 @@ turretApp.openapi(postSessionError, async (c) => {
 		: null;
 	if (!computedFingerprint) {
 		try {
-			computedFingerprint = (await fingerprintException({
-				platform: "client",
-				message: body.message,
-				stack: body.stack,
-			})).slice(0, 256);
+			computedFingerprint = (
+				await fingerprintException({
+					platform: "client",
+					message: body.message,
+					stack: body.stack,
+				})
+			).slice(0, 256);
 		} catch {
 			computedFingerprint = null;
 		}
@@ -647,7 +861,8 @@ turretApp.openapi(postSessionError, async (c) => {
 	let expiresAt = now + 24 * 60 * 60 * 1000;
 	try {
 		const session = await db.query.turretSessions.findFirst({
-			where: ((t: any, ops: any) => ops.eq(t.sessionId, sessionId)) as unknown as never,
+			where: ((t: any, ops: any) =>
+				ops.eq(t.sessionId, sessionId)) as unknown as never,
 			columns: { retentionExpiresAt: true },
 		});
 		const ret = (session as any)?.retentionExpiresAt;
@@ -690,22 +905,43 @@ turretApp.openapi(postSessionChunk, async (c) => {
 	const env = c.env as unknown as {
 		TURRET_DB: D1Database;
 		TURRET_SIGNING_KEY?: string;
-		TURRET_REPLAY_BUCKET: { put(key: string, value: string, options: { httpMetadata: { contentType: string } }): Promise<void> };
-		TURRET_ANALYTICS?: { writeDataPoint(input: { blobs: string[]; doubles: number[] }): void };
+		TURRET_MODE?: string;
+		TURRET_REPLAY_BUCKET: {
+			put(
+				key: string,
+				value: string,
+				options: { httpMetadata: { contentType: string } }
+			): Promise<void>;
+		};
+		TURRET_ANALYTICS?: {
+			writeDataPoint(input: { blobs: string[]; doubles: number[] }): void;
+		};
 	};
+	const mode = resolveTurretModeStatus({
+		modeRaw: env.TURRET_MODE,
+		hasSigningKey: Boolean(env.TURRET_SIGNING_KEY),
+	});
+	if (!mode.ingestEnabled) {
+		return c.json(disabledIngestResponse(mode), 503, {
+			"Cache-Control": "no-store",
+		});
+	}
+
 	const signingKey = env.TURRET_SIGNING_KEY;
-	if (!signingKey) return c.json({ error: "Server misconfigured" }, 500);
+	if (!signingKey) return c.json(disabledIngestResponse(mode), 503);
 
 	const token = getBearerToken(c.req.raw);
 	if (!token) return c.json({ error: "Unauthorized" }, 401);
 
 	const { id: sessionId } = c.req.valid("param");
 	const payload = await verifyUploadToken(signingKey, token, Date.now());
-	if (!payload || payload.sid !== sessionId) return c.json({ error: "Unauthorized" }, 401);
+	if (!payload || payload.sid !== sessionId)
+		return c.json({ error: "Unauthorized" }, 401);
 
 	// Hard payload cap (adjust later). If Content-Length is missing, we still parse but may reject on JSON size.
 	const contentLength = Number(c.req.header("Content-Length") ?? "0");
-	if (contentLength && contentLength > 512_000) return c.json({ error: "Payload too large" }, 413);
+	if (contentLength && contentLength > 512_000)
+		return c.json({ error: "Payload too large" }, 413);
 
 	const body = c.req.valid("json");
 
@@ -760,15 +996,101 @@ turretApp.openapi(postSessionChunk, async (c) => {
 		})
 		.where(eq(schema.turretSessions.sessionId, sessionId));
 
-		env.TURRET_ANALYTICS?.writeDataPoint({
-			blobs: [
-				"chunk",
-				payload.pv,
-				((c.req.raw as unknown as { cf?: { colo?: string } }).cf?.colo ?? "") as string,
-			],
-			doubles: [1, chunkJson.length],
-		});
+	env.TURRET_ANALYTICS?.writeDataPoint({
+		blobs: [
+			"chunk",
+			payload.pv,
+			((c.req.raw as unknown as { cf?: { colo?: string } }).cf?.colo ??
+				"") as string,
+		],
+		doubles: [1, chunkJson.length],
+	});
 
+	return c.json({ ok: true as const }, 200);
+});
+
+turretApp.openapi(postSessionFeedback, async (c) => {
+	const env = c.env as unknown as {
+		TURRET_DB: D1Database;
+		TURRET_SIGNING_KEY?: string;
+		TURRET_MODE?: string;
+		TURRET_ANALYTICS?: {
+			writeDataPoint(input: { blobs: string[]; doubles: number[] }): void;
+		};
+	};
+	const mode = resolveTurretModeStatus({
+		modeRaw: env.TURRET_MODE,
+		hasSigningKey: Boolean(env.TURRET_SIGNING_KEY),
+	});
+	if (!mode.ingestEnabled) {
+		return c.json(disabledIngestResponse(mode), 503, {
+			"Cache-Control": "no-store",
+		});
+	}
+
+	const signingKey = env.TURRET_SIGNING_KEY;
+	if (!signingKey) return c.json(disabledIngestResponse(mode), 503);
+
+	const token = getBearerToken(c.req.raw);
+	if (!token) return c.json({ error: "Unauthorized" }, 401);
+
+	const { id: sessionId } = c.req.valid("param");
+	const payload = await verifyUploadToken(signingKey, token, Date.now());
+	if (!payload || payload.sid !== sessionId)
+		return c.json({ error: "Unauthorized" }, 401);
+
+	const body = c.req.valid("json");
+	const now = Date.now();
+	const db = makeTurretDb(env.TURRET_DB);
+
+	// Best-effort lookup for session metadata to denormalize user.
+	let userId = "";
+	let userEmail: string | null = null;
+	let expiresAt = now + 24 * 60 * 60 * 1000;
+	try {
+		const session = await db.query.turretSessions.findFirst({
+			where: ((t: any, ops: any) =>
+				ops.eq(t.sessionId, sessionId)) as unknown as never,
+			columns: {
+				userId: true,
+				userEmail: true,
+				retentionExpiresAt: true,
+			},
+		});
+		userId = (session as any)?.userId ?? "";
+		userEmail = (session as any)?.userEmail ?? null;
+		const ret = (session as any)?.retentionExpiresAt;
+		if (ret instanceof Date) expiresAt = ret.getTime();
+	} catch {
+		// ignore; keep defaults
+	}
+
+	if (!userId) {
+		// Session should exist, but if not, fail closed.
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+
+	await db.insert(schema.turretUserFeedback).values({
+		id: crypto.randomUUID(),
+		sessionId,
+		userId,
+		userEmail,
+		ts: new Date(body.ts),
+		url: body.url ? body.url.slice(0, 2000) : null,
+		kind: body.kind,
+		message: body.message.slice(0, 4000),
+		contact: body.contact ? body.contact.slice(0, 320) : null,
+		extraJson: body.extra ? JSON.stringify(body.extra) : null,
+		status: "open",
+		expiresAt: new Date(expiresAt),
+		createdAt: new Date(now),
+		updatedAt: new Date(now),
+	});
+
+	env.TURRET_ANALYTICS?.writeDataPoint({
+		blobs: ["user_feedback", payload.pv, body.kind],
+		doubles: [1],
+	});
 
 	return c.json({ ok: true as const }, 200);
 });

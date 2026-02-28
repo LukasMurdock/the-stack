@@ -9,7 +9,13 @@ import {
 	EmptyHeader,
 	EmptyTitle,
 } from "@/components/ui/empty";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardAction,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,35 +42,41 @@ type RangePreset = "15m" | "1h" | "24h" | "custom";
 
 type GroupBy = "none" | "user";
 
-
 const Route = createFileRoute("/ts_admin/turret/sessions/")({
 	validateSearch: (s: Record<string, unknown>) => {
-		const legacyGrouped = s.grouped === true || s.grouped === "true" || s.grouped === "1";
+		const legacyGrouped =
+			s.grouped === true || s.grouped === "true" || s.grouped === "1";
 		const groupBy: GroupBy =
 			s.groupBy === "none" || s.groupBy === "user"
 				? (s.groupBy as GroupBy)
 				: legacyGrouped
 					? "user"
-					: "none"
+					: "none";
 		return {
 			q: typeof s.q === "string" ? s.q : "",
 			hasError: s.hasError === "1",
 			groupBy,
 			preset:
-				s.preset === "15m" || s.preset === "1h" || s.preset === "24h" || s.preset === "custom"
+				s.preset === "15m" ||
+				s.preset === "1h" ||
+				s.preset === "24h" ||
+				s.preset === "custom"
 					? (s.preset as RangePreset)
 					: ("1h" as RangePreset),
 			from: typeof s.from === "string" ? Number(s.from) : undefined,
 			to: typeof s.to === "string" ? Number(s.to) : undefined,
 			offset: typeof s.offset === "string" ? Number(s.offset) : 0,
 			limit: typeof s.limit === "string" ? Number(s.limit) : 50,
-		}
+		};
 	},
 	beforeLoad: requireTurretAdmin,
 	component: TurretSessionsPage,
 });
 
-function presetToRange(preset: RangePreset, now: number): { from?: number; to?: number } {
+function presetToRange(
+	preset: RangePreset,
+	now: number
+): { from?: number; to?: number } {
 	switch (preset) {
 		case "15m":
 			return { from: now - 15 * 60 * 1000, to: now };
@@ -121,19 +133,25 @@ function GroupedSessions(props: {
 		}
 		// newest-first inside each group
 		for (const list of map.values()) {
-			list.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+			list.sort(
+				(a, b) =>
+					new Date(b.startedAt).getTime() -
+					new Date(a.startedAt).getTime()
+			);
 		}
 		return Array.from(map.entries()).sort((a, b) => {
 			const aTs = new Date(a[1][0]?.startedAt ?? 0).getTime();
 			const bTs = new Date(b[1][0]?.startedAt ?? 0).getTime();
 			return bTs - aTs;
-		})
+		});
 	}, [props.sessions]);
 
 	return (
 		<div className="rounded-md border">
 			{groups.length === 0 ? (
-				<div className="p-4 text-sm text-muted-foreground">No sessions</div>
+				<div className="p-4 text-sm text-muted-foreground">
+					No sessions
+				</div>
 			) : (
 				<div className="divide-y">
 					{groups.map(([userId, sessions]) => {
@@ -143,18 +161,29 @@ function GroupedSessions(props: {
 							<details key={key} className="group">
 								<summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm">
 									<div className="min-w-0">
-										<div className="truncate font-medium">{display}</div>
-										<div className="truncate text-xs text-muted-foreground">{key}</div>
+										<div className="truncate font-medium">
+											{display}
+										</div>
+										<div className="truncate text-xs text-muted-foreground">
+											{key}
+										</div>
 									</div>
 									<div className="flex items-center gap-2">
-										{sessions.some((s) => s.captureBlocked) ? (
-											<Badge variant="outline">capture blocked</Badge>
+										{sessions.some(
+											(s) => s.captureBlocked
+										) ? (
+											<Badge variant="outline">
+												capture blocked
+											</Badge>
 										) : null}
 										{sessions.some((s) => s.hasError) ? (
-											<Badge variant="destructive">error</Badge>
+											<Badge variant="destructive">
+												error
+											</Badge>
 										) : null}
 										<div className="shrink-0 text-xs text-muted-foreground">
-											{sessions.length} session{sessions.length === 1 ? "" : "s"}
+											{sessions.length} session
+											{sessions.length === 1 ? "" : "s"}
 										</div>
 									</div>
 								</summary>
@@ -162,53 +191,86 @@ function GroupedSessions(props: {
 									<table className="w-full text-sm">
 										<thead>
 											<tr className="text-muted-foreground">
-												<th className="px-4 py-2 text-left font-medium">Started</th>
-												<th className="px-4 py-2 text-left font-medium">Build tag</th>
-												<th className="px-4 py-2 text-left font-medium">URL</th>
-												<th className="px-4 py-2 text-left font-medium">Errors</th>
-												<th className="px-4 py-2 text-left font-medium">Chunks</th>
+												<th className="px-4 py-2 text-left font-medium">
+													Started
+												</th>
+												<th className="px-4 py-2 text-left font-medium">
+													Build tag
+												</th>
+												<th className="px-4 py-2 text-left font-medium">
+													URL
+												</th>
+												<th className="px-4 py-2 text-left font-medium">
+													Errors
+												</th>
+												<th className="px-4 py-2 text-left font-medium">
+													Chunks
+												</th>
 											</tr>
 										</thead>
 										<tbody>
 											{sessions.map((s) => {
-												const started = new Date(s.startedAt);
+												const started = new Date(
+													s.startedAt
+												);
 												return (
 													<tr
 														key={s.sessionId}
 														className="cursor-pointer border-t hover:bg-background"
-														onClick={() => props.onOpenSession(s.sessionId)}
+														onClick={() =>
+															props.onOpenSession(
+																s.sessionId
+															)
+														}
 													>
 														<td className="px-4 py-2">
-															<div className="font-medium">{started.toLocaleString()}</div>
-															<div className="text-xs text-muted-foreground">{s.sessionId.slice(0, 8)}…</div>
+															<div className="font-medium">
+																{started.toLocaleString()}
+															</div>
+															<div className="text-xs text-muted-foreground">
+																{s.sessionId.slice(
+																	0,
+																	8
+																)}
+																…
+															</div>
 														</td>
 														<td className="max-w-[160px] truncate px-4 py-2 text-xs">
-															{s.workerVersionTag ?? "-"}
+															{s.workerVersionTag ??
+																"-"}
 														</td>
 														<td className="max-w-[520px] truncate px-4 py-2">
-															{s.lastUrl ?? s.initialUrl ?? "(unknown)"}
+															{s.lastUrl ??
+																s.initialUrl ??
+																"(unknown)"}
 														</td>
 														<td className="px-4 py-2">
 															{s.hasError ? (
-																<span className="inline-flex rounded bg-destructive px-2 py-0.5 text-xs text-destructive-foreground">yes</span>
+																<span className="inline-flex rounded bg-destructive px-2 py-0.5 text-xs text-destructive-foreground">
+																	yes
+																</span>
 															) : (
-																<span className="inline-flex rounded bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">no</span>
+																<span className="inline-flex rounded bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+																	no
+																</span>
 															)}
 														</td>
-														<td className="px-4 py-2">{s.chunkCount}</td>
+														<td className="px-4 py-2">
+															{s.chunkCount}
+														</td>
 													</tr>
-												)
+												);
 											})}
 										</tbody>
 									</table>
 								</div>
 							</details>
-						)
+						);
 					})}
 				</div>
 			)}
 		</div>
-	)
+	);
 }
 
 function TurretSessionsPage() {
@@ -222,9 +284,11 @@ function TurretSessionsPage() {
 	const featuresMutation = useMutation({
 		mutationFn: turretFeaturesMutation,
 		onSuccess: () => {
-			void queryClient.invalidateQueries({ queryKey: ["turret", "features"] });
+			void queryClient.invalidateQueries({
+				queryKey: ["turret", "features"],
+			});
 		},
-	})
+	});
 
 	const range = useMemo(() => {
 		if (search.preset === "custom") {
@@ -242,7 +306,7 @@ function TurretSessionsPage() {
 			limit: search.limit,
 			offset: search.offset,
 		})
-	)
+	);
 
 	const [qInput, setQInput] = useState(search.q);
 
@@ -258,7 +322,7 @@ function TurretSessionsPage() {
 				q: qInput,
 				offset: 0,
 			},
-		})
+		});
 	}
 
 	function setGroupBy(groupBy: GroupBy) {
@@ -269,11 +333,14 @@ function TurretSessionsPage() {
 				groupBy,
 				offset: 0,
 			},
-		})
+		});
 	}
 
 	function setPreset(preset: RangePreset) {
-		const next = preset === "custom" ? { from: search.from, to: search.to } : presetToRange(preset, now);
+		const next =
+			preset === "custom"
+				? { from: search.from, to: search.to }
+				: presetToRange(preset, now);
 		navigate({
 			to: "/ts_admin/turret/sessions",
 			search: {
@@ -283,7 +350,7 @@ function TurretSessionsPage() {
 				to: next.to,
 				offset: 0,
 			},
-		})
+		});
 	}
 
 	function setHasError(hasError: boolean) {
@@ -294,20 +361,26 @@ function TurretSessionsPage() {
 				hasError,
 				offset: 0,
 			},
-		})
+		});
 	}
 
 	return (
 		<section className="space-y-4">
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div className="space-y-1">
-					<h1 className="text-2xl font-semibold tracking-tight">Sessions</h1>
+					<h1 className="text-2xl font-semibold tracking-tight">
+						Sessions
+					</h1>
 					<p className="text-sm text-muted-foreground">
 						Session replay, errors, and request breadcrumbs.
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button type="button" variant="outline" onClick={() => navigate({ to: "/ts_admin/turret" })}>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => navigate({ to: "/ts_admin/turret" })}
+					>
 						Dashboard
 					</Button>
 					<Button
@@ -316,13 +389,27 @@ function TurretSessionsPage() {
 						onClick={() =>
 							navigate({
 								to: "/ts_admin/turret/issues",
-								search: { status: "open", preset: "24h", q: "", from: undefined, to: undefined, offset: 0, limit: 50 },
+								search: {
+									status: "open",
+									preset: "24h",
+									q: "",
+									from: undefined,
+									to: undefined,
+									offset: 0,
+									limit: 50,
+								},
 							})
 						}
 					>
 						Issues
 					</Button>
-					<Button type="button" variant="outline" onClick={() => navigate({ to: "/ts_admin/turret/settings" })}>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() =>
+							navigate({ to: "/ts_admin/turret/settings" })
+						}
+					>
 						Settings
 					</Button>
 				</div>
@@ -333,13 +420,23 @@ function TurretSessionsPage() {
 					<CardTitle>Filters</CardTitle>
 					<CardAction>
 						<div className="flex items-center gap-2">
-							<div className="text-xs text-muted-foreground">Store emails</div>
+							<div className="text-xs text-muted-foreground">
+								Store emails
+							</div>
 							<Switch
-								checked={featuresQuery.data?.features.storeUserEmail ?? false}
-								onCheckedChange={(checked) =>
-									featuresMutation.mutate({ storeUserEmail: checked })
+								checked={
+									featuresQuery.data?.features
+										.storeUserEmail ?? false
 								}
-								disabled={featuresQuery.isLoading || featuresMutation.isPending}
+								onCheckedChange={(checked) =>
+									featuresMutation.mutate({
+										storeUserEmail: checked,
+									})
+								}
+								disabled={
+									featuresQuery.isLoading ||
+									featuresMutation.isPending
+								}
 							/>
 						</div>
 					</CardAction>
@@ -347,28 +444,38 @@ function TurretSessionsPage() {
 				<CardContent className="space-y-4">
 					<div className="flex flex-wrap items-center gap-2">
 						<Button
-							variant={search.preset === "15m" ? "default" : "outline"}
+							variant={
+								search.preset === "15m" ? "default" : "outline"
+							}
 							onClick={() => setPreset("15m")}
 							type="button"
 						>
 							Last 15m
 						</Button>
 						<Button
-							variant={search.preset === "1h" ? "default" : "outline"}
+							variant={
+								search.preset === "1h" ? "default" : "outline"
+							}
 							onClick={() => setPreset("1h")}
 							type="button"
 						>
 							Last 1h
 						</Button>
 						<Button
-							variant={search.preset === "24h" ? "default" : "outline"}
+							variant={
+								search.preset === "24h" ? "default" : "outline"
+							}
 							onClick={() => setPreset("24h")}
 							type="button"
 						>
 							Last 24h
 						</Button>
 						<Button
-							variant={search.preset === "custom" ? "default" : "outline"}
+							variant={
+								search.preset === "custom"
+									? "default"
+									: "outline"
+							}
 							onClick={() => setPreset("custom")}
 							type="button"
 						>
@@ -391,56 +498,58 @@ function TurretSessionsPage() {
 								<Input
 									type="datetime-local"
 									value={toLocalDatetimeValue(search.from)}
-												onChange={(e) => {
-												const nextFrom = fromLocalDatetimeValue(e.target.value);
-												navigate({
-												to: "/ts_admin/turret/sessions",
-												search: {
-													...search,
-													from: nextFrom,
-												},
-											})
-											}}
-										/>
+									onChange={(e) => {
+										const nextFrom = fromLocalDatetimeValue(
+											e.target.value
+										);
+										navigate({
+											to: "/ts_admin/turret/sessions",
+											search: {
+												...search,
+												from: nextFrom,
+											},
+										});
+									}}
+								/>
 							</div>
 							<div>
 								<div className="text-sm font-medium">To</div>
 								<Input
 									type="datetime-local"
 									value={toLocalDatetimeValue(search.to)}
-												onChange={(e) => {
-												const nextTo = fromLocalDatetimeValue(e.target.value);
-												navigate({
-												to: "/ts_admin/turret/sessions",
-												search: {
-													...search,
-													to: nextTo,
-												},
-											})
-											}}
-										/>
+									onChange={(e) => {
+										const nextTo = fromLocalDatetimeValue(
+											e.target.value
+										);
+										navigate({
+											to: "/ts_admin/turret/sessions",
+											search: {
+												...search,
+												to: nextTo,
+											},
+										});
+									}}
+								/>
 							</div>
 						</div>
 					) : null}
 
 					<div className="flex flex-wrap items-center gap-2">
-					<div className="flex min-w-[240px] flex-1 flex-wrap items-center gap-2">
-						<Input
-							className="min-w-[220px] flex-1"
-							placeholder="URL contains…"
-							value={qInput}
-							onChange={(e) => setQInput(e.target.value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") applyFilters();
-							}}
-						/>
-						<Button type="button" onClick={applyFilters}>
-							Apply
-						</Button>
+						<div className="flex min-w-[240px] flex-1 flex-wrap items-center gap-2">
+							<Input
+								className="min-w-[220px] flex-1"
+								placeholder="URL contains…"
+								value={qInput}
+								onChange={(e) => setQInput(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") applyFilters();
+								}}
+							/>
+							<Button type="button" onClick={applyFilters}>
+								Apply
+							</Button>
+						</div>
 					</div>
-
-
-				</div>
 				</CardContent>
 			</Card>
 
@@ -449,10 +558,16 @@ function TurretSessionsPage() {
 					<CardTitle>Sessions</CardTitle>
 					<CardAction>
 						<div className="flex items-center gap-2">
-							<div className="text-xs text-muted-foreground">Group</div>
+							<div className="text-xs text-muted-foreground">
+								Group
+							</div>
 							<div className="flex items-center gap-1">
 								<Button
-									variant={search.groupBy === "none" ? "default" : "outline"}
+									variant={
+										search.groupBy === "none"
+											? "default"
+											: "outline"
+									}
 									className="h-8 px-2 text-xs"
 									type="button"
 									onClick={() => setGroupBy("none")}
@@ -460,7 +575,11 @@ function TurretSessionsPage() {
 									None
 								</Button>
 								<Button
-									variant={search.groupBy === "user" ? "default" : "outline"}
+									variant={
+										search.groupBy === "user"
+											? "default"
+											: "outline"
+									}
 									className="h-8 px-2 text-xs"
 									type="button"
 									onClick={() => setGroupBy("user")}
@@ -473,7 +592,9 @@ function TurretSessionsPage() {
 				</CardHeader>
 				<CardContent>
 					{sessionsQuery.isLoading ? (
-						<div className="text-sm text-muted-foreground">Loading…</div>
+						<div className="text-sm text-muted-foreground">
+							Loading…
+						</div>
 					) : sessionsQuery.isError ? (
 						<div className="text-sm text-destructive">
 							Failed to load sessions.
@@ -483,104 +604,131 @@ function TurretSessionsPage() {
 							<EmptyHeader>
 								<EmptyTitle>No sessions found</EmptyTitle>
 								<EmptyDescription>
-									Try widening your time range or clearing filters.
+									Try widening your time range or clearing
+									filters.
 								</EmptyDescription>
 							</EmptyHeader>
 							<EmptyContent />
 						</Empty>
 					) : search.groupBy === "user" ? (
-							<GroupedSessions
-								sessions={sessionsQuery.data?.sessions ?? []}
-								onOpenSession={(id: string) =>
-									navigate({
-										to: "/ts_admin/turret/sessions/$sessionId",
-										params: { sessionId: id },
-									})
-								}
-							/>
+						<GroupedSessions
+							sessions={sessionsQuery.data?.sessions ?? []}
+							onOpenSession={(id: string) =>
+								navigate({
+									to: "/ts_admin/turret/sessions/$sessionId",
+									params: { sessionId: id },
+								})
+							}
+						/>
 					) : (
 						<Table>
 							<TableHeader>
 								<TableRow>
-								<TableHead>Started</TableHead>
-								<TableHead>User</TableHead>
-								<TableHead>Journey</TableHead>
-								<TableHead>Build tag</TableHead>
-								<TableHead>URL</TableHead>
-								<TableHead>Errors</TableHead>
-								<TableHead>Chunks</TableHead>
-								<TableHead>Location</TableHead>
-
+									<TableHead>Started</TableHead>
+									<TableHead>User</TableHead>
+									<TableHead>Journey</TableHead>
+									<TableHead>Build tag</TableHead>
+									<TableHead>URL</TableHead>
+									<TableHead>Errors</TableHead>
+									<TableHead>Chunks</TableHead>
+									<TableHead>Location</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{(sessionsQuery.data?.sessions ?? []).map((s) => {
-									const started = new Date(s.startedAt);
-									return (
-										<TableRow
-											key={s.sessionId}
-											className="cursor-pointer"
-											onClick={() =>
-														navigate({
+								{(sessionsQuery.data?.sessions ?? []).map(
+									(s) => {
+										const started = new Date(s.startedAt);
+										return (
+											<TableRow
+												key={s.sessionId}
+												className="cursor-pointer"
+												onClick={() =>
+													navigate({
 														to: "/ts_admin/turret/sessions/$sessionId",
-														params: { sessionId: s.sessionId },
+														params: {
+															sessionId:
+																s.sessionId,
+														},
 													})
 												}
-										>
-											<TableCell>
-												<div className="font-medium">
-													{started.toLocaleString()}
-												</div>
-												<div className="text-xs text-muted-foreground">
-													{s.sessionId.slice(0, 8)}…
-												</div>
-											</TableCell>
-									<TableCell className="max-w-[220px]">
-										<div className="truncate font-medium">
-											{s.userEmail ?? s.userId}
-										</div>
-											{s.userEmail ? (
-												<div className="truncate text-xs text-muted-foreground">
-													{s.userId}
-												</div>
-											) : (
-												<div className="truncate text-xs text-muted-foreground">
-													(email storage disabled)
-												</div>
-											)}
-										</TableCell>
-										<TableCell className="max-w-[160px]">
-											{s.journeyId ? (
-												<span className="truncate text-xs text-muted-foreground">
-													{s.journeyId.slice(0, 8)}…
-												</span>
-											) : (
-												<span className="text-xs text-muted-foreground">-</span>
-											)}
-										</TableCell>
-										<TableCell className="max-w-[160px] truncate text-xs">
-											{s.workerVersionTag ?? "-"}
-										</TableCell>
-										<TableCell className="max-w-[360px] truncate">
-											{s.lastUrl ?? s.initialUrl ?? "(unknown)"}
-										</TableCell>
+											>
+												<TableCell>
+													<div className="font-medium">
+														{started.toLocaleString()}
+													</div>
+													<div className="text-xs text-muted-foreground">
+														{s.sessionId.slice(
+															0,
+															8
+														)}
+														…
+													</div>
+												</TableCell>
+												<TableCell className="max-w-[220px]">
+													<div className="truncate font-medium">
+														{s.userEmail ??
+															s.userId}
+													</div>
+													{s.userEmail ? (
+														<div className="truncate text-xs text-muted-foreground">
+															{s.userId}
+														</div>
+													) : (
+														<div className="truncate text-xs text-muted-foreground">
+															(email storage
+															disabled)
+														</div>
+													)}
+												</TableCell>
+												<TableCell className="max-w-[160px]">
+													{s.journeyId ? (
+														<span className="truncate text-xs text-muted-foreground">
+															{s.journeyId.slice(
+																0,
+																8
+															)}
+															…
+														</span>
+													) : (
+														<span className="text-xs text-muted-foreground">
+															-
+														</span>
+													)}
+												</TableCell>
+												<TableCell className="max-w-[160px] truncate text-xs">
+													{s.workerVersionTag ?? "-"}
+												</TableCell>
+												<TableCell className="max-w-[360px] truncate">
+													{s.lastUrl ??
+														s.initialUrl ??
+														"(unknown)"}
+												</TableCell>
 
-											<TableCell>
-												{s.hasError ? (
-													<Badge variant="destructive">yes</Badge>
-												) : (
-													<Badge variant="secondary">no</Badge>
-												)}
-											</TableCell>
-											<TableCell>{s.chunkCount}</TableCell>
-											<TableCell>
-												<span className="text-sm">
-													{[s.country, s.colo].filter(Boolean).join(" /") || "-"}
-												</span>
-											</TableCell>
-										</TableRow>
-									)
-								})}
+												<TableCell>
+													{s.hasError ? (
+														<Badge variant="destructive">
+															yes
+														</Badge>
+													) : (
+														<Badge variant="secondary">
+															no
+														</Badge>
+													)}
+												</TableCell>
+												<TableCell>
+													{s.chunkCount}
+												</TableCell>
+												<TableCell>
+													<span className="text-sm">
+														{[s.country, s.colo]
+															.filter(Boolean)
+															.join(" /") || "-"}
+													</span>
+												</TableCell>
+											</TableRow>
+										);
+									}
+								)}
 							</TableBody>
 						</Table>
 					)}
@@ -590,34 +738,43 @@ function TurretSessionsPage() {
 							<Button
 								variant="outline"
 								disabled={search.offset <= 0}
-									onClick={() =>
+								onClick={() =>
 									navigate({
 										to: "/ts_admin/turret/sessions",
 										search: {
 											...search,
-											offset: Math.max(0, search.offset - search.limit),
+											offset: Math.max(
+												0,
+												search.offset - search.limit
+											),
 										},
 									})
-									}
+								}
 								type="button"
 							>
 								Prev
 							</Button>
 							<div className="text-sm text-muted-foreground">
-								Showing {search.offset + 1}–{search.offset + sessionsQuery.data.sessions.length}
+								Showing {search.offset + 1}–
+								{search.offset +
+									sessionsQuery.data.sessions.length}
 							</div>
 							<Button
 								variant="outline"
-								disabled={sessionsQuery.data.sessions.length < search.limit}
-									onClick={() =>
+								disabled={
+									sessionsQuery.data.sessions.length <
+									search.limit
+								}
+								onClick={() =>
 									navigate({
 										to: "/ts_admin/turret/sessions",
 										search: {
 											...search,
-											offset: search.offset + search.limit,
+											offset:
+												search.offset + search.limit,
 										},
 									})
-									}
+								}
 								type="button"
 							>
 								Next
@@ -631,7 +788,7 @@ function TurretSessionsPage() {
 				Tip: use Filters + Group to narrow down sessions quickly.
 			</div>
 		</section>
-	)
+	);
 }
 
 export { Route };

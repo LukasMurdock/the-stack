@@ -12,7 +12,6 @@ import {
 	Text,
 } from "@react-email/components";
 
-
 type VerifyEmailProps = {
 	productName: string;
 	url: string;

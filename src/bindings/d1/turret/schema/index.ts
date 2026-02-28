@@ -1,5 +1,11 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+	index,
+	integer,
+	sqliteTable,
+	text,
+	uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 export const turretSessions = sqliteTable(
 	"turret_sessions",
@@ -20,13 +26,19 @@ export const turretSessions = sqliteTable(
 		workerVersionTimestamp: text("worker_version_timestamp"),
 		rrwebStartTsMs: integer("rrweb_start_ts_ms", { mode: "timestamp_ms" }),
 		rrwebLastTsMs: integer("rrweb_last_ts_ms", { mode: "timestamp_ms" }),
-		hasError: integer("has_error", { mode: "boolean" }).default(false).notNull(),
-		captureBlocked: integer("capture_blocked", { mode: "boolean" }).default(false).notNull(),
+		hasError: integer("has_error", { mode: "boolean" })
+			.default(false)
+			.notNull(),
+		captureBlocked: integer("capture_blocked", { mode: "boolean" })
+			.default(false)
+			.notNull(),
 		captureBlockedReason: text("capture_blocked_reason"),
 		errorCount: integer("error_count").default(0).notNull(),
 		chunkCount: integer("chunk_count").default(0).notNull(),
 		policyVersion: text("policy_version").notNull(),
-		retentionExpiresAt: integer("retention_expires_at", { mode: "timestamp_ms" }).notNull(),
+		retentionExpiresAt: integer("retention_expires_at", {
+			mode: "timestamp_ms",
+		}).notNull(),
 		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 	},
@@ -34,12 +46,16 @@ export const turretSessions = sqliteTable(
 		index("turret_sessions_startedAt_idx").on(table.startedAt),
 		index("turret_sessions_hasError_idx").on(table.hasError),
 		index("turret_sessions_captureBlocked_idx").on(table.captureBlocked),
-		index("turret_sessions_retentionExpiresAt_idx").on(table.retentionExpiresAt),
+		index("turret_sessions_retentionExpiresAt_idx").on(
+			table.retentionExpiresAt
+		),
 		index("turret_sessions_journeyId_idx").on(table.journeyId),
 		index("turret_sessions_userId_idx").on(table.userId),
 		index("turret_sessions_userEmail_idx").on(table.userEmail),
 		index("turret_sessions_workerVersionId_idx").on(table.workerVersionId),
-		index("turret_sessions_workerVersionTag_idx").on(table.workerVersionTag),
+		index("turret_sessions_workerVersionTag_idx").on(
+			table.workerVersionTag
+		),
 		index("turret_sessions_rrwebStartTsMs_idx").on(table.rrwebStartTsMs),
 		index("turret_sessions_rrwebLastTsMs_idx").on(table.rrwebLastTsMs),
 	]
@@ -61,7 +77,9 @@ export const turretUserProfile = sqliteTable(
 			.notNull(),
 	},
 	(table) => [
-		index("turret_user_profile_signedUpWeek_idx").on(table.signedUpWeekStartMs),
+		index("turret_user_profile_signedUpWeek_idx").on(
+			table.signedUpWeekStartMs
+		),
 	]
 );
 
@@ -76,8 +94,13 @@ export const turretUserActivityWeekly = sqliteTable(
 			.notNull(),
 	},
 	(table) => [
-		uniqueIndex("turret_user_activity_weekly_user_week_unique").on(table.userId, table.weekStartMs),
-		index("turret_user_activity_weekly_weekStart_idx").on(table.weekStartMs),
+		uniqueIndex("turret_user_activity_weekly_user_week_unique").on(
+			table.userId,
+			table.weekStartMs
+		),
+		index("turret_user_activity_weekly_weekStart_idx").on(
+			table.weekStartMs
+		),
 		index("turret_user_activity_weekly_userId_idx").on(table.userId),
 	]
 );
@@ -114,7 +137,10 @@ export const turretSessionErrors = sqliteTable(
 	(table) => [
 		index("turret_errors_sessionId_ts_idx").on(table.sessionId, table.ts),
 		index("turret_errors_expiresAt_idx").on(table.expiresAt),
-		index("turret_errors_fingerprint_ts_idx").on(table.fingerprint, table.ts),
+		index("turret_errors_fingerprint_ts_idx").on(
+			table.fingerprint,
+			table.ts
+		),
 	]
 );
 
@@ -127,7 +153,12 @@ export const turretIssueState = sqliteTable(
 		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 	},
-	(table) => [index("turret_issue_state_status_updatedAt_idx").on(table.status, table.updatedAt)]
+	(table) => [
+		index("turret_issue_state_status_updatedAt_idx").on(
+			table.status,
+			table.updatedAt
+		),
+	]
 );
 
 export const turretRequestBreadcrumbs = sqliteTable(
@@ -156,7 +187,10 @@ export const turretRequestBreadcrumbs = sqliteTable(
 	},
 	(table) => [
 		index("turret_breadcrumbs_requestId_idx").on(table.requestId),
-		index("turret_breadcrumbs_sessionId_ts_idx").on(table.sessionId, table.ts),
+		index("turret_breadcrumbs_sessionId_ts_idx").on(
+			table.sessionId,
+			table.ts
+		),
 		index("turret_breadcrumbs_ts_idx").on(table.ts),
 		index("turret_breadcrumbs_status_idx").on(table.status),
 		index("turret_breadcrumbs_expiresAt_idx").on(table.expiresAt),
@@ -185,5 +219,34 @@ export const turretRequestSpans = sqliteTable(
 		index("turret_spans_kind_idx").on(table.kind),
 		index("turret_spans_db_idx").on(table.db),
 		index("turret_spans_expiresAt_idx").on(table.expiresAt),
+	]
+);
+
+export const turretUserFeedback = sqliteTable(
+	"turret_user_feedback",
+	{
+		id: text("id").primaryKey(),
+		sessionId: text("session_id").notNull(),
+		userId: text("user_id").notNull(),
+		userEmail: text("user_email"),
+		ts: integer("ts", { mode: "timestamp_ms" }).notNull(),
+		url: text("url"),
+		kind: text("kind").notNull(),
+		message: text("message").notNull(),
+		contact: text("contact"),
+		extraJson: text("extra_json"),
+		status: text("status").notNull().default("open"),
+		expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		index("turret_feedback_sessionId_ts_idx").on(table.sessionId, table.ts),
+		index("turret_feedback_status_createdAt_idx").on(
+			table.status,
+			table.createdAt
+		),
+		index("turret_feedback_userId_idx").on(table.userId),
+		index("turret_feedback_expiresAt_idx").on(table.expiresAt),
 	]
 );

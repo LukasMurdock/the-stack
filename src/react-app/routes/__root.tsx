@@ -35,7 +35,9 @@ function RootComponent() {
 	});
 
 	const sessionQuery = authClient.useSession();
-	const turretCaptureRef = React.useRef<ReturnType<typeof createTurretCapture> | null>(null);
+	const turretCaptureRef = React.useRef<ReturnType<
+		typeof createTurretCapture
+	> | null>(null);
 
 	React.useEffect(() => {
 		const user = sessionQuery.data?.user;
@@ -60,7 +62,8 @@ function RootComponent() {
 						<div className="min-w-0">
 							<span className="font-medium">Impersonating</span>{" "}
 							<span className="text-amber-900/80">
-								Admin session: {(impersonatedBy as string).slice(0, 8)}…
+								Admin session:{" "}
+								{(impersonatedBy as string).slice(0, 8)}…
 							</span>
 						</div>
 						<div className="flex items-center gap-2">
@@ -68,7 +71,9 @@ function RootComponent() {
 								className="rounded-md border border-amber-200 bg-white px-3 py-1.5 text-sm"
 								onClick={async () => {
 									try {
-										await authClient.admin.stopImpersonating({} as any);
+										await authClient.admin.stopImpersonating(
+											{} as any
+										);
 										await sessionQuery.refetch();
 										router.invalidate();
 									} catch {
@@ -167,7 +172,9 @@ function RootSubtreeError({ error }: ErrorComponentProps) {
 		<div className="rounded-lg border bg-card p-4">
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div>
-					<div className="text-sm font-medium">This section crashed</div>
+					<div className="text-sm font-medium">
+						This section crashed
+					</div>
 					<div className="text-sm text-muted-foreground">
 						Try retrying or navigating away.
 					</div>

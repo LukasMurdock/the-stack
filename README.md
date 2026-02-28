@@ -13,6 +13,11 @@ API-first, type-safe template for building fast, interactive apps on Cloudflare 
 - 🧪 **Isolate:** Keep configs, secrets, and data separate across local/dev/staging/prod.
 - 👀 **Observe:** Turret (session replay first, errors next), plus logs, traces, and metrics to find and fix issues fast.
 
+## Roadmap
+
+- See `docs/ROADMAP.md` for priorities and execution phases.
+- See `CONTRIBUTING.md` for local workflow and PR expectations.
+
 ## Built with
 
 - [TypeScript](https://www.typescriptlang.org/) for programming language
@@ -50,6 +55,12 @@ This repo ships three user-facing surfaces from the same Cloudflare Worker deplo
 - Marketing site at `/` (Astro, prerendered by default)
 - Product documentation at `/docs/*` (Astro + Content Collections from `src/content/docs`)
 - API documentation at `/api/scalar` (Scalar UI) with OpenAPI JSON at `/api/doc`
+
+Docs are organized into tracks:
+
+- Build: local setup, auth, DB
+- Operate: deploy, verify, rollback
+- Extend: feature scaffolding and guardrails
 
 ## System diagram
 
@@ -109,16 +120,88 @@ See `docs/turret.md`.
 
 ## Getting started
 
-Install dependencies:
+### 10-minute quickstart (golden path)
+
+Use this exact flow for a first local run.
+
+Prerequisites:
+
+- Node.js 22+
+- npm
+- `just`
+
+Install `just`:
 
 ```bash
-npm install
+# macOS
+brew install just
+
+# Linux
+cargo install just
+```
+
+Copy-paste setup:
+
+```bash
+cp .dev.vars.example .dev.vars
+
+# Set these values in .dev.vars before continuing:
+# BETTER_AUTH_SECRET="<paste output of: just secret-auth>"
+# APP_URL="http://localhost:4321"
+# ADMIN_EMAIL="you@example.com"
+
+just setup
+just dev
+```
+
+In another terminal, verify the golden-path endpoints:
+
+```bash
+curl -i "http://localhost:4321/"
+curl -i "http://localhost:4321/docs"
+curl -i "http://localhost:4321/app"
+curl -i "http://localhost:4321/api/health"
+curl -i "http://localhost:4321/api/scalar"
+```
+
+Expected results:
+
+- `just setup` ends with `Local setup complete.` and no `FAIL` lines.
+- `just dev` starts the server on `http://localhost:4321`.
+- `/api/health` returns `200` with JSON containing `"ok": true`.
+- `/api/scalar` returns `200` and loads API docs.
+
+Quick troubleshooting:
+
+| Symptom                                       | Likely cause                | Fix                                                               |
+| --------------------------------------------- | --------------------------- | ----------------------------------------------------------------- |
+| `Missing required values` during `just setup` | `.dev.vars` not filled      | Set `BETTER_AUTH_SECRET`, `APP_URL`, `ADMIN_EMAIL` in `.dev.vars` |
+| `Wrangler not available` in doctor output     | dependencies not installed  | Run `npm install` then `just doctor`                              |
+| `Could not find a local D1 sqlite file`       | migrations not applied yet  | Run `just migrate-core` and `just migrate-turret`                 |
+| Login works but no account exists             | invite-only mode is default | Run `just admin-create` or set `AUTH_SIGNUP_MODE=open`            |
+
+### Detailed setup and commands
+
+Install `just` (required):
+
+```bash
+# macOS
+brew install just
+
+# Linux
+cargo install just
+```
+
+Show available tasks:
+
+```bash
+just
 ```
 
 Generate a Better Auth secret:
 
 ```bash
-npx @better-auth/cli@latest secret
+just secret-auth
 ```
 
 Set local secrets/vars:
@@ -127,15 +210,24 @@ Set local secrets/vars:
 cp .dev.vars.example .dev.vars
 ```
 
+Bootstrap local dev (install, migrations, admin bootstrap):
+
+```bash
+just setup
+```
+
 Then edit `.dev.vars` and set at least:
 
 - `BETTER_AUTH_SECRET`
 - `APP_URL` (used for email links)
 - `ADMIN_EMAIL` (used by the local admin bootstrap script)
 
+For local, set `APP_URL` to `http://localhost:4321`.
+
 Optional:
 
 - `BOOTSTRAP_SECRET` (only needed for the `/api/internal/bootstrap-admin` endpoint)
+- `AUTH_SIGNUP_MODE` (`invite_only` default, set `open` to allow public sign-up)
 
 Optional (required only if you enable Turret ingestion locally):
 
@@ -143,35 +235,60 @@ Optional (required only if you enable Turret ingestion locally):
 
 Emails are log-only by default in local. Set `RESEND_API_KEY` in `.dev.vars` if you want to send real emails.
 
-Run local D1 migrations (includes Better Auth tables):
+Run local D1 migrations manually (if needed):
 
 ```bash
-npm run db:core:migrate:local
+just migrate-core
+```
+
+Or run setup script directly:
+
+```bash
+just setup
+```
+
+Health-check your local setup at any time:
+
+```bash
+just doctor
+just status
+```
+
+Reset local DB state and rebuild from migrations:
+
+```bash
+just reset
+```
+
+Seed local demo records for faster internal testing:
+
+```bash
+just seed
 ```
 
 Optional: run local Turret migrations (session replay index tables):
 
 ```bash
-npm run db:turret:migrate:local
+just migrate-turret
 ```
 
 Open Drizzle Studio (local):
 
 ```bash
-npm run db:core:studio:local
-npm run db:turret:studio:local
+just studio-core
+just studio-turret
 ```
 
 Run the app locally:
 
 ```bash
-npm run dev
+just dev
 ```
 
-Create the initial local admin user (recommended):
+Create the initial local admin user (if you did not run `just setup`):
 
 ```bash
-npm run admin:create:local
+just admin-create
 ```
 
 - Creates (or promotes) `ADMIN_EMAIL` to admin in local `CORE_DB`
@@ -181,9 +298,12 @@ npm run admin:create:local
 Alternative: bootstrap via HTTP endpoint (triggers a password reset link, requires `BOOTSTRAP_SECRET`):
 
 ```bash
-curl -X POST "http://localhost:5173/api/internal/bootstrap-admin" \
+curl -X POST "http://localhost:4321/api/internal/bootstrap-admin" \
   -H "x-bootstrap-secret: <BOOTSTRAP_SECRET>"
 ```
+
+Note: self-service sign-up is disabled by default (`AUTH_SIGNUP_MODE=invite_only`). Use local admin bootstrap.
+Set `AUTH_SIGNUP_MODE=open` only if you explicitly want public self-service sign-up.
 
 Then open the logged reset link and set your password.
 
@@ -192,9 +312,9 @@ Then open the logged reset link and set your password.
 
 ## Production Deployment
 
-This repo deploys a single production Worker.
+This repo deploys a single production worker.
 
-- Worker name: `the-stack-production` (`--env production`)
+- Worker name: `the-stack-production` (`wrangler.json`)
 
 Notes:
 
@@ -221,6 +341,12 @@ wrangler secret put TURRET_SIGNING_KEY --env production
 
 If `RESEND_API_KEY` is not set, the Worker will log emails instead of sending them.
 
+Turret mode:
+
+- `TURRET_MODE=full` (default): full ingest when signing key exists
+- `TURRET_MODE=basic`: no ingest, admin/read surfaces remain
+- `TURRET_MODE=off`: ingest disabled
+
 ## Database (D1)
 
 This repo uses two D1 databases:
@@ -240,7 +366,7 @@ Then replace the placeholder `database_id` values for `CORE_DB` and `TURRET_DB` 
 Apply migrations locally:
 
 ```bash
-npm run db:core:migrate:local
+just migrate-core
 ```
 
 Apply migrations in production:
@@ -255,7 +381,14 @@ wrangler d1 migrations apply TURRET_DB --env production
 Production deploy:
 
 ```bash
-npm run deploy:production
+just deploy-production
+```
+
+Verify deployment:
+
+```bash
+curl -i "https://<your-domain>/api/health"
+curl -i "https://<your-domain>/api/scalar"
 ```
 
 After the first deploy, bootstrap the initial admin user (sends a password reset email to `ADMIN_EMAIL`):
@@ -265,7 +398,7 @@ curl -X POST "https://<your-domain>/api/internal/bootstrap-admin" \
   -H "x-bootstrap-secret: <BOOTSTRAP_SECRET>"
 ```
 
-`npm run deploy` intentionally fails to prevent accidental deploys.
+`npm run deploy` intentionally fails to prevent accidental deploys. Use `just deploy-production` for explicit production deploys.
 
 ## Logs
 
@@ -275,13 +408,47 @@ Tail production logs:
 npx wrangler tail --env production
 ```
 
+Or use `just logs`.
+
+## Internal Velocity Commands
+
+Fast local checks while iterating:
+
+```bash
+just check-fast
+```
+
+Full validation (used on main/nightly):
+
+```bash
+just check-full
+```
+
+Scaffold a new API route and wire it into `src/worker/api/index.ts`:
+
+```bash
+just new-api billing-status
+```
+
+Scaffold a new TanStack route file under `src/react-app/routes`:
+
+```bash
+just new-route _public/reports
+```
+
+Production deploy preflight (Go/No-Go):
+
+```bash
+just preflight
+```
+
 ## Gotchas
 
-- Re-run `npm run cf-typegen` after changing `wrangler.json` bindings.
-- When you run the development server (`npm run dev`), the necessary route configuration and TypeScript types are automatically generated and updated in a file like `routeTree.gen.ts`.
+- Re-run `just cf-typegen` after changing `wrangler.json` bindings.
+- When you run the development server (`just dev`), the necessary route configuration and TypeScript types are automatically generated and updated in a file like `routeTree.gen.ts`.
 - Better Auth schema changes (eg. adding plugins) should be reflected in `src/bindings/d1/core/schema/better-auth.ts`, then migrated:
 
 ```bash
-npm run db:core:generate -- --name <your_migration_name>
+just db-generate-core <your_migration_name>
 wrangler d1 migrations apply CORE_DB --env production
 ```

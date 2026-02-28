@@ -61,13 +61,21 @@ function HomePage() {
 			</div>
 
 			<div className="rounded-lg border bg-card p-4">
-				<div className="text-sm text-muted-foreground">Homepage state</div>
+				<div className="text-sm text-muted-foreground">
+					Homepage state
+				</div>
 				<div className="mt-2 flex flex-wrap items-center gap-3">
-					<Button type="button" onClick={() => setCount((c) => c + 1)}>
+					<Button
+						type="button"
+						onClick={() => setCount((c) => c + 1)}
+					>
 						Clicked {count} times
 					</Button>
 					<div className="text-sm text-muted-foreground">
-						Count: <span className="font-medium text-foreground">{count}</span>
+						Count:{" "}
+						<span className="font-medium text-foreground">
+							{count}
+						</span>
 					</div>
 				</div>
 			</div>
@@ -75,9 +83,12 @@ function HomePage() {
 			<div className="rounded-lg border bg-card p-4">
 				<div className="flex flex-wrap items-center justify-between gap-3">
 					<div>
-						<div className="text-sm font-medium">Error reporting test</div>
+						<div className="text-sm font-medium">
+							Error reporting test
+						</div>
 						<div className="text-sm text-muted-foreground">
-							Turret capture: {turretActive ? "active" : "inactive"}
+							Turret capture:{" "}
+							{turretActive ? "active" : "inactive"}
 						</div>
 					</div>
 					<div className="text-sm text-muted-foreground">
@@ -93,10 +104,13 @@ function HomePage() {
 						disabled={!turretActive}
 						onClick={() => {
 							// Sends via turretReportSessionError if capture is active.
-							reportError(new Error("Intentional UI test error"), {
-								source: "window",
-								extra: { kind: "manual" },
-							})
+							reportError(
+								new Error("Intentional UI test error"),
+								{
+									source: "window",
+									extra: { kind: "manual" },
+								}
+							);
 						}}
 					>
 						Report UI error
@@ -107,7 +121,9 @@ function HomePage() {
 						disabled={!turretActive}
 						onClick={() => {
 							// Intentionally trigger an unhandled promise rejection.
-							void Promise.reject(new Error("Intentional unhandled rejection"));
+							void Promise.reject(
+								new Error("Intentional unhandled rejection")
+							);
 						}}
 					>
 						Unhandled rejection
@@ -139,7 +155,7 @@ function HomePage() {
 				</div>
 			</div>
 		</section>
-	)
+	);
 }
 
 export { Route };

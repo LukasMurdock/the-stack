@@ -8,12 +8,7 @@ import { requireCoreAdmin } from "../../../lib/requireCoreAdmin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-	Tabs,
-	TabsContent,
-	TabsList,
-	TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
 	Table,
 	TableBody,
@@ -111,7 +106,8 @@ function TsAdminUserDetailPage() {
 			const { data, error } = await authClient.admin.listUserSessions({
 				userId,
 			} as any);
-			if (error) throw new Error(error.message ?? "Failed to list sessions");
+			if (error)
+				throw new Error(error.message ?? "Failed to list sessions");
 			return (data ?? { sessions: [] }) as unknown as {
 				sessions: AdminSession[];
 			};
@@ -142,11 +138,16 @@ function TsAdminUserDetailPage() {
 				userId,
 				data: payload,
 			} as any);
-			if (error) throw new Error(error.message ?? "Failed to update user");
+			if (error)
+				throw new Error(error.message ?? "Failed to update user");
 		},
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({ queryKey: ["ts_admin", "user", userId] });
-			await queryClient.invalidateQueries({ queryKey: ["ts_admin", "users"] });
+			await queryClient.invalidateQueries({
+				queryKey: ["ts_admin", "user", userId],
+			});
+			await queryClient.invalidateQueries({
+				queryKey: ["ts_admin", "users"],
+			});
 		},
 	});
 
@@ -159,8 +160,12 @@ function TsAdminUserDetailPage() {
 			if (error) throw new Error(error.message ?? "Failed to set role");
 		},
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({ queryKey: ["ts_admin", "user", userId] });
-			await queryClient.invalidateQueries({ queryKey: ["ts_admin", "users"] });
+			await queryClient.invalidateQueries({
+				queryKey: ["ts_admin", "user", userId],
+			});
+			await queryClient.invalidateQueries({
+				queryKey: ["ts_admin", "users"],
+			});
 		},
 	});
 
@@ -174,7 +179,8 @@ function TsAdminUserDetailPage() {
 				userId,
 				newPassword,
 			} as any);
-			if (error) throw new Error(error.message ?? "Failed to set password");
+			if (error)
+				throw new Error(error.message ?? "Failed to set password");
 		},
 		onSuccess: () => {
 			setNewPassword("");
@@ -187,7 +193,8 @@ function TsAdminUserDetailPage() {
 			const { error } = await authClient.admin.revokeUserSession({
 				sessionToken: args.sessionToken,
 			} as any);
-			if (error) throw new Error(error.message ?? "Failed to revoke session");
+			if (error)
+				throw new Error(error.message ?? "Failed to revoke session");
 		},
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
@@ -201,7 +208,8 @@ function TsAdminUserDetailPage() {
 			const { error } = await authClient.admin.revokeUserSessions({
 				userId,
 			} as any);
-			if (error) throw new Error(error.message ?? "Failed to revoke sessions");
+			if (error)
+				throw new Error(error.message ?? "Failed to revoke sessions");
 		},
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
@@ -215,7 +223,8 @@ function TsAdminUserDetailPage() {
 			const { error } = await authClient.admin.impersonateUser({
 				userId,
 			} as any);
-			if (error) throw new Error(error.message ?? "Failed to impersonate user");
+			if (error)
+				throw new Error(error.message ?? "Failed to impersonate user");
 		},
 		onSuccess: () => {
 			// After impersonation, this route will likely 403 (not admin anymore).
@@ -243,11 +252,19 @@ function TsAdminUserDetailPage() {
 		<section className="space-y-4">
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div className="space-y-1">
-					<h1 className="text-2xl font-semibold tracking-tight">{headerTitle}</h1>
-					<p className="text-sm text-muted-foreground">User ID: {userId}</p>
+					<h1 className="text-2xl font-semibold tracking-tight">
+						{headerTitle}
+					</h1>
+					<p className="text-sm text-muted-foreground">
+						User ID: {userId}
+					</p>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button type="button" variant="outline" onClick={() => navigate({ to: "/ts_admin/users" })}>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => navigate({ to: "/ts_admin/users" })}
+					>
 						Back
 					</Button>
 				</div>
@@ -256,9 +273,13 @@ function TsAdminUserDetailPage() {
 			{userQuery.isLoading ? (
 				<div className="text-sm text-muted-foreground">Loading…</div>
 			) : userQuery.isError ? (
-				<div className="text-sm text-destructive">Failed to load user.</div>
+				<div className="text-sm text-destructive">
+					Failed to load user.
+				</div>
 			) : !user ? (
-				<div className="text-sm text-muted-foreground">User not found.</div>
+				<div className="text-sm text-muted-foreground">
+					User not found.
+				</div>
 			) : (
 				<Tabs defaultValue="profile">
 					<TabsList>
@@ -266,7 +287,9 @@ function TsAdminUserDetailPage() {
 						<TabsTrigger value="access">Access</TabsTrigger>
 						<TabsTrigger value="security">Security</TabsTrigger>
 						<TabsTrigger value="sessions">Sessions</TabsTrigger>
-						<TabsTrigger value="impersonate">Impersonate</TabsTrigger>
+						<TabsTrigger value="impersonate">
+							Impersonate
+						</TabsTrigger>
 					</TabsList>
 
 					<TabsContent value="profile" className="mt-4">
@@ -277,21 +300,42 @@ function TsAdminUserDetailPage() {
 							<CardContent className="space-y-4">
 								<div className="grid gap-3 md:grid-cols-2">
 									<div>
-										<div className="text-sm font-medium">Name</div>
-										<Input value={name} onChange={(e) => setName(e.target.value)} />
+										<div className="text-sm font-medium">
+											Name
+										</div>
+										<Input
+											value={name}
+											onChange={(e) =>
+												setName(e.target.value)
+											}
+										/>
 									</div>
 									<div>
-										<div className="text-sm font-medium">Email</div>
-										<Input value={email} onChange={(e) => setEmail(e.target.value)} />
+										<div className="text-sm font-medium">
+											Email
+										</div>
+										<Input
+											value={email}
+											onChange={(e) =>
+												setEmail(e.target.value)
+											}
+										/>
 									</div>
 								</div>
 
 								<div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/20 p-3 text-sm">
 									<div className="text-muted-foreground">
-										Created: {formatDate(user.createdAt)} · Updated: {formatDate(user.updatedAt)}
+										Created: {formatDate(user.createdAt)} ·
+										Updated: {formatDate(user.updatedAt)}
 									</div>
 									<div className="flex items-center gap-2">
-										{user.emailVerified ? <Badge>verified</Badge> : <Badge variant="secondary">unverified</Badge>}
+										{user.emailVerified ? (
+											<Badge>verified</Badge>
+										) : (
+											<Badge variant="secondary">
+												unverified
+											</Badge>
+										)}
 									</div>
 								</div>
 
@@ -300,7 +344,9 @@ function TsAdminUserDetailPage() {
 									onClick={() => updateUserMutation.mutate()}
 									disabled={updateUserMutation.isPending}
 								>
-									{updateUserMutation.isPending ? "Saving…" : "Save changes"}
+									{updateUserMutation.isPending
+										? "Saving…"
+										: "Save changes"}
 								</Button>
 							</CardContent>
 						</Card>
@@ -314,26 +360,55 @@ function TsAdminUserDetailPage() {
 							<CardContent className="space-y-4">
 								<div className="grid gap-3 md:grid-cols-2">
 									<div>
-										<div className="text-sm font-medium">Role</div>
-										<Select value={role} onValueChange={(v) => setRole(v as any)}>
+										<div className="text-sm font-medium">
+											Role
+										</div>
+										<Select
+											value={role}
+											onValueChange={(v) =>
+												setRole(v as any)
+											}
+										>
 											<SelectTrigger className="w-full">
 												<SelectValue placeholder="Select role" />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="user">user</SelectItem>
-												<SelectItem value="admin">admin</SelectItem>
+												<SelectItem value="user">
+													user
+												</SelectItem>
+												<SelectItem value="admin">
+													admin
+												</SelectItem>
 											</SelectContent>
 										</Select>
 										<div className="mt-1 text-xs text-muted-foreground">
-											Current: {roleNorm === "admin" ? "admin" : roleNorm === "user" ? "user" : user.role}
+											Current:{" "}
+											{roleNorm === "admin"
+												? "admin"
+												: roleNorm === "user"
+													? "user"
+													: user.role}
 										</div>
 									</div>
 									<div>
-										<div className="text-sm font-medium">Status</div>
+										<div className="text-sm font-medium">
+											Status
+										</div>
 										<div className="mt-2 flex flex-wrap items-center gap-2">
-											{isBanned ? <Badge variant="destructive">banned</Badge> : <Badge variant="outline">active</Badge>}
+											{isBanned ? (
+												<Badge variant="destructive">
+													banned
+												</Badge>
+											) : (
+												<Badge variant="outline">
+													active
+												</Badge>
+											)}
 											{user.banReason ? (
-												<span className="text-xs text-muted-foreground" title={user.banReason}>
+												<span
+													className="text-xs text-muted-foreground"
+													title={user.banReason}
+												>
 													reason: {user.banReason}
 												</span>
 											) : null}
@@ -348,7 +423,9 @@ function TsAdminUserDetailPage() {
 										onClick={() => setRoleMutation.mutate()}
 										disabled={setRoleMutation.isPending}
 									>
-										{setRoleMutation.isPending ? "Updating…" : "Update role"}
+										{setRoleMutation.isPending
+											? "Updating…"
+											: "Update role"}
 									</Button>
 								</div>
 							</CardContent>
@@ -363,24 +440,52 @@ function TsAdminUserDetailPage() {
 							<CardContent className="space-y-4">
 								<div className="grid gap-3 md:grid-cols-2">
 									<div>
-										<div className="text-sm font-medium">New password</div>
-										<Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+										<div className="text-sm font-medium">
+											New password
+										</div>
+										<Input
+											type="password"
+											value={newPassword}
+											onChange={(e) =>
+												setNewPassword(e.target.value)
+											}
+										/>
 									</div>
 									<div>
-										<div className="text-sm font-medium">Confirm password</div>
-										<Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+										<div className="text-sm font-medium">
+											Confirm password
+										</div>
+										<Input
+											type="password"
+											value={confirmPassword}
+											onChange={(e) =>
+												setConfirmPassword(
+													e.target.value
+												)
+											}
+										/>
 									</div>
 								</div>
 
-								{passwordError ? <div className="text-sm text-destructive">{passwordError}</div> : null}
+								{passwordError ? (
+									<div className="text-sm text-destructive">
+										{passwordError}
+									</div>
+								) : null}
 
 								<Button
 									type="button"
 									variant="destructive"
 									onClick={() => setPasswordMutation.mutate()}
-									disabled={setPasswordMutation.isPending || Boolean(passwordError) || !newPassword}
+									disabled={
+										setPasswordMutation.isPending ||
+										Boolean(passwordError) ||
+										!newPassword
+									}
 								>
-									{setPasswordMutation.isPending ? "Updating…" : "Set password"}
+									{setPasswordMutation.isPending
+										? "Updating…"
+										: "Set password"}
 								</Button>
 							</CardContent>
 						</Card>
@@ -393,23 +498,37 @@ function TsAdminUserDetailPage() {
 							</CardHeader>
 							<CardContent className="space-y-3">
 								<div className="flex flex-wrap items-center justify-between gap-2">
-									<div className="text-sm text-muted-foreground">{sessions.length} session(s)</div>
+									<div className="text-sm text-muted-foreground">
+										{sessions.length} session(s)
+									</div>
 									<Button
 										type="button"
 										variant="outline"
-										onClick={() => revokeAllSessionsMutation.mutate()}
-										disabled={revokeAllSessionsMutation.isPending}
+										onClick={() =>
+											revokeAllSessionsMutation.mutate()
+										}
+										disabled={
+											revokeAllSessionsMutation.isPending
+										}
 									>
-										{revokeAllSessionsMutation.isPending ? "Revoking…" : "Revoke all"}
+										{revokeAllSessionsMutation.isPending
+											? "Revoking…"
+											: "Revoke all"}
 									</Button>
 								</div>
 
 								{sessionsQuery.isLoading ? (
-									<div className="text-sm text-muted-foreground">Loading…</div>
+									<div className="text-sm text-muted-foreground">
+										Loading…
+									</div>
 								) : sessionsQuery.isError ? (
-									<div className="text-sm text-destructive">Failed to load sessions.</div>
+									<div className="text-sm text-destructive">
+										Failed to load sessions.
+									</div>
 								) : sessions.length === 0 ? (
-									<div className="text-sm text-muted-foreground">No sessions.</div>
+									<div className="text-sm text-muted-foreground">
+										No sessions.
+									</div>
 								) : (
 									<Table>
 										<TableHeader>
@@ -417,27 +536,55 @@ function TsAdminUserDetailPage() {
 												<TableHead>Created</TableHead>
 												<TableHead>Expires</TableHead>
 												<TableHead>IP</TableHead>
-												<TableHead>User agent</TableHead>
-												<TableHead className="text-right">Actions</TableHead>
+												<TableHead>
+													User agent
+												</TableHead>
+												<TableHead className="text-right">
+													Actions
+												</TableHead>
 											</TableRow>
 										</TableHeader>
 										<TableBody>
 											{sessions.map((s) => (
 												<TableRow key={s.id}>
-													<TableCell className="whitespace-nowrap">{formatDate(s.createdAt)}</TableCell>
-													<TableCell className="whitespace-nowrap">{formatDate(s.expiresAt)}</TableCell>
-													<TableCell className="whitespace-nowrap">{s.ipAddress ?? "-"}</TableCell>
-													<TableCell className="max-w-[320px] truncate" title={s.userAgent ?? ""}>
+													<TableCell className="whitespace-nowrap">
+														{formatDate(
+															s.createdAt
+														)}
+													</TableCell>
+													<TableCell className="whitespace-nowrap">
+														{formatDate(
+															s.expiresAt
+														)}
+													</TableCell>
+													<TableCell className="whitespace-nowrap">
+														{s.ipAddress ?? "-"}
+													</TableCell>
+													<TableCell
+														className="max-w-[320px] truncate"
+														title={
+															s.userAgent ?? ""
+														}
+													>
 														{s.userAgent ?? "-"}
 													</TableCell>
 													<TableCell className="text-right">
 														<Button
 															type="button"
 															variant="outline"
-															disabled={revokeSessionMutation.isPending || !s.token}
+															disabled={
+																revokeSessionMutation.isPending ||
+																!s.token
+															}
 															onClick={() => {
-																if (!s.token) return;
-																revokeSessionMutation.mutate({ sessionToken: s.token });
+																if (!s.token)
+																	return;
+																revokeSessionMutation.mutate(
+																	{
+																		sessionToken:
+																			s.token,
+																	}
+																);
 															}}
 														>
 															Revoke
@@ -461,7 +608,9 @@ function TsAdminUserDetailPage() {
 								<div className="rounded-md border bg-muted/20 p-3 text-sm">
 									<div className="font-medium">Warning</div>
 									<div className="mt-1 text-muted-foreground">
-										Impersonating switches your cookies to the target user. You will lose admin access until you stop impersonating.
+										Impersonating switches your cookies to
+										the target user. You will lose admin
+										access until you stop impersonating.
 									</div>
 								</div>
 								<Button
@@ -470,7 +619,9 @@ function TsAdminUserDetailPage() {
 									onClick={() => impersonateMutation.mutate()}
 									disabled={impersonateMutation.isPending}
 								>
-									{impersonateMutation.isPending ? "Starting…" : "Impersonate user"}
+									{impersonateMutation.isPending
+										? "Starting…"
+										: "Impersonate user"}
 								</Button>
 							</CardContent>
 						</Card>

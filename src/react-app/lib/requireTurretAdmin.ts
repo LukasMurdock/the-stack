@@ -33,11 +33,16 @@ function redirectToLogin(currentHref: string): never {
 	});
 }
 
-async function requireTurretAdmin({ context, location }: RequireTurretAdminOpts) {
+async function requireTurretAdmin({
+	context,
+	location,
+}: RequireTurretAdminOpts) {
 	// 1) Signed-in check
 	let user: unknown;
 	try {
-		const res = await (authClient as unknown as { getSession: () => Promise<unknown> }).getSession();
+		const res = await (
+			authClient as unknown as { getSession: () => Promise<unknown> }
+		).getSession();
 		user = getUserFromSessionResponse(res);
 	} catch (err) {
 		if (isRedirect(err)) throw err;

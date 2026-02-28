@@ -16,6 +16,11 @@ APP_URL="http://localhost:4321"
 # Where the bootstrap endpoint sends the reset email.
 ADMIN_EMAIL="admin@example.com"
 
+# Auth policy
+# invite_only (default): only admin-provisioned accounts can sign in.
+# open: allow public self-service sign-up.
+AUTH_SIGNUP_MODE="invite_only"
+
 # OAuth (optional)
 GOOGLE_CLIENT_ID="replace-me"
 GOOGLE_CLIENT_SECRET="replace-me"
@@ -27,3 +32,9 @@ RESEND_API_KEY=""
 # Turret (optional)
 # Signs Turret upload tokens. Only required if you enable Turret ingestion locally.
 TURRET_SIGNING_KEY="replace-me"
+
+# Turret mode
+# full (default): enable ingestion when signing key is present, otherwise degrade to basic.
+# basic: disable ingestion endpoints but keep Turret admin/read surfaces available.
+# off: disable Turret ingestion entirely.
+TURRET_MODE="full"

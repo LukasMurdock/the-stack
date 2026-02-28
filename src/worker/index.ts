@@ -7,7 +7,11 @@ import * as turretSchema from "../bindings/d1/turret/schema";
 import { wrapD1Database } from "./observability/d1Proxy";
 import { api, apiRoutes } from "./api";
 import { createAuth, type AuthEnv } from "./auth";
-import { fingerprintException, fingerprintHttp5xx, normalizeApiPath } from "./turret/fingerprinting";
+import {
+	fingerprintException,
+	fingerprintHttp5xx,
+	normalizeApiPath,
+} from "./turret/fingerprinting";
 
 type Bindings = AuthEnv & {
 	CF_VERSION_METADATA?: WorkerVersionMetadata;
@@ -81,7 +85,8 @@ async function recordWorkerError(args: {
 			try {
 				const turretDb = makeTurretDb(dbBinding);
 				const session = await turretDb.query.turretSessions.findFirst({
-					where: ((t: any, ops: any) => ops.eq(t.sessionId, sessionId)) as unknown as never,
+					where: ((t: any, ops: any) =>
+						ops.eq(t.sessionId, sessionId)) as unknown as never,
 					columns: { retentionExpiresAt: true },
 				});
 				const ret = (session as any)?.retentionExpiresAt;

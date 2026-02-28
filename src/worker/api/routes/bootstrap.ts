@@ -82,38 +82,30 @@ const routes = bootstrapApp.openapi(postBootstrapAdmin, async (c) => {
 	const expectedSecret = env.BOOTSTRAP_SECRET;
 	const providedSecret = c.req.header("x-bootstrap-secret") ?? "";
 	if (!expectedSecret || !timingSafeEqual(providedSecret, expectedSecret)) {
-		return c.json(
-			{ ok: false, status: "already_bootstrapped" },
-			401,
-			{ "Cache-Control": "no-store" }
-		) as never;
+		return c.json({ ok: false, status: "already_bootstrapped" }, 401, {
+			"Cache-Control": "no-store",
+		}) as never;
 	}
 
 	const adminEmail = env.ADMIN_EMAIL;
 	if (!adminEmail) {
-		return c.json(
-			{ ok: false, status: "already_bootstrapped" },
-			500,
-			{ "Cache-Control": "no-store" }
-		) as never;
+		return c.json({ ok: false, status: "already_bootstrapped" }, 500, {
+			"Cache-Control": "no-store",
+		}) as never;
 	}
 
 	if (!env.APP_URL) {
-		return c.json(
-			{ ok: false, status: "already_bootstrapped" },
-			500,
-			{ "Cache-Control": "no-store" }
-		) as never;
+		return c.json({ ok: false, status: "already_bootstrapped" }, 500, {
+			"Cache-Control": "no-store",
+		}) as never;
 	}
 
 	const bootstrappedKey = `bootstrap:admin:${adminEmail.toLowerCase()}`;
 	const already = await env.CORE_KV.get(bootstrappedKey);
 	if (already) {
-		return c.json(
-			{ ok: true, status: "already_bootstrapped" },
-			409,
-			{ "Cache-Control": "no-store" }
-		) as never;
+		return c.json({ ok: true, status: "already_bootstrapped" }, 409, {
+			"Cache-Control": "no-store",
+		}) as never;
 	}
 
 	const db = makeCoreDb(env.CORE_DB);
@@ -146,11 +138,9 @@ const routes = bootstrapApp.openapi(postBootstrapAdmin, async (c) => {
 		});
 
 		if (!createdUser) {
-			return c.json(
-				{ ok: false, status: "already_bootstrapped" },
-				500,
-				{ "Cache-Control": "no-store" }
-			) as never;
+			return c.json({ ok: false, status: "already_bootstrapped" }, 500, {
+				"Cache-Control": "no-store",
+			}) as never;
 		}
 
 		userId = createdUser.id;
@@ -175,11 +165,9 @@ const routes = bootstrapApp.openapi(postBootstrapAdmin, async (c) => {
 
 	await env.CORE_KV.put(bootstrappedKey, new Date().toISOString());
 
-	return c.json(
-		{ ok: true, status: "bootstrapped" },
-		200,
-		{ "Cache-Control": "no-store" }
-	);
+	return c.json({ ok: true, status: "bootstrapped" }, 200, {
+		"Cache-Control": "no-store",
+	});
 });
 
 export { bootstrapApp, routes };

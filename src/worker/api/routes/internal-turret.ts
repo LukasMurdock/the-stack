@@ -12,7 +12,11 @@ function startOfUtcWeekMs(ms: number): number {
 	const d = new Date(ms);
 	const day = d.getUTCDay();
 	const daysSinceMonday = (day + 6) % 7;
-	const startOfDay = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+	const startOfDay = Date.UTC(
+		d.getUTCFullYear(),
+		d.getUTCMonth(),
+		d.getUTCDate()
+	);
 	return startOfDay - daysSinceMonday * DAY_MS;
 }
 
@@ -21,7 +25,6 @@ function pctDelta(current: number, previous: number): number | null {
 	if (previous === 0) return null;
 	return ((current - previous) / previous) * 100;
 }
-
 
 const SAFE_LIKE = /[%_\\]/g;
 function escapeLike(input: string): string {
@@ -50,7 +53,10 @@ const SessionsResponseSchema = z
 	})
 	.openapi("TurretSessionsResponse");
 
-const WeeklyPointSchema = z.object({ weekStartMs: z.number(), value: z.number() });
+const WeeklyPointSchema = z.object({
+	weekStartMs: z.number(),
+	value: z.number(),
+});
 const WeeklyPointNullableSchema = z.object({
 	weekStartMs: z.number(),
 	value: z.number().nullable(),
@@ -120,7 +126,9 @@ const getSessionBreadcrumbs = createRoute({
 	responses: {
 		200: {
 			description: "List request breadcrumbs for a turret session",
-			content: { "application/json": { schema: BreadcrumbsResponseSchema } },
+			content: {
+				"application/json": { schema: BreadcrumbsResponseSchema },
+			},
 		},
 		401: {
 			description: "Unauthorized",
@@ -245,7 +253,9 @@ const getDashboard = createRoute({
 	responses: {
 		200: {
 			description: "Turret dashboard stats",
-			content: { "application/json": { schema: DashboardResponseSchema } },
+			content: {
+				"application/json": { schema: DashboardResponseSchema },
+			},
 		},
 		401: {
 			description: "Unauthorized",
@@ -269,7 +279,9 @@ const getSessionMeta = createRoute({
 	responses: {
 		200: {
 			description: "Get turret session metadata",
-			content: { "application/json": { schema: SessionMetaResponseSchema } },
+			content: {
+				"application/json": { schema: SessionMetaResponseSchema },
+			},
 		},
 		401: {
 			description: "Unauthorized",
@@ -370,12 +382,22 @@ internalTurretApp.use("/internal/turret/*", async (c, next) => {
 
 internalTurretApp.openapi(getHealth, async (c) => {
 	// Quick sanity check that the binding exists.
-	await (c.env as { TURRET_DB: D1Database }).TURRET_DB.prepare("SELECT 1").first();
+	await (c.env as { TURRET_DB: D1Database }).TURRET_DB.prepare(
+		"SELECT 1"
+	).first();
 	return c.json({ ok: true as const }, 200);
 });
 
 internalTurretApp.openapi(getSessions, async (c) => {
-	const { hasError, journeyId, q, from, to, limit: limitRaw, offset: offsetRaw } = c.req.valid("query");
+	const {
+		hasError,
+		journeyId,
+		q,
+		from,
+		to,
+		limit: limitRaw,
+		offset: offsetRaw,
+	} = c.req.valid("query");
 	const limit = Number(limitRaw ?? "50");
 	const offset = Number(offsetRaw ?? "0");
 
@@ -403,24 +425,33 @@ internalTurretApp.openapi(getSessions, async (c) => {
 	if (journeyId) filters.push((t, ops) => ops.eq(t.journeyId, journeyId));
 	if (q) {
 		const qEsc = escapeLike(q.trim());
-		filters.push((t, ops) => ops.or(ops.like(t.initialUrl, `%${qEsc}%`), ops.like(t.lastUrl, `%${qEsc}%`)));
+		filters.push((t, ops) =>
+			ops.or(
+				ops.like(t.initialUrl, `%${qEsc}%`),
+				ops.like(t.lastUrl, `%${qEsc}%`)
+			)
+		);
 	}
 	if (from) {
 		const fromMs = Number(from);
-		if (!Number.isNaN(fromMs)) filters.push((t, ops) => ops.gte(t.startedAt, new Date(fromMs)));
+		if (!Number.isNaN(fromMs))
+			filters.push((t, ops) => ops.gte(t.startedAt, new Date(fromMs)));
 	}
 	if (to) {
 		const toMs = Number(to);
-		if (!Number.isNaN(toMs)) filters.push((t, ops) => ops.lte(t.startedAt, new Date(toMs)));
+		if (!Number.isNaN(toMs))
+			filters.push((t, ops) => ops.lte(t.startedAt, new Date(toMs)));
 	}
 
 	const rows = await db.query.turretSessions.findMany({
 		where: filters.length
 			? (((t: any, ops: any) => {
-				return ops.and(...filters.map((fn) => fn(t, ops)));
-			}) as unknown as never)
+					return ops.and(...filters.map((fn) => fn(t, ops)));
+				}) as unknown as never)
 			: undefined,
-		orderBy: (((t: any, ops: any) => [ops.desc(t.startedAt)]) as unknown as never),
+		orderBy: ((t: any, ops: any) => [
+			ops.desc(t.startedAt),
+		]) as unknown as never,
 		limit,
 		offset,
 	});
@@ -429,15 +460,18 @@ internalTurretApp.openapi(getSessions, async (c) => {
 });
 
 internalTurretApp.openapi(getDashboard, async (c) => {
-	const env = c.env as unknown as { TURRET_DB: D1Database; CORE_DB: D1Database };
+	const env = c.env as unknown as {
+		TURRET_DB: D1Database;
+		CORE_DB: D1Database;
+	};
 	const { to: toRaw } = c.req.valid("query");
 	const to = toRaw ? Number(toRaw) : Date.now();
 	const nowMs = Number.isFinite(to) ? to : Date.now();
 	const currentWeekStart = startOfUtcWeekMs(nowMs);
 
-	const totalUsersNowRow = (await env.CORE_DB.prepare("SELECT COUNT(*) AS c FROM auth_user").first()) as
-		| { c?: unknown }
-		| null;
+	const totalUsersNowRow = (await env.CORE_DB.prepare(
+		"SELECT COUNT(*) AS c FROM auth_user"
+	).first()) as { c?: unknown } | null;
 	const totalUsersNow = Number(totalUsersNowRow?.c ?? 0);
 
 	const newUsers24hRow = (await env.CORE_DB.prepare(
@@ -449,35 +483,47 @@ internalTurretApp.openapi(getDashboard, async (c) => {
 
 	const activeFrom = nowMs - DAY_MS;
 	const prevFrom = nowMs - 2 * DAY_MS;
-	const activeUsersStmt = "SELECT COUNT(DISTINCT user_id) AS c FROM turret_sessions WHERE started_at >= ? AND started_at < ?";
+	const activeUsersStmt =
+		"SELECT COUNT(DISTINCT user_id) AS c FROM turret_sessions WHERE started_at >= ? AND started_at < ?";
 	const [activeRes, prevActiveRes] = await env.TURRET_DB.batch([
 		env.TURRET_DB.prepare(activeUsersStmt).bind(activeFrom, nowMs),
 		env.TURRET_DB.prepare(activeUsersStmt).bind(prevFrom, activeFrom),
 	]);
 	const activeUsers24h = Number((activeRes.results?.[0] as any)?.c ?? 0);
-	const activeUsersPrev24h = Number((prevActiveRes.results?.[0] as any)?.c ?? 0);
+	const activeUsersPrev24h = Number(
+		(prevActiveRes.results?.[0] as any)?.c ?? 0
+	);
 	const activeUsersDeltaPct = pctDelta(activeUsers24h, activeUsersPrev24h);
 
 	// 8 completed weeks ending at currentWeekStart (start of this week).
 	const weekEnds: number[] = [];
 	for (let i = 8; i >= 0; i--) weekEnds.push(currentWeekStart - i * WEEK_MS);
-	const totalsBeforeEndStmt = "SELECT COUNT(*) AS c FROM auth_user WHERE created_at < ?";
+	const totalsBeforeEndStmt =
+		"SELECT COUNT(*) AS c FROM auth_user WHERE created_at < ?";
 	const totalsBeforeResults = await env.CORE_DB.batch(
-		weekEnds.map((end) => env.CORE_DB.prepare(totalsBeforeEndStmt).bind(end))
+		weekEnds.map((end) =>
+			env.CORE_DB.prepare(totalsBeforeEndStmt).bind(end)
+		)
 	);
-	const totalsBefore = totalsBeforeResults.map((r: any) => Number((r.results?.[0] as any)?.c ?? 0));
+	const totalsBefore = totalsBeforeResults.map((r: any) =>
+		Number((r.results?.[0] as any)?.c ?? 0)
+	);
 	const totalUsersPrevWeek = totalsBefore[totalsBefore.length - 1] ?? 0;
 	const totalUsersDeltaPct = pctDelta(totalUsersNow, totalUsersPrevWeek);
 
-	const seriesTotalUsersWeekly = totalsBefore.slice(1).map((value: number, idx: number) => {
-		const end = weekEnds[idx + 1];
-		return { weekStartMs: end - WEEK_MS, value };
-	});
-	const seriesNewUsersWeekly = totalsBefore.slice(1).map((_: number, idx: number) => {
-		const end = weekEnds[idx + 1];
-		const value = totalsBefore[idx + 1] - totalsBefore[idx];
-		return { weekStartMs: end - WEEK_MS, value };
-	});
+	const seriesTotalUsersWeekly = totalsBefore
+		.slice(1)
+		.map((value: number, idx: number) => {
+			const end = weekEnds[idx + 1];
+			return { weekStartMs: end - WEEK_MS, value };
+		});
+	const seriesNewUsersWeekly = totalsBefore
+		.slice(1)
+		.map((_: number, idx: number) => {
+			const end = weekEnds[idx + 1];
+			const value = totalsBefore[idx + 1] - totalsBefore[idx];
+			return { weekStartMs: end - WEEK_MS, value };
+		});
 	const newUsersDeltaPctWoW = pctDelta(
 		seriesNewUsersWeekly[seriesNewUsersWeekly.length - 1]?.value ?? 0,
 		seriesNewUsersWeekly[seriesNewUsersWeekly.length - 2]?.value ?? 0
@@ -486,7 +532,8 @@ internalTurretApp.openapi(getDashboard, async (c) => {
 	// New-user retention: signups in week W who are active in week W+1.
 	// We expose 8 stable cohort weeks: (currentWeekStart - 9w) .. (currentWeekStart - 2w)
 	const cohortStarts: number[] = [];
-	for (let i = 9; i >= 2; i--) cohortStarts.push(currentWeekStart - i * WEEK_MS);
+	for (let i = 9; i >= 2; i--)
+		cohortStarts.push(currentWeekStart - i * WEEK_MS);
 
 	const cohortCounts = await env.CORE_DB.batch(
 		cohortStarts.map((start) =>
@@ -495,7 +542,9 @@ internalTurretApp.openapi(getDashboard, async (c) => {
 			).bind(start, start + WEEK_MS)
 		)
 	);
-	const cohortSizes = cohortCounts.map((r: any) => Number((r.results?.[0] as any)?.c ?? 0));
+	const cohortSizes = cohortCounts.map((r: any) =>
+		Number((r.results?.[0] as any)?.c ?? 0)
+	);
 
 	const retainedCounts = await env.TURRET_DB.batch(
 		cohortStarts.map((start) =>
@@ -504,7 +553,9 @@ internalTurretApp.openapi(getDashboard, async (c) => {
 			).bind(start + WEEK_MS, start)
 		)
 	);
-	const retained = retainedCounts.map((r: any) => Number((r.results?.[0] as any)?.c ?? 0));
+	const retained = retainedCounts.map((r: any) =>
+		Number((r.results?.[0] as any)?.c ?? 0)
+	);
 
 	const seriesNewUserRetentionWeeklyPct = cohortStarts.map((start, idx) => {
 		const denom = cohortSizes[idx] ?? 0;
@@ -512,10 +563,18 @@ internalTurretApp.openapi(getDashboard, async (c) => {
 		const value = denom === 0 ? null : (num / denom) * 100;
 		return { weekStartMs: start, value };
 	});
-	const lastRetention = seriesNewUserRetentionWeeklyPct[seriesNewUserRetentionWeeklyPct.length - 1]?.value;
-	const prevRetention = seriesNewUserRetentionWeeklyPct[seriesNewUserRetentionWeeklyPct.length - 2]?.value;
+	const lastRetention =
+		seriesNewUserRetentionWeeklyPct[
+			seriesNewUserRetentionWeeklyPct.length - 1
+		]?.value;
+	const prevRetention =
+		seriesNewUserRetentionWeeklyPct[
+			seriesNewUserRetentionWeeklyPct.length - 2
+		]?.value;
 	const retentionDeltaPctWoW =
-		lastRetention == null || prevRetention == null ? null : pctDelta(lastRetention, prevRetention);
+		lastRetention == null || prevRetention == null
+			? null
+			: pctDelta(lastRetention, prevRetention);
 
 	return c.json(
 		{
@@ -540,7 +599,8 @@ internalTurretApp.openapi(getSessionMeta, async (c) => {
 	const { id: sessionId } = c.req.valid("param");
 	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
 	const row = await db.query.turretSessions.findFirst({
-		where: ((t: any, ops: any) => ops.eq(t.sessionId, sessionId)) as unknown as never,
+		where: ((t: any, ops: any) =>
+			ops.eq(t.sessionId, sessionId)) as unknown as never,
 	});
 	if (!row) return c.json({ error: "Not Found" }, 404);
 	return c.json({ session: row }, 200);
@@ -550,7 +610,8 @@ internalTurretApp.openapi(getChunks, async (c) => {
 	const { id: sessionId } = c.req.valid("param");
 	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
 	const rows = await db.query.turretSessionChunks.findMany({
-		where: ((t: any, ops: any) => ops.eq(t.sessionId, sessionId)) as unknown as never,
+		where: ((t: any, ops: any) =>
+			ops.eq(t.sessionId, sessionId)) as unknown as never,
 	});
 	return c.json({ chunks: rows }, 200);
 });
@@ -559,8 +620,9 @@ internalTurretApp.openapi(getSessionErrors, async (c) => {
 	const { id: sessionId } = c.req.valid("param");
 	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
 	const rows = await db.query.turretSessionErrors.findMany({
-		where: ((t: any, ops: any) => ops.eq(t.sessionId, sessionId)) as unknown as never,
-		orderBy: (((t: any, ops: any) => [ops.asc(t.ts)]) as unknown as never),
+		where: ((t: any, ops: any) =>
+			ops.eq(t.sessionId, sessionId)) as unknown as never,
+		orderBy: ((t: any, ops: any) => [ops.asc(t.ts)]) as unknown as never,
 	});
 	return c.json({ errors: rows }, 200);
 });
@@ -572,8 +634,9 @@ internalTurretApp.openapi(getSessionBreadcrumbs, async (c) => {
 	const offset = Number(offsetRaw ?? "0");
 	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
 	const rows = await db.query.turretRequestBreadcrumbs.findMany({
-		where: ((t: any, ops: any) => ops.eq(t.sessionId, sessionId)) as unknown as never,
-		orderBy: (((t: any, ops: any) => [ops.asc(t.ts)]) as unknown as never),
+		where: ((t: any, ops: any) =>
+			ops.eq(t.sessionId, sessionId)) as unknown as never,
+		orderBy: ((t: any, ops: any) => [ops.asc(t.ts)]) as unknown as never,
 		limit,
 		offset,
 	});
@@ -584,8 +647,11 @@ internalTurretApp.openapi(getRequestSpans, async (c) => {
 	const { requestId } = c.req.valid("param");
 	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
 	const rows = await db.query.turretRequestSpans.findMany({
-		where: ((t: any, ops: any) => ops.eq(t.requestId, requestId)) as unknown as never,
-		orderBy: (((t: any, ops: any) => [ops.asc(t.createdAt)]) as unknown as never),
+		where: ((t: any, ops: any) =>
+			ops.eq(t.requestId, requestId)) as unknown as never,
+		orderBy: ((t: any, ops: any) => [
+			ops.asc(t.createdAt),
+		]) as unknown as never,
 	});
 	return c.json({ spans: rows }, 200);
 });
@@ -597,14 +663,20 @@ internalTurretApp.openapi(getChunk, (async (c: unknown) => {
 	const db = makeTurretDb((ctx.env as { TURRET_DB: D1Database }).TURRET_DB);
 
 	const chunk = await db.query.turretSessionChunks.findFirst({
-		where: ((t: any, ops: any) => ops.and(ops.eq(t.sessionId, sessionId), ops.eq(t.seq, seq))) as unknown as never,
+		where: ((t: any, ops: any) =>
+			ops.and(
+				ops.eq(t.sessionId, sessionId),
+				ops.eq(t.seq, seq)
+			)) as unknown as never,
 	});
 	if (!chunk) return ctx.json({ error: "Not Found" }, 404);
 
 	const obj = await (
 		ctx.env as {
 			TURRET_REPLAY_BUCKET: {
-				get(key: string): Promise<{ body: ReadableStream<Uint8Array> } | null>;
+				get(
+					key: string
+				): Promise<{ body: ReadableStream<Uint8Array> } | null>;
 			};
 		}
 	).TURRET_REPLAY_BUCKET.get((chunk as unknown as { r2Key: string }).r2Key);
@@ -618,7 +690,6 @@ internalTurretApp.openapi(getChunk, (async (c: unknown) => {
 		},
 	});
 }) as unknown as never);
-
 
 export { internalTurretApp };
 export const routes = internalTurretApp;

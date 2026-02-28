@@ -15,7 +15,7 @@ const Route = createFileRoute("/_public/reset-password")({
 	validateSearch: (search: Record<string, unknown>) => {
 		return {
 			token: typeof search.token === "string" ? search.token : undefined,
-		}
+		};
 	},
 	component: ResetPasswordPage,
 });
@@ -45,14 +45,17 @@ function ResetPasswordPage() {
 				window.location.origin
 			).toString();
 
-			const { error: requestError } = await authClient.requestPasswordReset({
-				email,
-				redirectTo,
-			})
+			const { error: requestError } =
+				await authClient.requestPasswordReset({
+					email,
+					redirectTo,
+				});
 
 			if (requestError) {
-				setError(requestError.message ?? "Could not request password reset");
-				return
+				setError(
+					requestError.message ?? "Could not request password reset"
+				);
+				return;
 			}
 
 			setRequestSent(true);
@@ -67,17 +70,17 @@ function ResetPasswordPage() {
 
 		if (!token) {
 			setError("Missing token. Please use the link from your email.");
-			return
+			return;
 		}
 
 		if (password.length < 8) {
 			setError("Password must be at least 8 characters.");
-			return
+			return;
 		}
 
 		if (password !== confirm) {
 			setError("Passwords do not match.");
-			return
+			return;
 		}
 
 		setIsSubmitting(true);
@@ -85,11 +88,11 @@ function ResetPasswordPage() {
 			const { error: resetError } = await authClient.resetPassword({
 				newPassword: password,
 				token,
-			})
+			});
 
 			if (resetError) {
 				setError(resetError.message ?? "Could not reset password");
-				return
+				return;
 			}
 
 			navigate({ to: "/login", search: {} });
@@ -113,9 +116,14 @@ function ResetPasswordPage() {
 				</div>
 
 				{isResettingPassword ? (
-					<form className="space-y-4" onSubmit={handleSubmitNewPassword}>
+					<form
+						className="space-y-4"
+						onSubmit={handleSubmitNewPassword}
+					>
 						<Field>
-							<FieldLabel htmlFor="password">New password</FieldLabel>
+							<FieldLabel htmlFor="password">
+								New password
+							</FieldLabel>
 							<Input
 								id="password"
 								type="password"
@@ -127,7 +135,9 @@ function ResetPasswordPage() {
 						</Field>
 
 						<Field>
-							<FieldLabel htmlFor="confirm">Confirm password</FieldLabel>
+							<FieldLabel htmlFor="confirm">
+								Confirm password
+							</FieldLabel>
 							<Input
 								id="confirm"
 								type="password"
@@ -164,8 +174,8 @@ function ResetPasswordPage() {
 
 						{requestSent ? (
 							<FieldDescription className="text-center">
-								If an account exists for that email, you will receive a reset
-								link shortly.
+								If an account exists for that email, you will
+								receive a reset link shortly.
 							</FieldDescription>
 						) : null}
 
@@ -182,7 +192,7 @@ function ResetPasswordPage() {
 				)}
 			</FieldGroup>
 		</section>
-	)
+	);
 }
 
 export { Route };

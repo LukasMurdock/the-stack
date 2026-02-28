@@ -1,35 +1,42 @@
-# Feature flags
+# Feature Flags (Operational)
 
-```ts
-if (condition) {
-	newBehavior();
-} else {
-	oldBehavior();
-}
-```
+Use flags to reduce blast radius during deploys and incident response.
 
-## Emulate staging
+## Principles
 
-Add a second domain that points to the production app, e.g., `staging.app.example.com` and in the code use a feature flag called STAGING that is enabled depending on the domain from which the app is running in.
+- Prefer additive rollout: ship code behind a flag first.
+- Keep an emergency kill switch for risky write paths.
+- Define owner and removal date for every flag.
 
-## Early access program
+## Flag Classes
 
-A checkbox in the users profile and a feature flag in the code that relies on this checkbox. Can make it public so users can enable it themselves or keep it private so only our team can control it.
+### Release flags
 
-## Experimental features
+- Purpose: gradual rollout of new product behavior.
+- Backing store: KV is acceptable when eventual consistency is okay.
 
-`chrome://flags/`
+### Ops kill switches
 
-Allow users to select the features they want to enable. When the developers think a new feature is already stable enough, they can turn it on by default. And even after that there could remain a checkbox for turning it off.
+- Purpose: stop harmful writes quickly during incidents.
+- Backing store: use strongly consistent controls where possible.
+- Example: disable queue fan-out or expensive mutation paths.
 
-## Release flags
+### Access flags
 
-Instead of pushing a code update that turns the feature on and off, we do it with a release flag somewhere in the internal admin interface.
+- Purpose: early-access/beta cohorts.
+- Scope: per-user or per-tenant.
 
-## Canary deployments
+## Rollout Checklist
 
-Watch production metrics as you ramp rollout percentage to users. If you see worrying anomalies roll back and investigate.
+1. Ship code path with old and new behavior.
+2. Enable for internal users first.
+3. Watch error rate, latency, and support signals.
+4. Ramp traffic gradually.
+5. Remove old path after stability window.
 
-## Dark launch
+## Incident Checklist
 
-Send a copy of all traffic requests to the new service version. Responses from the new service are ignored but allows you to test performance metrics.
+1. Flip kill switch to stop impact.
+2. Verify stabilization via health checks and logs.
+3. Roll back compute if needed.
+4. Restore traffic only after root cause is understood.

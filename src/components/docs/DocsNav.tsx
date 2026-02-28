@@ -19,13 +19,15 @@ function isActive(pathname: string, href: string) {
 export function DocsNav({ pathname }: DocsNavProps) {
 	const linkClass = React.useCallback(
 		(href: string) =>
-			isActive(pathname, href) ? "bg-accent text-accent-foreground" : undefined,
-		[pathname],
+			isActive(pathname, href)
+				? "bg-accent text-accent-foreground"
+				: undefined,
+		[pathname]
 	);
 
 	const ariaCurrent = React.useCallback(
 		(href: string) => (isActive(pathname, href) ? "page" : undefined),
-		[pathname],
+		[pathname]
 	);
 
 	return (

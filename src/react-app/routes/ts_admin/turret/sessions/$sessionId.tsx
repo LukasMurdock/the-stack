@@ -24,6 +24,7 @@ import {
 	turretSessionBreadcrumbsQueryOptions,
 	turretSessionChunksQueryOptions,
 	turretSessionErrorsQueryOptions,
+	turretSessionFeedbackQueryOptions,
 	turretSessionMetaQueryOptions,
 } from "../../../../queries/turretQueries";
 
@@ -46,7 +47,8 @@ function parseJsonObject(input: string | null): Record<string, unknown> | null {
 	}
 }
 
-const CLOUDFLARE_TRACES_URL = "https://dash.cloudflare.com/?to=/:account/workers-and-pages/observability/traces";
+const CLOUDFLARE_TRACES_URL =
+	"https://dash.cloudflare.com/?to=/:account/workers-and-pages/observability/traces";
 
 const Route = createFileRoute("/ts_admin/turret/sessions/$sessionId")({
 	beforeLoad: requireTurretAdmin,
@@ -59,7 +61,9 @@ function RequestBreadcrumbRow(props: {
 	replayReady: boolean;
 	playerRef: React.RefObject<RrwebPlayerInstance | null>;
 }) {
-	const spansQuery = useQuery(turretRequestSpansQueryOptions(props.breadcrumb.requestId));
+	const spansQuery = useQuery(
+		turretRequestSpansQueryOptions(props.breadcrumb.requestId)
+	);
 	const b = props.breadcrumb;
 	const traceUrl = CLOUDFLARE_TRACES_URL;
 
@@ -71,7 +75,8 @@ function RequestBreadcrumbRow(props: {
 						{b.method} {b.path}
 					</div>
 					<div className="mt-1 text-xs text-muted-foreground">
-						{b.status} · {b.durationMs}ms · d1 {b.d1QueriesCount}q/{b.d1QueriesTimeMs}ms
+						{b.status} · {b.durationMs}ms · d1 {b.d1QueriesCount}q/
+						{b.d1QueriesTimeMs}ms
 					</div>
 					<div className="mt-1 text-xs text-muted-foreground">
 						{new Date(props.ts).toLocaleString()} · {b.requestId}
@@ -90,7 +95,9 @@ function RequestBreadcrumbRow(props: {
 								className="rounded-md border px-2.5 py-1 text-xs"
 								onClick={() => {
 									try {
-										void navigator.clipboard.writeText(b.rayId ?? "");
+										void navigator.clipboard.writeText(
+											b.rayId ?? ""
+										);
 									} catch {
 										// ignore
 									}
@@ -110,17 +117,29 @@ function RequestBreadcrumbRow(props: {
 						</>
 					) : null}
 					<details className="text-xs">
-						<summary className="cursor-pointer select-none text-muted-foreground">D1 spans</summary>
+						<summary className="cursor-pointer select-none text-muted-foreground">
+							D1 spans
+						</summary>
 						{spansQuery.isLoading ? (
-							<div className="mt-2 text-muted-foreground">Loading…</div>
+							<div className="mt-2 text-muted-foreground">
+								Loading…
+							</div>
 						) : spansQuery.isError ? (
-							<div className="mt-2 text-destructive">Failed to load spans</div>
-						) : !spansQuery.data || spansQuery.data.spans.length === 0 ? (
-							<div className="mt-2 text-muted-foreground">No spans</div>
+							<div className="mt-2 text-destructive">
+								Failed to load spans
+							</div>
+						) : !spansQuery.data ||
+						  spansQuery.data.spans.length === 0 ? (
+							<div className="mt-2 text-muted-foreground">
+								No spans
+							</div>
 						) : (
 							<div className="mt-2 space-y-2">
 								{spansQuery.data.spans.map((s) => (
-									<div key={s.id} className="rounded-md border bg-background p-2">
+									<div
+										key={s.id}
+										className="rounded-md border bg-background p-2"
+									>
 										<div className="text-xs">
 											{s.kind} · {s.db} · {s.durationMs}ms
 										</div>
@@ -145,12 +164,19 @@ function RequestBreadcrumbRow(props: {
 						disabled={!props.replayReady}
 						onClick={() => {
 							const player = props.playerRef.current;
-							if (!player) return
+							if (!player) return;
 							const meta = player.getMetaData?.();
-							if (!meta || typeof meta.startTime !== "number") return;
+							if (!meta || typeof meta.startTime !== "number")
+								return;
 							const startTime = meta.startTime;
-							const totalTime = typeof meta.totalTime === "number" ? meta.totalTime : Infinity;
-							const offset = Math.max(0, Math.min(totalTime, props.ts - startTime));
+							const totalTime =
+								typeof meta.totalTime === "number"
+									? meta.totalTime
+									: Infinity;
+							const offset = Math.max(
+								0,
+								Math.min(totalTime, props.ts - startTime)
+							);
 							player.goto(offset, false);
 						}}
 					>
@@ -159,7 +185,7 @@ function RequestBreadcrumbRow(props: {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }
 
 function TurretSessionPage() {
@@ -168,6 +194,9 @@ function TurretSessionPage() {
 	const metaQuery = useQuery(turretSessionMetaQueryOptions(sessionId));
 	const chunksQuery = useQuery(turretSessionChunksQueryOptions(sessionId));
 	const errorsQuery = useQuery(turretSessionErrorsQueryOptions(sessionId));
+	const feedbackQuery = useQuery(
+		turretSessionFeedbackQueryOptions(sessionId, { limit: 50, offset: 0 })
+	);
 	const [breadcrumbsOffset, setBreadcrumbsOffset] = useState(0);
 	const breadcrumbsLimit = 200;
 	const breadcrumbsQuery = useQuery(
@@ -175,7 +204,7 @@ function TurretSessionPage() {
 			limit: breadcrumbsLimit,
 			offset: breadcrumbsOffset,
 		})
-	)
+	);
 
 	const playerHostRef = useRef<HTMLDivElement | null>(null);
 	const playerRef = useRef<RrwebPlayerInstance | null>(null);
@@ -207,7 +236,7 @@ function TurretSessionPage() {
 		level: string;
 		payload: unknown[];
 		trace: string[];
-	}
+	};
 
 	const consoleItems = useMemo(() => {
 		if (replayLibStatus.state !== "ready") return [];
@@ -218,7 +247,10 @@ function TurretSessionPage() {
 
 			// Prefer the plugin event format so we don't depend on rrweb enums.
 			// When rrweb is blocked (ad blockers), this file should still load.
-			if (anyEv.data?.plugin === "rrweb/console@1" && anyEv.data?.payload) {
+			if (
+				anyEv.data?.plugin === "rrweb/console@1" &&
+				anyEv.data?.payload
+			) {
 				logData = anyEv.data.payload;
 			}
 
@@ -228,23 +260,25 @@ function TurretSessionPage() {
 
 			const payload = Array.isArray(logData.payload)
 				? logData.payload.map((s: unknown) => {
-					if (typeof s === "string") {
-						try {
-							return JSON.parse(s)
-						} catch {
-							return s
+						if (typeof s === "string") {
+							try {
+								return JSON.parse(s);
+							} catch {
+								return s;
+							}
 						}
-					}
-					return s
-				})
-				: []
+						return s;
+					})
+				: [];
 
 			items.push({
 				timestamp: ts,
 				level: String(logData.level ?? "log"),
 				payload,
-				trace: Array.isArray(logData.trace) ? logData.trace.map(String) : [],
-			})
+				trace: Array.isArray(logData.trace)
+					? logData.trace.map(String)
+					: [],
+			});
 		}
 
 		items.sort((a, b) => a.timestamp - b.timestamp);
@@ -267,7 +301,7 @@ function TurretSessionPage() {
 				playerRef.current = null;
 				playerHostRef.current.innerHTML = "";
 				setReplayEvents([]);
-				return
+				return;
 			}
 
 			// Load rrweb libraries lazily so the route can still render if a content
@@ -304,7 +338,7 @@ function TurretSessionPage() {
 				state: "loading",
 				loaded: 0,
 				total: sortedSeqs.length,
-			})
+			});
 
 			const events: eventWithTime[] = [];
 			for (let i = 0; i < sortedSeqs.length; i++) {
@@ -314,15 +348,17 @@ function TurretSessionPage() {
 				try {
 					payload = await getSessionChunk(sessionId, seq, {
 						signal: controller.signal,
-					})
+					});
 				} catch (err) {
 					if (!active || controller.signal.aborted) return;
 					setReplayStatus({
 						state: "error",
 						message:
-							err instanceof Error ? err.message : "Failed to load replay chunk",
-					})
-					return
+							err instanceof Error
+								? err.message
+								: "Failed to load replay chunk",
+					});
+					return;
 				}
 
 				if (!active || controller.signal.aborted) return;
@@ -335,7 +371,7 @@ function TurretSessionPage() {
 					state: "loading",
 					loaded: i + 1,
 					total: sortedSeqs.length,
-				})
+				});
 			}
 
 			if (!active || controller.signal.aborted) return;
@@ -353,7 +389,7 @@ function TurretSessionPage() {
 					autoPlay: false,
 					showController: true,
 				},
-			})
+			});
 
 			setReplayStatus({ state: "ready", totalEvents: events.length });
 		}
@@ -365,14 +401,16 @@ function TurretSessionPage() {
 			controller.abort();
 			(playerRef.current as any)?.$destroy?.();
 			playerRef.current = null;
-		}
+		};
 	}, [sessionId, sortedSeqs]);
 
 	return (
 		<section className="space-y-4">
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div className="space-y-1">
-					<h1 className="text-2xl font-semibold tracking-tight">Session</h1>
+					<h1 className="text-2xl font-semibold tracking-tight">
+						Session
+					</h1>
 					<p className="text-sm text-muted-foreground">{sessionId}</p>
 				</div>
 				<div className="flex items-center gap-2">
@@ -382,7 +420,16 @@ function TurretSessionPage() {
 						onClick={() =>
 							navigate({
 								to: "/ts_admin/turret/sessions",
-								search: { q: "", hasError: false, groupBy: "none", preset: "1h", from: undefined, to: undefined, offset: 0, limit: 50 },
+								search: {
+									q: "",
+									hasError: false,
+									groupBy: "none",
+									preset: "1h",
+									from: undefined,
+									to: undefined,
+									offset: 0,
+									limit: 50,
+								},
 							})
 						}
 					>
@@ -394,7 +441,15 @@ function TurretSessionPage() {
 						onClick={() =>
 							navigate({
 								to: "/ts_admin/turret/issues",
-								search: { status: "open", preset: "24h", q: "", from: undefined, to: undefined, offset: 0, limit: 50 },
+								search: {
+									status: "open",
+									preset: "24h",
+									q: "",
+									from: undefined,
+									to: undefined,
+									offset: 0,
+									limit: 50,
+								},
 							})
 						}
 					>
@@ -408,13 +463,15 @@ function TurretSessionPage() {
 					<CardTitle>Replay</CardTitle>
 				</CardHeader>
 				<CardContent>
-					{replayStatus.state === "idle" && sortedSeqs.length === 0 ? (
+					{replayStatus.state === "idle" &&
+					sortedSeqs.length === 0 ? (
 						<>
 							<Empty>
 								<EmptyHeader>
 									<EmptyTitle>No replay data yet</EmptyTitle>
 									<EmptyDescription>
-										This session has no chunks indexed in Turret.
+										This session has no chunks indexed in
+										Turret.
 									</EmptyDescription>
 								</EmptyHeader>
 								<EmptyContent />
@@ -423,19 +480,21 @@ function TurretSessionPage() {
 						</>
 					) : (
 						<div className="space-y-2">
-						{replayStatus.state === "error" ? (
-							<div className="text-sm text-destructive">
-								Failed to load replay: {replayStatus.message}
-							</div>
-						) : replayLibStatus.state === "blocked" ? (
-							<div className="text-sm text-muted-foreground">
-								Replay is blocked by a browser extension.
-							</div>
-						) : replayStatus.state === "loading" ? (
-							<div className="text-sm text-muted-foreground">
-								Loading replay… {replayStatus.loaded}/{replayStatus.total}
-							</div>
-						) : replayStatus.state === "ready" ? (
+							{replayStatus.state === "error" ? (
+								<div className="text-sm text-destructive">
+									Failed to load replay:{" "}
+									{replayStatus.message}
+								</div>
+							) : replayLibStatus.state === "blocked" ? (
+								<div className="text-sm text-muted-foreground">
+									Replay is blocked by a browser extension.
+								</div>
+							) : replayStatus.state === "loading" ? (
+								<div className="text-sm text-muted-foreground">
+									Loading replay… {replayStatus.loaded}/
+									{replayStatus.total}
+								</div>
+							) : replayStatus.state === "ready" ? (
 								<div className="text-xs text-muted-foreground">
 									Loaded {replayStatus.totalEvents} events
 								</div>
@@ -453,6 +512,7 @@ function TurretSessionPage() {
 				<TabsList>
 					<TabsTrigger value="meta">Metadata</TabsTrigger>
 					<TabsTrigger value="errors">Errors</TabsTrigger>
+					<TabsTrigger value="feedback">Feedback</TabsTrigger>
 					<TabsTrigger value="console">Console</TabsTrigger>
 					<TabsTrigger value="issues">Issues</TabsTrigger>
 					<TabsTrigger value="perf">Performance</TabsTrigger>
@@ -465,43 +525,72 @@ function TurretSessionPage() {
 						</CardHeader>
 						<CardContent className="space-y-2 text-sm">
 							{metaQuery.isLoading ? (
-								<div className="text-muted-foreground">Loading…</div>
+								<div className="text-muted-foreground">
+									Loading…
+								</div>
 							) : metaQuery.isError ? (
-								<div className="text-destructive">Failed to load metadata</div>
+								<div className="text-destructive">
+									Failed to load metadata
+								</div>
 							) : !metaQuery.data ? (
-								<div className="text-muted-foreground">No data</div>
+								<div className="text-muted-foreground">
+									No data
+								</div>
 							) : (
 								<>
 									<div>
-										<span className="text-muted-foreground">Started:</span>{" "}
-										{new Date(metaQuery.data.session.startedAt).toLocaleString()}
+										<span className="text-muted-foreground">
+											Started:
+										</span>{" "}
+										{new Date(
+											metaQuery.data.session.startedAt
+										).toLocaleString()}
 									</div>
 									<div>
-										<span className="text-muted-foreground">URL:</span>{" "}
-										{metaQuery.data.session.lastUrl ?? metaQuery.data.session.initialUrl ?? "-"}
+										<span className="text-muted-foreground">
+											URL:
+										</span>{" "}
+										{metaQuery.data.session.lastUrl ??
+											metaQuery.data.session.initialUrl ??
+											"-"}
 									</div>
 									<div className="flex flex-wrap items-center gap-2">
 										<div>
-											<span className="text-muted-foreground">Journey:</span>{" "}
-											{metaQuery.data.session.journeyId ?? "-"}
+											<span className="text-muted-foreground">
+												Journey:
+											</span>{" "}
+											{metaQuery.data.session.journeyId ??
+												"-"}
 										</div>
 									</div>
 									<div>
-										<span className="text-muted-foreground">Chunks:</span>{" "}
+										<span className="text-muted-foreground">
+											Chunks:
+										</span>{" "}
 										{metaQuery.data.session.chunkCount}
 									</div>
 									<div>
-										<span className="text-muted-foreground">Errors:</span>{" "}
-										{metaQuery.data.session.hasError ? "yes" : "no"}
+										<span className="text-muted-foreground">
+											Errors:
+										</span>{" "}
+										{metaQuery.data.session.hasError
+											? "yes"
+											: "no"}
 									</div>
 									<div>
-										<span className="text-muted-foreground">Location:</span>{" "}
-										{[metaQuery.data.session.country, metaQuery.data.session.colo]
+										<span className="text-muted-foreground">
+											Location:
+										</span>{" "}
+										{[
+											metaQuery.data.session.country,
+											metaQuery.data.session.colo,
+										]
 											.filter(Boolean)
 											.join(" /") || "-"}
 									</div>
 									<div className="pt-2 text-muted-foreground">
-										Chunk index loaded: {chunksQuery.data?.chunks.length ?? 0}
+										Chunk index loaded:{" "}
+										{chunksQuery.data?.chunks.length ?? 0}
 									</div>
 								</>
 							)}
@@ -516,100 +605,274 @@ function TurretSessionPage() {
 						</CardHeader>
 						<CardContent className="space-y-2">
 							{errorsQuery.isLoading ? (
-								<div className="text-sm text-muted-foreground">Loading…</div>
+								<div className="text-sm text-muted-foreground">
+									Loading…
+								</div>
 							) : errorsQuery.isError ? (
-								<div className="text-sm text-destructive">Failed to load errors</div>
-							) : !errorsQuery.data || errorsQuery.data.errors.length === 0 ? (
-								<div className="text-sm text-muted-foreground">No errors for this session.</div>
+								<div className="text-sm text-destructive">
+									Failed to load errors
+								</div>
+							) : !errorsQuery.data ||
+							  errorsQuery.data.errors.length === 0 ? (
+								<div className="text-sm text-muted-foreground">
+									No errors for this session.
+								</div>
 							) : (
 								<div className="space-y-2">
 									{errorsQuery.data.errors.map((e) => {
 										const ts = new Date(e.ts).getTime();
 										const expiresLabel = e.expiresAt
-											? new Date(e.expiresAt).toLocaleString()
-											: "legacy (no ttl)"
-										const extra = parseJsonObject(e.extraJson);
-										const rayId = typeof extra?.ray_id === "string" ? extra.ray_id : null;
+											? new Date(
+													e.expiresAt
+												).toLocaleString()
+											: "legacy (no ttl)";
+										const extra = parseJsonObject(
+											e.extraJson
+										);
+										const rayId =
+											typeof extra?.ray_id === "string"
+												? extra.ray_id
+												: null;
 										return (
 											<div
 												key={e.id}
 												className="rounded-md border bg-card p-3"
 											>
-										<div className="flex flex-wrap items-start justify-between gap-3">
-											<div className="min-w-0">
-												<div className="text-sm font-medium">
-													{e.message ?? "Error"}
+												<div className="flex flex-wrap items-start justify-between gap-3">
+													<div className="min-w-0">
+														<div className="text-sm font-medium">
+															{e.message ??
+																"Error"}
+														</div>
+														<div className="mt-1 text-xs text-muted-foreground">
+															{e.source} ·{" "}
+															{new Date(
+																ts
+															).toLocaleString()}
+														</div>
+														<div className="mt-1 text-xs text-muted-foreground">
+															Expires:{" "}
+															{expiresLabel}
+															{e.fingerprint
+																? ` · fp ${e.fingerprint}`
+																: ""}
+														</div>
+														{rayId ? (
+															<div className="mt-1 text-xs text-muted-foreground">
+																ray {rayId}
+															</div>
+														) : null}
+													</div>
+													<div className="flex items-center gap-2">
+														{rayId ? (
+															<>
+																<button
+																	type="button"
+																	className="rounded-md border px-2.5 py-1 text-xs"
+																	onClick={() => {
+																		try {
+																			void navigator.clipboard.writeText(
+																				rayId
+																			);
+																		} catch {
+																			// ignore
+																		}
+																	}}
+																>
+																	Copy ray
+																</button>
+																<a
+																	href={
+																		CLOUDFLARE_TRACES_URL
+																	}
+																	target="_blank"
+																	rel="noreferrer"
+																	className="rounded-md border px-2.5 py-1 text-xs"
+																	title="Open Cloudflare Traces (search by ray id)"
+																>
+																	Trace
+																</a>
+															</>
+														) : null}
+														<details className="text-xs">
+															<summary className="cursor-pointer select-none text-muted-foreground">
+																Stack
+															</summary>
+															{e.stack ? (
+																<pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-2 text-[11px] leading-snug">
+																	{e.stack}
+																</pre>
+															) : (
+																<div className="mt-2 text-muted-foreground">
+																	No stack
+																</div>
+															)}
+														</details>
+														<button
+															type="button"
+															className="rounded-md border px-2.5 py-1 text-xs"
+															disabled={
+																replayStatus.state !==
+																"ready"
+															}
+															onClick={() => {
+																const player =
+																	playerRef.current;
+																if (!player)
+																	return;
+																const meta =
+																	player.getMetaData?.();
+																if (
+																	!meta ||
+																	typeof meta.startTime !==
+																		"number"
+																)
+																	return;
+																const startTime =
+																	meta.startTime;
+																const totalTime =
+																	typeof meta.totalTime ===
+																	"number"
+																		? meta.totalTime
+																		: Infinity;
+																const offset =
+																	Math.max(
+																		0,
+																		Math.min(
+																			totalTime,
+																			ts -
+																				startTime
+																		)
+																	);
+																player.goto(
+																	offset,
+																	false
+																);
+															}}
+														>
+															Jump
+														</button>
+													</div>
 												</div>
-													<div className="mt-1 text-xs text-muted-foreground">
-														{e.source} · {new Date(ts).toLocaleString()}
+											</div>
+										);
+									})}
+								</div>
+							)}
+						</CardContent>
+					</Card>
+				</TabsContent>
+
+				<TabsContent value="feedback" className="mt-4">
+					<Card>
+						<CardHeader>
+							<CardTitle>Feedback</CardTitle>
+						</CardHeader>
+						<CardContent className="space-y-2">
+							{feedbackQuery.isLoading ? (
+								<div className="text-sm text-muted-foreground">
+									Loading…
+								</div>
+							) : feedbackQuery.isError ? (
+								<div className="text-sm text-destructive">
+									Failed to load feedback
+								</div>
+							) : !feedbackQuery.data ||
+							  feedbackQuery.data.feedback.length === 0 ? (
+								<div className="text-sm text-muted-foreground">
+									No feedback for this session.
+								</div>
+							) : (
+								<div className="space-y-2">
+									{feedbackQuery.data.feedback.map((f) => (
+										<div
+											key={f.id}
+											className="rounded-md border bg-card p-3"
+										>
+											<div className="flex flex-wrap items-start justify-between gap-3">
+												<div className="min-w-0">
+													<div className="text-sm font-medium">
+														{f.message}
 													</div>
 													<div className="mt-1 text-xs text-muted-foreground">
-														Expires: {expiresLabel}
-														{e.fingerprint ? ` · fp ${e.fingerprint}` : ""}
+														{f.kind} · {f.status} ·{" "}
+														{new Date(
+															f.ts
+														).toLocaleString()}
 													</div>
-													{rayId ? (
-														<div className="mt-1 text-xs text-muted-foreground">ray {rayId}</div>
+													{f.contact ? (
+														<div className="mt-1 text-xs text-muted-foreground">
+															contact: {f.contact}
+														</div>
+													) : null}
+													{f.url ? (
+														<div
+															className="mt-1 truncate text-xs text-muted-foreground"
+															title={f.url}
+														>
+															{f.url}
+														</div>
 													) : null}
 												</div>
 												<div className="flex items-center gap-2">
-													{rayId ? (
-														<>
-															<button
-																type="button"
-																className="rounded-md border px-2.5 py-1 text-xs"
-																onClick={() => {
-																	try {
-																		void navigator.clipboard.writeText(rayId)
-																	} catch {
-																		// ignore
-																	}
-																}}
-															>
-																Copy ray
-															</button>
-															<a
-																href={CLOUDFLARE_TRACES_URL}
-																target="_blank"
-																rel="noreferrer"
-																className="rounded-md border px-2.5 py-1 text-xs"
-																title="Open Cloudflare Traces (search by ray id)"
-															>
-																Trace
-															</a>
-														</>
-													) : null}
-													<details className="text-xs">
-														<summary className="cursor-pointer select-none text-muted-foreground">Stack</summary>
-														{e.stack ? (
-															<pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-2 text-[11px] leading-snug">
-															{e.stack}
-														</pre>
-													) : (
-														<div className="mt-2 text-muted-foreground">No stack</div>
-													)}
-												</details>
-												<button
-													type="button"
-													className="rounded-md border px-2.5 py-1 text-xs"
-													disabled={replayStatus.state !== "ready"}
-													onClick={() => {
-														const player = playerRef.current
-														if (!player) return
-														const meta = player.getMetaData?.()
-														if (!meta || typeof meta.startTime !== "number") return;
-														const startTime = meta.startTime
-														const totalTime = typeof meta.totalTime === "number" ? meta.totalTime : Infinity;
-														const offset = Math.max(0, Math.min(totalTime, ts - startTime));
-														player.goto(offset, false)
-													}}
-												>
-													Jump
-												</button>
+													<button
+														type="button"
+														className="rounded-md border px-2.5 py-1 text-xs"
+														disabled={
+															replayLibStatus.state !==
+															"ready"
+														}
+														onClick={() => {
+															const player =
+																playerRef.current;
+															if (!player) return;
+															const meta =
+																player.getMetaData?.();
+															if (
+																!meta ||
+																typeof meta.startTime !==
+																	"number"
+															)
+																return;
+															const startTime =
+																meta.startTime;
+															const totalTime =
+																typeof meta.totalTime ===
+																"number"
+																	? meta.totalTime
+																	: Infinity;
+															const offset =
+																Math.max(
+																	0,
+																	Math.min(
+																		totalTime,
+																		f.ts -
+																			startTime
+																	)
+																);
+															player.goto(
+																offset,
+																false
+															);
+														}}
+													>
+														Jump
+													</button>
+													<Button
+														type="button"
+														variant="outline"
+														onClick={() =>
+															navigate({
+																to: "/ts_admin/turret/feedback",
+															})
+														}
+													>
+														All feedback
+													</Button>
+												</div>
 											</div>
 										</div>
-									</div>
-										)
-									})}
+									))}
 								</div>
 							)}
 						</CardContent>
@@ -633,27 +896,41 @@ function TurretSessionPage() {
 							) : (
 								<div className="space-y-2">
 									{consoleItems.map((item, idx) => {
-										const ts = item.timestamp
+										const ts = item.timestamp;
 										return (
-											<div key={`${ts}-${idx}`} className="rounded-md border bg-card p-3">
+											<div
+												key={`${ts}-${idx}`}
+												className="rounded-md border bg-card p-3"
+											>
 												<div className="flex flex-wrap items-start justify-between gap-3">
 													<div className="min-w-0">
 														<div className="text-sm font-medium">
 															<span className="mr-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
 																{item.level}
 															</span>
-															{item.payload.map((p) => {
-																if (typeof p === "string") return p
-																try {
-																	return JSON.stringify(p)
-																} catch {
-																	return String(p)
-																}
-															})
-															.join(" ")}
+															{item.payload
+																.map((p) => {
+																	if (
+																		typeof p ===
+																		"string"
+																	)
+																		return p;
+																	try {
+																		return JSON.stringify(
+																			p
+																		);
+																	} catch {
+																		return String(
+																			p
+																		);
+																	}
+																})
+																.join(" ")}
 														</div>
 														<div className="mt-1 text-xs text-muted-foreground">
-															{new Date(ts).toLocaleString()}
+															{new Date(
+																ts
+															).toLocaleString()}
 														</div>
 													</div>
 													<div className="flex items-center gap-2">
@@ -661,27 +938,59 @@ function TurretSessionPage() {
 															<summary className="cursor-pointer select-none text-muted-foreground">
 																Trace
 															</summary>
-															{item.trace.length > 0 ? (
+															{item.trace.length >
+															0 ? (
 																<pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-2 text-[11px] leading-snug">
-																	{item.trace.join("\n")}
+																	{item.trace.join(
+																		"\n"
+																	)}
 																</pre>
 															) : (
-																<div className="mt-2 text-muted-foreground">No trace</div>
+																<div className="mt-2 text-muted-foreground">
+																	No trace
+																</div>
 															)}
 														</details>
 														<button
 															type="button"
 															className="rounded-md border px-2.5 py-1 text-xs"
-															disabled={replayStatus.state !== "ready"}
+															disabled={
+																replayStatus.state !==
+																"ready"
+															}
 															onClick={() => {
-																const player = playerRef.current
-																if (!player) return
-																const meta = player.getMetaData?.()
-																if (!meta || typeof meta.startTime !== "number") return;
-																const startTime = meta.startTime
-																const totalTime = typeof meta.totalTime === "number" ? meta.totalTime : Infinity;
-																const offset = Math.max(0, Math.min(totalTime, ts - startTime));
-																player.goto(offset, false)
+																const player =
+																	playerRef.current;
+																if (!player)
+																	return;
+																const meta =
+																	player.getMetaData?.();
+																if (
+																	!meta ||
+																	typeof meta.startTime !==
+																		"number"
+																)
+																	return;
+																const startTime =
+																	meta.startTime;
+																const totalTime =
+																	typeof meta.totalTime ===
+																	"number"
+																		? meta.totalTime
+																		: Infinity;
+																const offset =
+																	Math.max(
+																		0,
+																		Math.min(
+																			totalTime,
+																			ts -
+																				startTime
+																		)
+																	);
+																player.goto(
+																	offset,
+																	false
+																);
 															}}
 														>
 															Jump
@@ -689,7 +998,7 @@ function TurretSessionPage() {
 													</div>
 												</div>
 											</div>
-										)
+										);
 									})}
 								</div>
 							)}
@@ -707,7 +1016,8 @@ function TurretSessionPage() {
 								<EmptyHeader>
 									<EmptyTitle>Coming next</EmptyTitle>
 									<EmptyDescription>
-										Issue grouping, fingerprints, and trend charts.
+										Issue grouping, fingerprints, and trend
+										charts.
 									</EmptyDescription>
 								</EmptyHeader>
 								<EmptyContent />
@@ -723,43 +1033,79 @@ function TurretSessionPage() {
 						</CardHeader>
 						<CardContent className="space-y-2">
 							{breadcrumbsQuery.isLoading ? (
-								<div className="text-sm text-muted-foreground">Loading…</div>
+								<div className="text-sm text-muted-foreground">
+									Loading…
+								</div>
 							) : breadcrumbsQuery.isError ? (
-								<div className="text-sm text-destructive">Failed to load breadcrumbs</div>
-							) : !breadcrumbsQuery.data || breadcrumbsQuery.data.breadcrumbs.length === 0 ? (
-								<div className="text-sm text-muted-foreground">No requests recorded for this session.</div>
+								<div className="text-sm text-destructive">
+									Failed to load breadcrumbs
+								</div>
+							) : !breadcrumbsQuery.data ||
+							  breadcrumbsQuery.data.breadcrumbs.length === 0 ? (
+								<div className="text-sm text-muted-foreground">
+									No requests recorded for this session.
+								</div>
 							) : (
 								<div className="space-y-2">
-									{breadcrumbsQuery.data.breadcrumbs.map((b) => {
-										const ts = new Date(b.ts).getTime();
-										return (
-											<RequestBreadcrumbRow
-												key={b.id}
-												breadcrumb={b}
-												ts={ts}
-												replayReady={replayStatus.state === "ready"}
-												playerRef={playerRef}
-											/>
-										)
-									})}
+									{breadcrumbsQuery.data.breadcrumbs.map(
+										(b) => {
+											const ts = new Date(b.ts).getTime();
+											return (
+												<RequestBreadcrumbRow
+													key={b.id}
+													breadcrumb={b}
+													ts={ts}
+													replayReady={
+														replayStatus.state ===
+														"ready"
+													}
+													playerRef={playerRef}
+												/>
+											);
+										}
+									)}
 									<div className="flex items-center justify-between pt-2">
 										<div className="text-xs text-muted-foreground">
-											Offset {breadcrumbsOffset} · Showing {breadcrumbsQuery.data.breadcrumbs.length} · Limit {breadcrumbsLimit}
+											Offset {breadcrumbsOffset} · Showing{" "}
+											{
+												breadcrumbsQuery.data
+													.breadcrumbs.length
+											}{" "}
+											· Limit {breadcrumbsLimit}
 										</div>
 										<div className="flex items-center gap-2">
 											<button
 												type="button"
 												className="rounded-md border px-2.5 py-1 text-xs"
-												disabled={breadcrumbsOffset === 0}
-												onClick={() => setBreadcrumbsOffset(Math.max(0, breadcrumbsOffset - breadcrumbsLimit))}
+												disabled={
+													breadcrumbsOffset === 0
+												}
+												onClick={() =>
+													setBreadcrumbsOffset(
+														Math.max(
+															0,
+															breadcrumbsOffset -
+																breadcrumbsLimit
+														)
+													)
+												}
 											>
 												Prev
 											</button>
 											<button
 												type="button"
 												className="rounded-md border px-2.5 py-1 text-xs"
-												disabled={breadcrumbsQuery.data.breadcrumbs.length < breadcrumbsLimit}
-												onClick={() => setBreadcrumbsOffset(breadcrumbsOffset + breadcrumbsLimit)}
+												disabled={
+													breadcrumbsQuery.data
+														.breadcrumbs.length <
+													breadcrumbsLimit
+												}
+												onClick={() =>
+													setBreadcrumbsOffset(
+														breadcrumbsOffset +
+															breadcrumbsLimit
+													)
+												}
 											>
 												Next
 											</button>
@@ -772,7 +1118,7 @@ function TurretSessionPage() {
 				</TabsContent>
 			</Tabs>
 		</section>
-	)
+	);
 }
 
 export { Route };

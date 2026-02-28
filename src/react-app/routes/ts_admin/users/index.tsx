@@ -101,7 +101,10 @@ function TsAdminUsersPage() {
 	});
 
 	const setRoleMutation = useMutation({
-		mutationFn: async (args: { userId: string; role: "admin" | "user" }) => {
+		mutationFn: async (args: {
+			userId: string;
+			role: "admin" | "user";
+		}) => {
 			const { error } = await authClient.admin.setRole({
 				userId: args.userId,
 				role: args.role,
@@ -109,7 +112,9 @@ function TsAdminUsersPage() {
 			if (error) throw new Error(error.message ?? "Failed to set role");
 		},
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({ queryKey: ["ts_admin", "users"] });
+			await queryClient.invalidateQueries({
+				queryKey: ["ts_admin", "users"],
+			});
 		},
 	});
 
@@ -119,16 +124,20 @@ function TsAdminUsersPage() {
 				const { error } = await authClient.admin.banUser({
 					userId: args.userId,
 				});
-				if (error) throw new Error(error.message ?? "Failed to ban user");
+				if (error)
+					throw new Error(error.message ?? "Failed to ban user");
 			} else {
 				const { error } = await authClient.admin.unbanUser({
 					userId: args.userId,
 				});
-				if (error) throw new Error(error.message ?? "Failed to unban user");
+				if (error)
+					throw new Error(error.message ?? "Failed to unban user");
 			}
 		},
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({ queryKey: ["ts_admin", "users"] });
+			await queryClient.invalidateQueries({
+				queryKey: ["ts_admin", "users"],
+			});
 		},
 	});
 
@@ -178,11 +187,17 @@ function TsAdminUsersPage() {
 				</CardHeader>
 				<CardContent>
 					{usersQuery.isLoading ? (
-						<div className="text-sm text-muted-foreground">Loading…</div>
+						<div className="text-sm text-muted-foreground">
+							Loading…
+						</div>
 					) : usersQuery.isError ? (
-						<div className="text-sm text-destructive">Failed to load users.</div>
+						<div className="text-sm text-destructive">
+							Failed to load users.
+						</div>
 					) : rows.length === 0 ? (
-						<div className="text-sm text-muted-foreground">No users found.</div>
+						<div className="text-sm text-muted-foreground">
+							No users found.
+						</div>
 					) : (
 						<Table>
 							<TableHeader>
@@ -192,7 +207,9 @@ function TsAdminUsersPage() {
 									<TableHead>Role</TableHead>
 									<TableHead>Status</TableHead>
 									<TableHead>Created</TableHead>
-									<TableHead className="text-right">Actions</TableHead>
+									<TableHead className="text-right">
+										Actions
+									</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -213,8 +230,12 @@ function TsAdminUsersPage() {
 											title="Open user details"
 										>
 											<TableCell className="max-w-[300px] truncate">
-												<div className="truncate font-medium">{u.email ?? "-"}</div>
-												<div className="truncate text-xs text-muted-foreground">{u.id}</div>
+												<div className="truncate font-medium">
+													{u.email ?? "-"}
+												</div>
+												<div className="truncate text-xs text-muted-foreground">
+													{u.id}
+												</div>
 											</TableCell>
 											<TableCell className="max-w-[220px] truncate">
 												{u.name ?? "-"}
@@ -223,17 +244,25 @@ function TsAdminUsersPage() {
 												{isAdmin ? (
 													<Badge>admin</Badge>
 												) : (
-													<Badge variant="secondary">user</Badge>
+													<Badge variant="secondary">
+														user
+													</Badge>
 												)}
 												{roleNorm === "other" ? (
-													<div className="mt-1 text-xs text-muted-foreground">{u.role}</div>
+													<div className="mt-1 text-xs text-muted-foreground">
+														{u.role}
+													</div>
 												) : null}
 											</TableCell>
 											<TableCell>
 												{isBanned ? (
-													<Badge variant="destructive">banned</Badge>
+													<Badge variant="destructive">
+														banned
+													</Badge>
 												) : (
-													<Badge variant="outline">active</Badge>
+													<Badge variant="outline">
+														active
+													</Badge>
 												)}
 												{isBanned && u.banReason ? (
 													<div
@@ -249,34 +278,52 @@ function TsAdminUsersPage() {
 											</TableCell>
 											<TableCell
 												className="text-right"
-												onClick={(e) => e.stopPropagation()}
+												onClick={(e) =>
+													e.stopPropagation()
+												}
 											>
 												<div className="inline-flex flex-wrap justify-end gap-2">
 													<Button
 														type="button"
 														variant="outline"
-														disabled={setRoleMutation.isPending}
+														disabled={
+															setRoleMutation.isPending
+														}
 														onClick={() =>
-															setRoleMutation.mutate({
-																userId: u.id,
-																role: isAdmin ? "user" : "admin",
-															})
-													}
+															setRoleMutation.mutate(
+																{
+																	userId: u.id,
+																	role: isAdmin
+																		? "user"
+																		: "admin",
+																}
+															)
+														}
 													>
-														{isAdmin ? "Make user" : "Make admin"}
+														{isAdmin
+															? "Make user"
+															: "Make admin"}
 													</Button>
 													<Button
 														type="button"
-														variant={isBanned ? "outline" : "destructive"}
-														disabled={banMutation.isPending}
+														variant={
+															isBanned
+																? "outline"
+																: "destructive"
+														}
+														disabled={
+															banMutation.isPending
+														}
 														onClick={() =>
 															banMutation.mutate({
 																userId: u.id,
 																banned: !isBanned,
 															})
-													}
+														}
 													>
-														{isBanned ? "Unban" : "Ban"}
+														{isBanned
+															? "Unban"
+															: "Ban"}
 													</Button>
 												</div>
 											</TableCell>
@@ -301,7 +348,9 @@ function TsAdminUsersPage() {
 									type="button"
 									variant="outline"
 									disabled={offset <= 0}
-									onClick={() => setOffset((v) => Math.max(0, v - limit))}
+									onClick={() =>
+										setOffset((v) => Math.max(0, v - limit))
+									}
 								>
 									Prev
 								</Button>

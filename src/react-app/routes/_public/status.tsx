@@ -68,7 +68,7 @@ function StatusPage() {
 				</div>
 			</div>
 		</section>
-	)
+	);
 }
 
 export { Route };

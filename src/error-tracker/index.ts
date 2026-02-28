@@ -456,9 +456,12 @@ export function honoErrorTracker<E>(
 		},
 		next: () => Promise<void>
 	) {
-			const config = getConfig(c.env);
+		const config = getConfig(c.env);
 		const bindingName = config.bindingName ?? "TURRET";
-		const tracker = getBinding(c.env as Record<string, unknown>, bindingName);
+		const tracker = getBinding(
+			c.env as Record<string, unknown>,
+			bindingName
+		);
 		const context = createContext(config, c.env, c.req.raw);
 
 		// Make context available to route handlers
@@ -491,5 +494,3 @@ export function honoErrorTracker<E>(
 // ============================================================================
 
 export type ErrorTrackerRPC = ErrorTracker;
-
-

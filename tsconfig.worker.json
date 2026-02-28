@@ -13,12 +13,9 @@
 	"include": [
 		"src/worker",
 		"src/worker.ts",
-		"src/uptime-worker.ts",
 		"src/bindings",
 		"src/error-tracker/index.ts",
 		"src/edge-errors"
 	],
-	"exclude": [
-		"src/bindings/d1/**/drizzle.studio.local.config.ts"
-	]
+	"exclude": ["src/bindings/d1/**/drizzle.studio.local.config.ts"]
 }

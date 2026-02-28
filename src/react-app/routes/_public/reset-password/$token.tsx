@@ -30,17 +30,17 @@ function ResetPasswordTokenPage() {
 
 		if (!token) {
 			setError("Missing token. Please use the link from your email.");
-			return
+			return;
 		}
 
 		if (password.length < 8) {
 			setError("Password must be at least 8 characters.");
-			return
+			return;
 		}
 
 		if (password !== confirm) {
 			setError("Passwords do not match.");
-			return
+			return;
 		}
 
 		setIsSubmitting(true);
@@ -48,11 +48,11 @@ function ResetPasswordTokenPage() {
 			const { error: resetError } = await authClient.resetPassword({
 				newPassword: password,
 				token,
-			})
+			});
 
 			if (resetError) {
 				setError(resetError.message ?? "Could not reset password");
-				return
+				return;
 			}
 
 			navigate({ to: "/login", search: {} });
@@ -87,7 +87,9 @@ function ResetPasswordTokenPage() {
 					</Field>
 
 					<Field>
-						<FieldLabel htmlFor="confirm">Confirm password</FieldLabel>
+						<FieldLabel htmlFor="confirm">
+							Confirm password
+						</FieldLabel>
 						<Input
 							id="confirm"
 							type="password"
@@ -110,7 +112,7 @@ function ResetPasswordTokenPage() {
 				</form>
 			</FieldGroup>
 		</section>
-	)
+	);
 }
 
 export { Route };

@@ -7,6 +7,7 @@ import { openAPI, haveIBeenPwned, admin, apiKey } from "better-auth/plugins";
 import { VerifyEmail } from "./emails/verify-email";
 import { sendEmail } from "./email/send-email";
 import { renderEmail } from "./emails/render";
+import { isSelfSignUpEnabled } from "./auth-signup-mode";
 
 type AuthEnv = Env & {
 	BETTER_AUTH_SECRET: string;
@@ -15,6 +16,7 @@ type AuthEnv = Env & {
 	PRODUCT_NAME: string;
 	EMAIL_FROM: string;
 	RESEND_API_KEY?: string;
+	AUTH_SIGNUP_MODE?: string;
 };
 
 type ExecutionContextLike = { waitUntil(promise: Promise<unknown>): void };
@@ -34,6 +36,8 @@ function waitUntilOrAwait(
 }
 
 function createAuth(env: AuthEnv, ctx?: ExecutionContextLike) {
+	const selfSignUpEnabled = isSelfSignUpEnabled(env.AUTH_SIGNUP_MODE);
+
 	return betterAuth({
 		secret: env.BETTER_AUTH_SECRET,
 		advanced: {
@@ -71,7 +75,7 @@ function createAuth(env: AuthEnv, ctx?: ExecutionContextLike) {
 		verification: { modelName: "auth_verification" },
 		emailAndPassword: {
 			enabled: true,
-			disableSignUp: true,
+			disableSignUp: !selfSignUpEnabled,
 			sendResetPassword: async ({ user, url }) => {
 				if (!env.RESEND_API_KEY) {
 					console.log("[email:log-only:url]", {
@@ -103,11 +107,11 @@ function createAuth(env: AuthEnv, ctx?: ExecutionContextLike) {
 		socialProviders:
 			env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
 				? {
-					google: {
-						clientId: env.GOOGLE_CLIENT_ID,
-						clientSecret: env.GOOGLE_CLIENT_SECRET,
-					},
-				}
+						google: {
+							clientId: env.GOOGLE_CLIENT_ID,
+							clientSecret: env.GOOGLE_CLIENT_SECRET,
+						},
+					}
 				: {},
 		plugins: [
 			admin({

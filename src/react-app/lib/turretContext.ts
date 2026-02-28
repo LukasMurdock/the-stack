@@ -6,7 +6,10 @@ type TurretClientContext = {
 
 let ctx: TurretClientContext | null = null;
 
-function setTurretContext(next: { sessionId: string; uploadToken: string }): void {
+function setTurretContext(next: {
+	sessionId: string;
+	uploadToken: string;
+}): void {
 	ctx = {
 		sessionId: next.sessionId,
 		uploadToken: next.uploadToken,
@@ -27,5 +30,10 @@ function getTurretContext(): TurretClientContext | null {
 	return ctx;
 }
 
-export { setTurretContext, clearTurretContext, setLastRrwebTsMs, getTurretContext };
+export {
+	setTurretContext,
+	clearTurretContext,
+	setLastRrwebTsMs,
+	getTurretContext,
+};
 export type { TurretClientContext };

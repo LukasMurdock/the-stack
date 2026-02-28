@@ -28,6 +28,17 @@ type TurretSessionErrorPayload = {
 	extra?: Record<string, unknown>;
 };
 
+export type TurretFeedbackKind = "bug" | "idea" | "praise" | "other";
+
+type TurretSessionFeedbackPayload = {
+	ts: number;
+	kind: TurretFeedbackKind;
+	message: string;
+	url?: string;
+	contact?: string;
+	extra?: Record<string, unknown>;
+};
+
 async function turretInitSession(input: {
 	journeyId: string;
 	initialUrl: string;
@@ -50,10 +61,12 @@ async function turretInitSession(input: {
 		}
 
 		const msg =
-			(typeof payload === "object" && payload && "error" in payload &&
-				(typeof (payload as any).error === "string")
+			typeof payload === "object" &&
+			payload &&
+			"error" in payload &&
+			typeof (payload as any).error === "string"
 				? (payload as any).error
-				: `Turret init failed: ${res.status}`);
+				: `Turret init failed: ${res.status}`;
 		throw new Error(msg);
 	}
 
@@ -69,20 +82,23 @@ async function turretUploadChunk(input: {
 	tsEnd: number;
 	signal?: AbortSignal;
 }): Promise<void> {
-	const res = await fetch(`/api/turret/session/${encodeURIComponent(input.sessionId)}/chunk`, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			Authorization: `Bearer ${input.uploadToken}`,
-		},
-		body: JSON.stringify({
-			seq: input.seq,
-			events: input.events,
-			ts_start: input.tsStart,
-			ts_end: input.tsEnd,
-		}),
-		signal: input.signal,
-	});
+	const res = await fetch(
+		`/api/turret/session/${encodeURIComponent(input.sessionId)}/chunk`,
+		{
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${input.uploadToken}`,
+			},
+			body: JSON.stringify({
+				seq: input.seq,
+				events: input.events,
+				ts_start: input.tsStart,
+				ts_end: input.tsEnd,
+			}),
+			signal: input.signal,
+		}
+	);
 
 	if (!res.ok) {
 		throw new Error(`Turret chunk upload failed: ${res.status}`);
@@ -137,9 +153,33 @@ async function turretReportSessionError(input: {
 	}
 }
 
+async function turretSubmitFeedback(input: {
+	sessionId: string;
+	uploadToken: string;
+	payload: TurretSessionFeedbackPayload;
+	signal?: AbortSignal;
+}): Promise<void> {
+	const res = await fetch(
+		`/api/turret/session/${encodeURIComponent(input.sessionId)}/feedback`,
+		{
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${input.uploadToken}`,
+			},
+			body: JSON.stringify(input.payload),
+			signal: input.signal,
+		}
+	);
+	if (!res.ok) {
+		throw new Error(`Turret feedback submit failed: ${res.status}`);
+	}
+}
+
 export {
 	turretInitSession,
 	turretUploadChunk,
 	turretMarkCaptureBlocked,
 	turretReportSessionError,
+	turretSubmitFeedback,
 };

@@ -11,24 +11,18 @@
 	},
 	"scripts": {
 		"build": "tsc -b && astro build",
-		"cf-typegen": "wrangler types",
 		"check": "tsc && astro build && wrangler deploy --config wrangler.json --env production --dry-run",
-		"deploy": "node -e \"console.error('Refusing to deploy without an env. Use: npm run deploy:production'); process.exit(1)\"",
-		"deploy:production": "npm run build && wrangler deploy --config wrangler.json --env production",
+		"deploy": "node -e \"console.error('Refusing to deploy without an env. Use: just deploy-production'); process.exit(1)\"",
 		"dev": "astro dev",
 		"lint": "eslint .",
+		"test": "tsx --test \"tests/**/*.test.ts\"",
 		"preview": "npm run build && astro preview",
 		"db:core:generate": "drizzle-kit generate --config src/bindings/d1/core/drizzle.config.ts",
-		"db:core:migrate:local": "wrangler d1 migrations apply CORE_DB --local",
-		"db:core:studio:local": "npm run db:core:migrate:local && DRIZZLE_DB_PATH=$(node scripts/find-d1-sqlite.mjs core_users) node scripts/drizzle-studio-core-local.mjs",
 		"db:turret:generate": "drizzle-kit generate --config src/bindings/d1/turret/drizzle.config.ts",
-		"db:turret:migrate:local": "wrangler d1 migrations apply TURRET_DB --local",
-		"db:turret:studio:local": "npm run db:turret:migrate:local && DRIZZLE_DB_PATH=$(node scripts/find-d1-sqlite.mjs turret_sessions) node scripts/drizzle-studio-turret-local.mjs",
-		"admin:create:local": "npm run db:core:migrate:local && node scripts/create-admin-local.mjs",
 		"email:dev": "email dev",
 		"format": "prettier --write .",
-		"db:local:squash": "rm -rf src/bindings/d1/core/drizzle/* && npm run db:core:generate && npm run db:core:migrate:local",
-		"db:local:squash-turret": "rm -rf src/bindings/d1/turret/drizzle/* && npm run db:turret:generate && npm run db:turret:migrate:local"
+		"db:local:squash": "rm -rf src/bindings/d1/core/drizzle/* && npm run db:core:generate && wrangler d1 migrations apply CORE_DB --local",
+		"db:local:squash-turret": "rm -rf src/bindings/d1/turret/drizzle/* && npm run db:turret:generate && wrangler d1 migrations apply TURRET_DB --local"
 	},
 	"dependencies": {
 		"@astrojs/cloudflare": "^13.0.0-beta.0",

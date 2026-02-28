@@ -1,6 +1,9 @@
 import { jsonOrThrow } from "./apiClient";
 
-async function internalTurretFetch(path: string, init?: RequestInit): Promise<Response> {
+async function internalTurretFetch(
+	path: string,
+	init?: RequestInit
+): Promise<Response> {
 	return fetch(`/api/internal/turret${path}`, {
 		credentials: "include",
 		...init,
@@ -183,27 +186,6 @@ export type TurretDashboardUsersResponse = {
 	retentionDeltaPctWoW: number | null;
 };
 
-export type TurretUptimeService = {
-	id: string;
-	name: string;
-	status: "up" | "down" | "unknown";
-	checkedAtMs: number;
-	latencyMs: number | null;
-	httpStatus: number | null;
-	message: string | null;
-};
-
-export type TurretUptimeStatus = {
-	version: 1;
-	updatedAtMs: number;
-	overall: "up" | "degraded" | "down" | "unknown";
-	services: TurretUptimeService[];
-};
-
-export type TurretUptimeResponse = {
-	status: TurretUptimeStatus;
-};
-
 export type TurretIssueStatus = "open" | "resolved" | "ignored";
 
 export type TurretIssueSample = {
@@ -282,13 +264,42 @@ export type TurretIssueUpdate = {
 	title?: string | null;
 };
 
+export type TurretFeedbackKind = "bug" | "idea" | "praise" | "other";
+export type TurretFeedbackStatus = "open" | "triaged" | "resolved";
+
+export type TurretFeedbackItem = {
+	id: string;
+	sessionId: string;
+	userId: string;
+	userEmail: string | null;
+	ts: number;
+	url: string | null;
+	kind: TurretFeedbackKind;
+	message: string;
+	contact: string | null;
+	status: TurretFeedbackStatus;
+	createdAt: number;
+	updatedAt: number;
+};
+
+export type TurretFeedbackListResponse = {
+	feedback: TurretFeedbackItem[];
+	limit: number;
+	offset: number;
+};
+
 async function turretHealth(): Promise<{ ok: true }> {
 	const res = await internalTurretFetch("/health");
 	return jsonOrThrow(res) as Promise<{ ok: true }>;
 }
 
-async function listSessions(query: TurretSessionsQuery): Promise<TurretSessionsResponse> {
-	const url = new URL("/api/internal/turret/sessions", window.location.origin);
+async function listSessions(
+	query: TurretSessionsQuery
+): Promise<TurretSessionsResponse> {
+	const url = new URL(
+		"/api/internal/turret/sessions",
+		window.location.origin
+	);
 	if (query.hasError) url.searchParams.set("hasError", "1");
 	if (query.journeyId) url.searchParams.set("journeyId", query.journeyId);
 	if (query.q) url.searchParams.set("q", query.q);
@@ -302,17 +313,27 @@ async function listSessions(query: TurretSessionsQuery): Promise<TurretSessionsR
 }
 
 async function getSessionMeta(sessionId: string): Promise<TurretMetaResponse> {
-	const res = await internalTurretFetch(`/session/${encodeURIComponent(sessionId)}/meta`);
+	const res = await internalTurretFetch(
+		`/session/${encodeURIComponent(sessionId)}/meta`
+	);
 	return jsonOrThrow<TurretMetaResponse>(res);
 }
 
-async function getSessionChunks(sessionId: string): Promise<TurretChunksResponse> {
-	const res = await internalTurretFetch(`/session/${encodeURIComponent(sessionId)}/chunks`);
+async function getSessionChunks(
+	sessionId: string
+): Promise<TurretChunksResponse> {
+	const res = await internalTurretFetch(
+		`/session/${encodeURIComponent(sessionId)}/chunks`
+	);
 	return jsonOrThrow<TurretChunksResponse>(res);
 }
 
-async function getSessionErrors(sessionId: string): Promise<TurretErrorsResponse> {
-	const res = await internalTurretFetch(`/session/${encodeURIComponent(sessionId)}/errors`);
+async function getSessionErrors(
+	sessionId: string
+): Promise<TurretErrorsResponse> {
+	const res = await internalTurretFetch(
+		`/session/${encodeURIComponent(sessionId)}/errors`
+	);
 	return jsonOrThrow<TurretErrorsResponse>(res);
 }
 
@@ -320,15 +341,22 @@ async function getSessionBreadcrumbs(
 	sessionId: string,
 	opts?: { limit?: number; offset?: number }
 ): Promise<TurretBreadcrumbsResponse> {
-	const url = new URL(`/api/internal/turret/session/${encodeURIComponent(sessionId)}/breadcrumbs`, window.location.origin);
+	const url = new URL(
+		`/api/internal/turret/session/${encodeURIComponent(sessionId)}/breadcrumbs`,
+		window.location.origin
+	);
 	url.searchParams.set("limit", String(opts?.limit ?? 200));
 	url.searchParams.set("offset", String(opts?.offset ?? 0));
 	const res = await fetch(url.toString(), { credentials: "include" });
 	return jsonOrThrow<TurretBreadcrumbsResponse>(res);
 }
 
-async function getRequestSpans(requestId: string): Promise<TurretSpansResponse> {
-	const res = await internalTurretFetch(`/request/${encodeURIComponent(requestId)}/spans`);
+async function getRequestSpans(
+	requestId: string
+): Promise<TurretSpansResponse> {
+	const res = await internalTurretFetch(
+		`/request/${encodeURIComponent(requestId)}/spans`
+	);
 	return jsonOrThrow<TurretSpansResponse>(res);
 }
 
@@ -356,7 +384,9 @@ async function getFeatures(): Promise<TurretFeaturesResponse> {
 	return jsonOrThrow<TurretFeaturesResponse>(res);
 }
 
-async function setFeatures(input: TurretFeatures): Promise<TurretFeaturesResponse> {
+async function setFeatures(
+	input: TurretFeatures
+): Promise<TurretFeaturesResponse> {
 	const res = await internalTurretFetch("/features", {
 		method: "PUT",
 		headers: { "Content-Type": "application/json" },
@@ -370,7 +400,9 @@ async function getCompliance(): Promise<TurretComplianceResponse> {
 	return jsonOrThrow<TurretComplianceResponse>(res);
 }
 
-async function setCompliance(input: Partial<TurretCompliancePolicy>): Promise<TurretComplianceResponse> {
+async function setCompliance(
+	input: Partial<TurretCompliancePolicy>
+): Promise<TurretComplianceResponse> {
 	const res = await internalTurretFetch("/compliance", {
 		method: "PUT",
 		headers: { "Content-Type": "application/json" },
@@ -379,16 +411,16 @@ async function setCompliance(input: Partial<TurretCompliancePolicy>): Promise<Tu
 	return jsonOrThrow<TurretComplianceResponse>(res);
 }
 
-async function getDashboardUsers(opts?: { to?: number }): Promise<TurretDashboardUsersResponse> {
-	const url = new URL("/api/internal/turret/dashboard", window.location.origin);
+async function getDashboardUsers(opts?: {
+	to?: number;
+}): Promise<TurretDashboardUsersResponse> {
+	const url = new URL(
+		"/api/internal/turret/dashboard",
+		window.location.origin
+	);
 	if (opts?.to) url.searchParams.set("to", String(opts.to));
 	const res = await fetch(url.toString(), { credentials: "include" });
 	return jsonOrThrow<TurretDashboardUsersResponse>(res);
-}
-
-async function getUptime(): Promise<TurretUptimeResponse> {
-	const res = await internalTurretFetch("/uptime");
-	return jsonOrThrow<TurretUptimeResponse>(res);
 }
 
 async function listIssues(input: {
@@ -410,8 +442,69 @@ async function listIssues(input: {
 	return jsonOrThrow<TurretIssuesListResponse>(res);
 }
 
-async function getIssue(fingerprint: string): Promise<TurretIssueDetailResponse> {
-	const res = await internalTurretFetch(`/issue/${encodeURIComponent(fingerprint)}`);
+async function listFeedback(input: {
+	status?: TurretFeedbackStatus;
+	kind?: TurretFeedbackKind;
+	q?: string;
+	from?: number;
+	to?: number;
+	limit?: number;
+	offset?: number;
+	sessionId?: string;
+	userId?: string;
+}): Promise<TurretFeedbackListResponse> {
+	const url = new URL(
+		"/api/internal/turret/feedback",
+		window.location.origin
+	);
+	if (input.status) url.searchParams.set("status", input.status);
+	if (input.kind) url.searchParams.set("kind", input.kind);
+	if (input.q) url.searchParams.set("q", input.q);
+	if (input.sessionId) url.searchParams.set("sessionId", input.sessionId);
+	if (input.userId) url.searchParams.set("userId", input.userId);
+	if (input.from) url.searchParams.set("from", String(input.from));
+	if (input.to) url.searchParams.set("to", String(input.to));
+	url.searchParams.set("limit", String(input.limit ?? 50));
+	url.searchParams.set("offset", String(input.offset ?? 0));
+	const res = await fetch(url.toString(), { credentials: "include" });
+	return jsonOrThrow<TurretFeedbackListResponse>(res);
+}
+
+async function listSessionFeedback(
+	sessionId: string,
+	input?: { limit?: number; offset?: number }
+): Promise<TurretFeedbackListResponse> {
+	const url = new URL(
+		`/api/internal/turret/session/${encodeURIComponent(sessionId)}/feedback`,
+		window.location.origin
+	);
+	url.searchParams.set("limit", String(input?.limit ?? 50));
+	url.searchParams.set("offset", String(input?.offset ?? 0));
+	const res = await fetch(url.toString(), { credentials: "include" });
+	return jsonOrThrow<TurretFeedbackListResponse>(res);
+}
+
+async function patchFeedbackStatus(input: {
+	id: string;
+	status: TurretFeedbackStatus;
+}): Promise<{ ok: true }> {
+	const res = await internalTurretFetch(
+		`/feedback/${encodeURIComponent(input.id)}`,
+		{
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ status: input.status }),
+		}
+	);
+	return jsonOrThrow<{ ok: true }>(res);
+}
+
+async function getIssue(
+	fingerprint: string
+): Promise<TurretIssueDetailResponse> {
+	const res = await internalTurretFetch(
+		`/issue/${encodeURIComponent(fingerprint)}`
+	);
 	return jsonOrThrow<TurretIssueDetailResponse>(res);
 }
 
@@ -444,12 +537,18 @@ async function getIssueEvents(
 	return jsonOrThrow<TurretIssueEventsResponse>(res);
 }
 
-async function patchIssue(fingerprint: string, update: TurretIssueUpdate): Promise<TurretIssueDetailResponse> {
-	const res = await internalTurretFetch(`/issue/${encodeURIComponent(fingerprint)}`, {
-		method: "PATCH",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(update),
-	});
+async function patchIssue(
+	fingerprint: string,
+	update: TurretIssueUpdate
+): Promise<TurretIssueDetailResponse> {
+	const res = await internalTurretFetch(
+		`/issue/${encodeURIComponent(fingerprint)}`,
+		{
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(update),
+		}
+	);
 	return jsonOrThrow<TurretIssueDetailResponse>(res);
 }
 
@@ -467,10 +566,12 @@ export {
 	getCompliance,
 	setCompliance,
 	getDashboardUsers,
-	getUptime,
 	listIssues,
 	getIssue,
 	getIssueTrend,
 	getIssueEvents,
 	patchIssue,
+	listFeedback,
+	listSessionFeedback,
+	patchFeedbackStatus,
 };

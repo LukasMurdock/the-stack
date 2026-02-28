@@ -4,23 +4,27 @@
 
 Pick stable names up front:
 
-- Worker script name: `the-stack-production` (already set in `wrangler.json` under `env.production.name`)
+- Main app worker name: `the-stack-production` (`wrangler.json`)
 - D1 database name: `core-d1-production`
 - KV namespace(s): e.g. `core-kv-production`
 - R2 bucket(s): e.g. `core-bucket-production`
 - Queue(s): e.g. `core-queue-production`
 - Durable Object class names: should be stable once deployed (migration-sensitive)
 
-### 2) Configure the Production Route
+### 2) Configure Production Routes and Origins
 
-This repo assumes you are using a custom domain route.
+This repo assumes a custom domain route for the main app worker.
 
-In `wrangler.json`, configure the production route under `env.production` (and only there).
+In `wrangler.json`, configure production route under `env.production` (and only there).
 Using only a production route reduces the chance an accidental deploy affects production.
 
 Typical patterns:
 
 - `api.example.com/*` on zone `example.com`
+
+Then set app origin values:
+
+- `wrangler.json` -> `env.production.vars.APP_URL`
 
 ### 3) Provision Production Resources
 
@@ -41,7 +45,7 @@ Migrations (recommended workflow):
 
 ```bash
 # Apply locally first
-npm run db:core:migrate:local
+just migrate-core
 
 # Apply to production (remote)
 npx wrangler d1 migrations apply CORE_DB --remote --env production
@@ -118,4 +122,20 @@ Store secrets via Wrangler (never commit them):
 ```bash
 npx wrangler secret put SOME_SECRET --env production
 npx wrangler secret list --env production
+```
+
+At minimum, set on main worker:
+
+- `BETTER_AUTH_SECRET`
+- `BOOTSTRAP_SECRET`
+- `RESEND_API_KEY` (optional but recommended)
+- `TURRET_SIGNING_KEY` (required for Turret full mode)
+
+### 5) First Deploy + Verification
+
+```bash
+just preflight
+just deploy-production
+curl -i "https://<your-domain>/api/health"
+curl -i "https://<your-domain>/api/scalar"
 ```

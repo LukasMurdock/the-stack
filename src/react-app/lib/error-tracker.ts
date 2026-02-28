@@ -50,7 +50,12 @@ function initErrorTracking(): void {
 	window.addEventListener("error", (ev) => {
 		reportError(ev.error ?? ev.message, {
 			source: "window",
-			extra: { kind: "error", filename: ev.filename, lineno: ev.lineno, colno: ev.colno },
+			extra: {
+				kind: "error",
+				filename: ev.filename,
+				lineno: ev.lineno,
+				colno: ev.colno,
+			},
 		});
 	});
 

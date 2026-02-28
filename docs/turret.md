@@ -10,26 +10,45 @@ It starts with session replay (rrweb) and grows into a unified view of errors, l
 - Error monitoring (client + worker)
 - Aggregated metrics (Analytics Engine)
 
+## Operation Modes
+
+Turret supports explicit runtime modes via `TURRET_MODE`:
+
+- `off`: disable Turret ingestion endpoints.
+- `basic`: keep Turret read/admin surfaces, but disable ingestion.
+- `full`: enable Turret ingestion if `TURRET_SIGNING_KEY` is present.
+
+Default mode is `full`.
+
+If `TURRET_MODE=full` but `TURRET_SIGNING_KEY` is missing, Turret degrades to `basic`.
+In this state, ingestion endpoints return `503` with a stable error code instead of `500`.
+
+Ingestion endpoint error codes:
+
+- `TURRET_DISABLED`
+- `TURRET_BASIC_NO_INGEST`
+- `TURRET_DEGRADED_MISSING_SIGNING_KEY`
+
 ## Storage & Data Flow
 
 - Replay chunks: R2 `TURRET_REPLAY_BUCKET`
 - Index + metadata: D1 `TURRET_DB`
-  - `turret_sessions`
-  - `turret_session_chunks`
-  - `turret_session_errors`
+    - `turret_sessions`
+    - `turret_session_chunks`
+    - `turret_session_errors`
 - Compliance bundle + config: KV `TURRET_CFG`
 - Aggregates: Analytics Engine `TURRET_ANALYTICS`
 
 ## Security Model
 
 - Same-origin ingestion only
-  - Blocks `Sec-Fetch-Site: cross-site`
-  - Requires `Origin === new URL(APP_URL).origin` when `Origin` is present
+    - Blocks `Sec-Fetch-Site: cross-site`
+    - Requires `Origin === new URL(APP_URL).origin` when `Origin` is present
 - Signed upload tokens
-  - `/api/turret/session/init` issues a signed upload token
-  - Upload endpoints require `Authorization: Bearer <token>`
+    - `/api/turret/session/init` issues a signed upload token
+    - Upload endpoints require `Authorization: Bearer <token>`
 - Internal playback is admin-only
-  - `/api/internal/turret/*` gated by Better Auth admin sessions
+    - `/api/internal/turret/*` gated by Better Auth admin sessions
 
 ## Console Logs
 
@@ -40,10 +59,10 @@ Default behavior:
 - Enabled for every session
 - Levels: `log`, `info`, `warn`, `error`
 - Tight limits to reduce size and risk:
-  - `lengthThreshold: 200`
-  - `stringLengthLimit: 300`
-  - `numOfKeysLimit: 30`
-  - `depthOfLimit: 2`
+    - `lengthThreshold: 200`
+    - `stringLengthLimit: 300`
+    - `numOfKeysLimit: 30`
+    - `depthOfLimit: 2`
 
 Note: rrweb's console recorder will also attach a `window.error` listener when `error` is included in the level list, so you may see overlap with Turret's explicit error reporting.
 
@@ -52,20 +71,23 @@ Note: rrweb's console recorder will also attach a `window.error` listener when `
 Turret links errors to replay time so you can jump directly to the moment things broke.
 
 - Client maintains:
-  - `sessionId`
-  - `lastRrwebTsMs` (from rrweb event timestamps)
+    - `sessionId`
+    - `lastRrwebTsMs` (from rrweb event timestamps)
 - Client sends correlation headers on `/api/*` requests:
-  - `x-turret-session-id: <uuid>`
-  - `x-turret-replay-ts: <epoch-ms>`
+    - `x-turret-session-id: <uuid>`
+    - `x-turret-replay-ts: <epoch-ms>`
 
 Timestamp rule:
+
 - `ts = lastRrwebTsMs ?? Date.now()`
 
 Worker capture behavior:
+
 - Record thrown exceptions for `/api/*`
 - Record any returned `5xx` responses for `/api/*`
 
 Replay bounds:
+
 - `turret_sessions.rrweb_start_ts_ms` and `turret_sessions.rrweb_last_ts_ms` are updated during chunk ingest.
 
 ## Debugging
@@ -74,6 +96,13 @@ Use these endpoints to validate worker error capture end-to-end:
 
 - `GET /api/throw` throws an error
 - `GET /api/fail` returns a 500
+
+Use these checks to validate mode behavior:
+
+- `GET /api/health` returns `turret.configuredMode`, `turret.effectiveMode`, and `turret.reason`.
+- `POST /api/turret/session/init` returns:
+    - `200` in full mode with valid signing key
+    - `503` in off/basic/degraded mode
 
 ## References
 

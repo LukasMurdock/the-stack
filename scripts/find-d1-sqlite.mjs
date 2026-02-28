@@ -27,7 +27,8 @@ if (!needle) {
 	);
 }
 
-const persistDir = process.argv[3] ?? ".wrangler/state/v3/d1/miniflare-D1DatabaseObject";
+const persistDir =
+	process.argv[3] ?? ".wrangler/state/v3/d1/miniflare-D1DatabaseObject";
 const absPersistDir = path.resolve(process.cwd(), persistDir);
 
 let entries;
@@ -78,8 +79,12 @@ if (matches.length > 1) {
 
 	// Fall back to the newest file.
 	matches.sort((a, b) => {
-		const aTime = execFileSync("stat", ["-f", "%m", a], { encoding: "utf8" }).trim();
-		const bTime = execFileSync("stat", ["-f", "%m", b], { encoding: "utf8" }).trim();
+		const aTime = execFileSync("stat", ["-f", "%m", a], {
+			encoding: "utf8",
+		}).trim();
+		const bTime = execFileSync("stat", ["-f", "%m", b], {
+			encoding: "utf8",
+		}).trim();
 		return Number(bTime) - Number(aTime);
 	});
 
@@ -90,5 +95,5 @@ if (matches.length > 1) {
 die(
 	`Could not find a local D1 sqlite file containing table '${needle}'.\n` +
 		`Looked in: ${absPersistDir}\n` +
-		`Tip: run your local migrations first (npm run db:core:migrate:local / db:turret:migrate:local).`
+		"Tip: run your local migrations first (just migrate-core / just migrate-turret)."
 );

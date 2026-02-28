@@ -12,15 +12,19 @@ import {
 	setFeatures,
 	turretHealth,
 	getDashboardUsers,
-	getUptime,
 	listIssues,
 	getIssue,
 	getIssueTrend,
 	getIssueEvents,
+	listFeedback,
+	listSessionFeedback,
+	patchFeedbackStatus,
 	type TurretFeatures,
 	type TurretCompliancePolicy,
 	type TurretSessionsQuery,
 	type TurretIssueStatus,
+	type TurretFeedbackKind,
+	type TurretFeedbackStatus,
 } from "../lib/turretApi";
 
 const turretHealthQueryOptions = queryOptions({
@@ -57,7 +61,10 @@ const turretSessionErrorsQueryOptions = (sessionId: string) =>
 		retry: false,
 	});
 
-const turretSessionBreadcrumbsQueryOptions = (sessionId: string, input?: { limit?: number; offset?: number }) =>
+const turretSessionBreadcrumbsQueryOptions = (
+	sessionId: string,
+	input?: { limit?: number; offset?: number }
+) =>
 	queryOptions({
 		queryKey: ["turret", "session", sessionId, "breadcrumbs", input],
 		queryFn: () => getSessionBreadcrumbs(sessionId, input),
@@ -85,7 +92,8 @@ const turretComplianceQueryOptions = queryOptions({
 	retry: false,
 });
 
-const turretComplianceMutation = (next: Partial<TurretCompliancePolicy>) => setCompliance(next);
+const turretComplianceMutation = (next: Partial<TurretCompliancePolicy>) =>
+	setCompliance(next);
 
 const turretDashboardUsersQueryOptions = (input?: { to?: number }) =>
 	queryOptions({
@@ -125,18 +133,47 @@ const turretIssueTrendQueryOptions = (
 		retry: false,
 	});
 
-const turretIssueEventsQueryOptions = (fingerprint: string, input?: { limit?: number; offset?: number }) =>
+const turretIssueEventsQueryOptions = (
+	fingerprint: string,
+	input?: { limit?: number; offset?: number }
+) =>
 	queryOptions({
 		queryKey: ["turret", "issue", fingerprint, "events", input],
 		queryFn: () => getIssueEvents(fingerprint, input),
 		retry: false,
 	});
 
-const turretUptimeQueryOptions = queryOptions({
-	queryKey: ["turret", "uptime"],
-	queryFn: getUptime,
-	retry: false,
-});
+const turretFeedbackQueryOptions = (input: {
+	status?: TurretFeedbackStatus;
+	kind?: TurretFeedbackKind;
+	q?: string;
+	from?: number;
+	to?: number;
+	limit?: number;
+	offset?: number;
+	sessionId?: string;
+	userId?: string;
+}) =>
+	queryOptions({
+		queryKey: ["turret", "feedback", input],
+		queryFn: () => listFeedback(input),
+		retry: false,
+	});
+
+const turretSessionFeedbackQueryOptions = (
+	sessionId: string,
+	input?: { limit?: number; offset?: number }
+) =>
+	queryOptions({
+		queryKey: ["turret", "session", sessionId, "feedback", input],
+		queryFn: () => listSessionFeedback(sessionId, input),
+		retry: false,
+	});
+
+const turretFeedbackStatusMutation = (input: {
+	id: string;
+	status: TurretFeedbackStatus;
+}) => patchFeedbackStatus(input);
 
 export {
 	turretHealthQueryOptions,
@@ -151,9 +188,11 @@ export {
 	turretComplianceQueryOptions,
 	turretComplianceMutation,
 	turretDashboardUsersQueryOptions,
-	turretUptimeQueryOptions,
 	turretIssuesQueryOptions,
 	turretIssueQueryOptions,
 	turretIssueTrendQueryOptions,
 	turretIssueEventsQueryOptions,
+	turretFeedbackQueryOptions,
+	turretSessionFeedbackQueryOptions,
+	turretFeedbackStatusMutation,
 };

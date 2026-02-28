@@ -1,28 +1,24 @@
 # Deployment Guide (Production)
 
-This repo is designed to deploy a single Cloudflare Worker to production only.
+This guide is the canonical production deploy and rollback runbook.
 
-Goals:
+## Topology
 
-- Avoid accidental deploys to the wrong environment.
-- Keep production deploys reversible (fast rollback).
-- Provision Cloudflare resources once, then reference them via bindings in `wrangler.json`.
+Production has one Worker:
 
-## Source of Truth
+- Main app Worker: `wrangler.json` (`the-stack-production`)
 
-- Worker config: `wrangler.json`
-- Deploy command: `npm run deploy:production`
-
-This repo intentionally refuses to deploy without an explicit environment:
-
-- `npm run deploy` fails on purpose
-- Production deploy always uses: `--env production`
+`npm run deploy` intentionally fails to prevent accidental deploys.
 
 ## Prerequisites
 
 - Node.js + npm
-- Cloudflare account with a zone for your domain
-- Wrangler auth:
+- Cloudflare account + Wrangler auth
+- Production IDs/secrets configured in both Wrangler configs
+
+Before first deploy, replace placeholders in `wrangler.json`:
+
+- `env.production.vars.APP_URL`, `ADMIN_EMAIL`, and D1 IDs
 
 ```bash
 npx wrangler whoami
@@ -30,62 +26,54 @@ npx wrangler whoami
 npx wrangler login
 ```
 
-## Deploying to Production
+## Deploy (Go/No-Go)
 
 ### 1) Preflight
 
 ```bash
-npm run check
+just preflight
 ```
 
-This runs typecheck + build + a Wrangler deploy dry-run for production.
+Preflight validates:
+
+- app production placeholders are removed
+- app production D1 IDs are configured
+- test/build pass
+- dry-run deploy works
 
 ### 2) Deploy
 
 ```bash
-npm run deploy:production
+just deploy-production
 ```
+
+This deploys the main production worker.
 
 ### 3) Verify
 
-- Tail logs:
+```bash
+curl -i "https://<your-domain>/api/health"
+curl -i "https://<your-domain>/api/scalar"
+```
+
+Expected:
+
+- `/api/health` returns `200` with `ok: true`
+- `/api/scalar` returns `200`
+
+Tail logs as needed:
 
 ```bash
 npx wrangler tail --env production
 ```
 
-- Hit your health endpoint / critical path endpoints.
+## Rollback
 
-## Rollback (Fast)
-
-If a deploy causes errors, rollback is the fastest way to restore service.
+### Roll back worker
 
 ```bash
-npx wrangler versions list --env production
-npx wrangler rollback <version-id> --env production
+npx wrangler versions list --env production --config wrangler.json
+npx wrangler rollback <version-id> --env production --config wrangler.json
 ```
 
-After rollback:
-
-- Keep the bad version id around for debugging.
-- If the incident involved data writes, also consider temporarily disabling writes via an ops flag (see next section).
-
-## Useful Commands
-
-```bash
-# Auth
-npx wrangler whoami
-
-# Validate deploy without changing production
-npx wrangler deploy --config wrangler.json --env production --dry-run
-
-# Deploy
-npm run deploy:production
-
-# Logs
-npx wrangler tail --env production
-
-# Versions / rollback
-npx wrangler versions list --env production
-npx wrangler rollback <version-id> --env production
-```
+After rollback, re-run verify checks and keep incident notes with the version ID.

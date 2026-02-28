@@ -19,19 +19,26 @@ type TurretFeatures = z.infer<typeof TurretFeaturesSchema>;
 
 function normalizeTurretFeatures(input: unknown): TurretFeatures {
 	const obj =
-		input && typeof input === "object" ? (input as Record<string, unknown>) : ({} as Record<string, unknown>);
+		input && typeof input === "object"
+			? (input as Record<string, unknown>)
+			: ({} as Record<string, unknown>);
 	const parsed = TurretFeaturesSchema.safeParse(obj);
 	if (parsed.success) return parsed.data;
 	// If the stored config ever becomes invalid/corrupt, fall back to defaults.
 	return TurretFeaturesSchema.parse({});
 }
 
-async function readTurretFeatures(env: { TURRET_CFG: KVNamespaceRead }): Promise<TurretFeatures> {
+async function readTurretFeatures(env: {
+	TURRET_CFG: KVNamespaceRead;
+}): Promise<TurretFeatures> {
 	const raw = await env.TURRET_CFG.get(FEATURES_KEY, "json");
 	return normalizeTurretFeatures(raw);
 }
 
-async function writeTurretFeatures(env: { TURRET_CFG: KVNamespaceWrite }, next: TurretFeatures): Promise<void> {
+async function writeTurretFeatures(
+	env: { TURRET_CFG: KVNamespaceWrite },
+	next: TurretFeatures
+): Promise<void> {
 	await env.TURRET_CFG.put(FEATURES_KEY, JSON.stringify(next));
 }
 

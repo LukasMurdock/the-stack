@@ -22,7 +22,11 @@ function getD1ErrorMessage(err: unknown): string {
 		const parts: string[] = [];
 		if (err.message) parts.push(err.message);
 		const causeMsg = (err as any)?.cause?.message;
-		if (typeof causeMsg === "string" && causeMsg && causeMsg !== err.message) {
+		if (
+			typeof causeMsg === "string" &&
+			causeMsg &&
+			causeMsg !== err.message
+		) {
 			parts.push(causeMsg);
 		}
 		return parts.join("\n");
@@ -48,7 +52,11 @@ function wrapD1Database(args: {
 
 				return new Proxy(stmt as any, {
 					get(stmtTarget, stmtProp, stmtReceiver) {
-						const val = Reflect.get(stmtTarget, stmtProp, stmtReceiver);
+						const val = Reflect.get(
+							stmtTarget,
+							stmtProp,
+							stmtReceiver
+						);
 						if (typeof val !== "function") return val;
 						if (
 							stmtProp !== "all" &&
@@ -72,9 +80,14 @@ function wrapD1Database(args: {
 									ts: args.requestTs,
 									durationMs: Math.max(0, t1 - t0),
 									sqlShape,
-									rowsRead: typeof meta?.rows_read === "number" ? meta.rows_read : undefined,
+									rowsRead:
+										typeof meta?.rows_read === "number"
+											? meta.rows_read
+											: undefined,
 									rowsWritten:
-										typeof meta?.rows_written === "number" ? meta.rows_written : undefined,
+										typeof meta?.rows_written === "number"
+											? meta.rows_written
+											: undefined,
 								});
 
 								return res;

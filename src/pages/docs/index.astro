@@ -14,6 +14,20 @@ const posts = (await getCollection("docs")).sort(
 <DocsLayout title="Docs">
 	<section class="space-y-4">
 		<h1 class="text-2xl font-semibold tracking-tight">Docs</h1>
+		<div class="grid gap-3 md:grid-cols-3">
+			<a href="/docs/v1/welcome/" class="rounded-lg border bg-card p-4 hover:bg-accent/40">
+				<div class="text-sm font-semibold">Build</div>
+				<p class="mt-1 text-sm text-muted-foreground">Local setup, auth, and database workflows.</p>
+			</a>
+			<a href="/docs/v1/operate/" class="rounded-lg border bg-card p-4 hover:bg-accent/40">
+				<div class="text-sm font-semibold">Operate</div>
+				<p class="mt-1 text-sm text-muted-foreground">Deploy, verify, and rollback runbooks.</p>
+			</a>
+			<a href="/docs/v1/extend/" class="rounded-lg border bg-card p-4 hover:bg-accent/40">
+				<div class="text-sm font-semibold">Extend</div>
+				<p class="mt-1 text-sm text-muted-foreground">Scaffold features and ship safely.</p>
+			</a>
+		</div>
 		<ul class="grid gap-3 sm:grid-cols-2">
 			{
 				posts.map((post) => (

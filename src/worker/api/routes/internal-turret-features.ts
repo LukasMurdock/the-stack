@@ -120,7 +120,9 @@ internalTurretFeaturesApp.openapi(putFeatures, async (c) => {
 	const current = await readTurretFeatures(c.env as unknown as TurretCfgEnv);
 	const next = {
 		...current,
-		...(body.storeUserEmail !== undefined ? { storeUserEmail: body.storeUserEmail } : {}),
+		...(body.storeUserEmail !== undefined
+			? { storeUserEmail: body.storeUserEmail }
+			: {}),
 	};
 	await writeTurretFeatures(c.env as unknown as TurretCfgEnv, next);
 	return c.json({ features: next }, 200);

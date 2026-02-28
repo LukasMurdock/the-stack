@@ -161,7 +161,9 @@ const listIssues = createRoute({
 	responses: {
 		200: {
 			description: "List issues (fingerprint groups) within a time range",
-			content: { "application/json": { schema: IssuesListResponseSchema } },
+			content: {
+				"application/json": { schema: IssuesListResponseSchema },
+			},
 		},
 		401: {
 			description: "Unauthorized",
@@ -176,7 +178,14 @@ const listIssues = createRoute({
 
 internalTurretIssuesApp.openapi(listIssues, async (c) => {
 	const env = c.env as unknown as { TURRET_DB: D1Database };
-	const { status: statusRaw, q: qRaw, from, to, limit: limitRaw, offset: offsetRaw } = c.req.valid("query");
+	const {
+		status: statusRaw,
+		q: qRaw,
+		from,
+		to,
+		limit: limitRaw,
+		offset: offsetRaw,
+	} = c.req.valid("query");
 	const now = Date.now();
 	const fromMs = parseMs(from) ?? now - DAY_MS;
 	const toMs = parseMs(to) ?? now;
@@ -292,7 +301,9 @@ internalTurretIssuesApp.openapi(listIssues, async (c) => {
 		offset,
 	];
 
-	const res = await env.TURRET_DB.prepare(sqlText).bind(...binds).all();
+	const res = await env.TURRET_DB.prepare(sqlText)
+		.bind(...binds)
+		.all();
 	const rows = (res.results ?? []) as any[];
 
 	const issues = rows.map((r) => {
@@ -305,10 +316,15 @@ internalTurretIssuesApp.openapi(listIssues, async (c) => {
 			occurrences: Number(r.occurrences ?? 0),
 			sessionsAffected: Number(r.sessionsAffected ?? 0),
 			sample: {
-				errorId: r.sampleErrorId != null ? String(r.sampleErrorId) : null,
-				sessionId: r.sampleSessionId != null ? String(r.sampleSessionId) : null,
+				errorId:
+					r.sampleErrorId != null ? String(r.sampleErrorId) : null,
+				sessionId:
+					r.sampleSessionId != null
+						? String(r.sampleSessionId)
+						: null,
 				source: r.sampleSource != null ? String(r.sampleSource) : null,
-				message: r.sampleMessage != null ? String(r.sampleMessage) : null,
+				message:
+					r.sampleMessage != null ? String(r.sampleMessage) : null,
 				ts: r.sampleTs != null ? Number(r.sampleTs) : null,
 			},
 		};
@@ -321,12 +337,16 @@ const getIssue = createRoute({
 	method: "get",
 	path: "/internal/turret/issue/{fingerprint}",
 	request: {
-		params: z.object({ fingerprint: z.string().openapi({ example: "v1:abc123" }) }),
+		params: z.object({
+			fingerprint: z.string().openapi({ example: "v1:abc123" }),
+		}),
 	},
 	responses: {
 		200: {
 			description: "Get issue detail",
-			content: { "application/json": { schema: IssueDetailResponseSchema } },
+			content: {
+				"application/json": { schema: IssueDetailResponseSchema },
+			},
 		},
 		401: {
 			description: "Unauthorized",
@@ -386,22 +406,34 @@ internalTurretIssuesApp.openapi(getIssue, async (c) => {
 		GROUP BY e.fingerprint;
 	`;
 
-	const row = (await env.TURRET_DB.prepare(stmt).bind(fingerprint).first()) as any | null;
+	const row = (await env.TURRET_DB.prepare(stmt)
+		.bind(fingerprint)
+		.first()) as any | null;
 	if (!row) return c.json({ error: "Not Found" }, 404);
 
 	const issue = {
 		fingerprint: String(row.fingerprint),
 		status: (row.status ?? "open") as "open" | "resolved" | "ignored",
-		title: row.stateTitle != null ? String(row.stateTitle) : row.fallbackTitle != null ? String(row.fallbackTitle) : null,
+		title:
+			row.stateTitle != null
+				? String(row.stateTitle)
+				: row.fallbackTitle != null
+					? String(row.fallbackTitle)
+					: null,
 		firstSeenAt: Number(row.firstSeenAt ?? 0),
 		lastSeenAt: Number(row.lastSeenAt ?? 0),
 		occurrencesTotal: Number(row.occurrencesTotal ?? 0),
 		sessionsAffectedTotal: Number(row.sessionsAffectedTotal ?? 0),
 		sample: {
-			errorId: row.sampleErrorId != null ? String(row.sampleErrorId) : null,
-			sessionId: row.sampleSessionId != null ? String(row.sampleSessionId) : null,
+			errorId:
+				row.sampleErrorId != null ? String(row.sampleErrorId) : null,
+			sessionId:
+				row.sampleSessionId != null
+					? String(row.sampleSessionId)
+					: null,
 			source: row.sampleSource != null ? String(row.sampleSource) : null,
-			message: row.sampleMessage != null ? String(row.sampleMessage) : null,
+			message:
+				row.sampleMessage != null ? String(row.sampleMessage) : null,
 			ts: row.sampleTs != null ? Number(row.sampleTs) : null,
 		},
 	};
@@ -423,7 +455,9 @@ const getIssueTrend = createRoute({
 	responses: {
 		200: {
 			description: "Get issue trend series",
-			content: { "application/json": { schema: IssueTrendResponseSchema } },
+			content: {
+				"application/json": { schema: IssueTrendResponseSchema },
+			},
 		},
 		401: {
 			description: "Unauthorized",
@@ -503,7 +537,9 @@ const getIssueEvents = createRoute({
 	responses: {
 		200: {
 			description: "List recent occurrences for an issue",
-			content: { "application/json": { schema: IssueEventsResponseSchema } },
+			content: {
+				"application/json": { schema: IssueEventsResponseSchema },
+			},
 		},
 		401: {
 			description: "Unauthorized",
@@ -551,7 +587,9 @@ internalTurretIssuesApp.openapi(getIssueEvents, async (c) => {
 		ORDER BY ts DESC
 		LIMIT ? OFFSET ?;
 	`;
-	const res = await env.TURRET_DB.prepare(stmt).bind(fingerprint, limit, offset).all();
+	const res = await env.TURRET_DB.prepare(stmt)
+		.bind(fingerprint, limit, offset)
+		.all();
 	const rows = (res.results ?? []) as any[];
 	const events = rows.map((r) => ({
 		id: String(r.id),
@@ -584,7 +622,9 @@ const patchIssue = createRoute({
 	responses: {
 		200: {
 			description: "Update issue triage state",
-			content: { "application/json": { schema: IssueDetailResponseSchema } },
+			content: {
+				"application/json": { schema: IssueDetailResponseSchema },
+			},
 		},
 		401: {
 			description: "Unauthorized",
@@ -621,7 +661,9 @@ internalTurretIssuesApp.openapi(patchIssue, async (c) => {
 		.bind(fingerprint)
 		.first()) as any | null;
 
-	const nextStatus = (body.status ?? (current?.status as any) ?? "open") as string;
+	const nextStatus = (body.status ??
+		(current?.status as any) ??
+		"open") as string;
 	const nextTitle = body.title !== undefined ? body.title : current?.title;
 
 	await env.TURRET_DB.prepare(
@@ -636,7 +678,7 @@ internalTurretIssuesApp.openapi(patchIssue, async (c) => {
 			fingerprint,
 			nextStatus,
 			nextTitle ?? null,
-			current ? current.created_at ?? now : now,
+			current ? (current.created_at ?? now) : now,
 			now
 		)
 		.run();
@@ -681,20 +723,32 @@ internalTurretIssuesApp.openapi(patchIssue, async (c) => {
 		WHERE e.fingerprint = ?
 		GROUP BY e.fingerprint;
 	`;
-	const row = (await env.TURRET_DB.prepare(stmt).bind(fingerprint).first()) as any;
+	const row = (await env.TURRET_DB.prepare(stmt)
+		.bind(fingerprint)
+		.first()) as any;
 	const issue = {
 		fingerprint: String(row.fingerprint),
 		status: (row.status ?? "open") as "open" | "resolved" | "ignored",
-		title: row.stateTitle != null ? String(row.stateTitle) : row.fallbackTitle != null ? String(row.fallbackTitle) : null,
+		title:
+			row.stateTitle != null
+				? String(row.stateTitle)
+				: row.fallbackTitle != null
+					? String(row.fallbackTitle)
+					: null,
 		firstSeenAt: Number(row.firstSeenAt ?? 0),
 		lastSeenAt: Number(row.lastSeenAt ?? 0),
 		occurrencesTotal: Number(row.occurrencesTotal ?? 0),
 		sessionsAffectedTotal: Number(row.sessionsAffectedTotal ?? 0),
 		sample: {
-			errorId: row.sampleErrorId != null ? String(row.sampleErrorId) : null,
-			sessionId: row.sampleSessionId != null ? String(row.sampleSessionId) : null,
+			errorId:
+				row.sampleErrorId != null ? String(row.sampleErrorId) : null,
+			sessionId:
+				row.sampleSessionId != null
+					? String(row.sampleSessionId)
+					: null,
 			source: row.sampleSource != null ? String(row.sampleSource) : null,
-			message: row.sampleMessage != null ? String(row.sampleMessage) : null,
+			message:
+				row.sampleMessage != null ? String(row.sampleMessage) : null,
 			ts: row.sampleTs != null ? Number(row.sampleTs) : null,
 		},
 	};

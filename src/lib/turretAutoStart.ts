@@ -13,7 +13,9 @@ async function hasAuthenticatedSession(): Promise<boolean> {
 		});
 		if (!res.ok) return false;
 		const payload = (await res.json()) as unknown;
-		return Boolean((payload as { user?: unknown } | null | undefined)?.user);
+		return Boolean(
+			(payload as { user?: unknown } | null | undefined)?.user
+		);
 	} catch {
 		return false;
 	}

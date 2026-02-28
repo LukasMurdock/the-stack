@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a reproducible problem
+title: "bug: "
+labels: [bug]
+body:
+    - type: textarea
+      id: summary
+      attributes:
+          label: Summary
+          description: What happened?
+      validations:
+          required: true
+
+    - type: textarea
+      id: steps
+      attributes:
+          label: Steps to reproduce
+          description: Include exact commands, routes, and inputs.
+          placeholder: |
+              1. Run ...
+              2. Open ...
+              3. Click ...
+      validations:
+          required: true
+
+    - type: textarea
+      id: expected
+      attributes:
+          label: Expected behavior
+      validations:
+          required: true
+
+    - type: textarea
+      id: actual
+      attributes:
+          label: Actual behavior
+      validations:
+          required: true
+
+    - type: input
+      id: version
+      attributes:
+          label: Node version
+          placeholder: e.g. 22.12.0
+
+    - type: textarea
+      id: env
+      attributes:
+          label: Environment
+          description: OS, browser, and any relevant setup details.

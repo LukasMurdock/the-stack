@@ -69,7 +69,9 @@ const getCompliance = createRoute({
 	responses: {
 		200: {
 			description: "Get Turret compliance policy",
-			content: { "application/json": { schema: TurretComplianceResponseSchema } },
+			content: {
+				"application/json": { schema: TurretComplianceResponseSchema },
+			},
 		},
 		401: {
 			description: "Unauthorized",
@@ -101,7 +103,9 @@ const putCompliance = createRoute({
 	responses: {
 		200: {
 			description: "Update Turret compliance policy",
-			content: { "application/json": { schema: TurretComplianceResponseSchema } },
+			content: {
+				"application/json": { schema: TurretComplianceResponseSchema },
+			},
 		},
 		401: {
 			description: "Unauthorized",
@@ -116,12 +120,20 @@ const putCompliance = createRoute({
 
 internalTurretComplianceApp.openapi(putCompliance, async (c) => {
 	const body = c.req.valid("json");
-	const current = await readTurretCompliance(c.env as unknown as TurretCfgEnv);
+	const current = await readTurretCompliance(
+		c.env as unknown as TurretCfgEnv
+	);
 	const next = {
 		...current,
-		...(body.retentionDays !== undefined ? { retentionDays: body.retentionDays } : {}),
-		...(body.rrweb ? { rrweb: { ...(current.rrweb as any), ...body.rrweb } } : {}),
-		...(body.console ? { console: { ...(current.console as any), ...body.console } } : {}),
+		...(body.retentionDays !== undefined
+			? { retentionDays: body.retentionDays }
+			: {}),
+		...(body.rrweb
+			? { rrweb: { ...(current.rrweb as any), ...body.rrweb } }
+			: {}),
+		...(body.console
+			? { console: { ...(current.console as any), ...body.console } }
+			: {}),
 	};
 	// Re-parse to ensure we always store a normalized object.
 	const normalized = TurretComplianceSchema.parse(next);

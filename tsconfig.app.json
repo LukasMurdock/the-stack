@@ -27,11 +27,7 @@
 			"@/*": ["./src/*"]
 		}
 	},
-	"include": [
-		"src/react-app",
-		"src/components",
-		"src/lib"
-	],
+	"include": ["src/react-app", "src/components", "src/lib"],
 	"exclude": [
 		"src/worker",
 		"src/bindings",

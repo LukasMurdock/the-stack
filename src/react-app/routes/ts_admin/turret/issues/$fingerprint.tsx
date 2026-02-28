@@ -32,11 +32,15 @@ import {
 } from "../../../../queries/turretQueries";
 import { patchIssue, type TurretIssueStatus } from "../../../../lib/turretApi";
 
-const CLOUDFLARE_TRACES_URL = "https://dash.cloudflare.com/?to=/:account/workers-and-pages/observability/traces";
+const CLOUDFLARE_TRACES_URL =
+	"https://dash.cloudflare.com/?to=/:account/workers-and-pages/observability/traces";
 
 type RangePreset = "24h" | "7d" | "30d" | "custom";
 
-function presetToRange(preset: RangePreset, now: number): { from?: number; to?: number } {
+function presetToRange(
+	preset: RangePreset,
+	now: number
+): { from?: number; to?: number } {
 	switch (preset) {
 		case "24h":
 			return { from: now - 24 * 60 * 60 * 1000, to: now };
@@ -78,18 +82,28 @@ function parseJsonObject(input: string | null): Record<string, unknown> | null {
 const Route = createFileRoute("/ts_admin/turret/issues/$fingerprint")({
 	validateSearch: (s: Record<string, unknown>) => {
 		const preset: RangePreset =
-			s.preset === "24h" || s.preset === "7d" || s.preset === "30d" || s.preset === "custom"
+			s.preset === "24h" ||
+			s.preset === "7d" ||
+			s.preset === "30d" ||
+			s.preset === "custom"
 				? (s.preset as RangePreset)
-				: "7d"
-		const bucket: "hour" | "day" = s.bucket === "hour" || s.bucket === "day" ? (s.bucket as any) : (preset === "24h" ? "hour" : "day");
+				: "7d";
+		const bucket: "hour" | "day" =
+			s.bucket === "hour" || s.bucket === "day"
+				? (s.bucket as any)
+				: preset === "24h"
+					? "hour"
+					: "day";
 		return {
 			preset,
 			bucket,
 			from: typeof s.from === "string" ? Number(s.from) : undefined,
 			to: typeof s.to === "string" ? Number(s.to) : undefined,
-			eventsOffset: typeof s.eventsOffset === "string" ? Number(s.eventsOffset) : 0,
-			eventsLimit: typeof s.eventsLimit === "string" ? Number(s.eventsLimit) : 50,
-		}
+			eventsOffset:
+				typeof s.eventsOffset === "string" ? Number(s.eventsOffset) : 0,
+			eventsLimit:
+				typeof s.eventsLimit === "string" ? Number(s.eventsLimit) : 50,
+		};
 	},
 	beforeLoad: requireTurretAdmin,
 	component: TurretIssueDetailPage,
@@ -103,7 +117,8 @@ function TurretIssueDetailPage() {
 	const [now] = useState(() => Date.now());
 
 	const range = useMemo(() => {
-		if (search.preset === "custom") return { from: search.from, to: search.to };
+		if (search.preset === "custom")
+			return { from: search.from, to: search.to };
 		return presetToRange(search.preset, now);
 	}, [now, search.from, search.preset, search.to]);
 
@@ -114,13 +129,13 @@ function TurretIssueDetailPage() {
 			to: range.to,
 			bucket: search.bucket,
 		})
-	)
+	);
 	const eventsQuery = useQuery(
 		turretIssueEventsQueryOptions(fingerprint, {
 			limit: search.eventsLimit,
 			offset: search.eventsOffset,
 		})
-	)
+	);
 
 	const issue = issueQuery.data?.issue;
 
@@ -131,18 +146,29 @@ function TurretIssueDetailPage() {
 	}, [issue?.fingerprint, issue?.title, issue?.sample.message]);
 
 	const updateMutation = useMutation({
-		mutationFn: (input: { fingerprint: string; update: { status?: TurretIssueStatus; title?: string | null } }) =>
-			patchIssue(input.fingerprint, input.update),
+		mutationFn: (input: {
+			fingerprint: string;
+			update: { status?: TurretIssueStatus; title?: string | null };
+		}) => patchIssue(input.fingerprint, input.update),
 		onSuccess: async () => {
-		await qc.invalidateQueries({ queryKey: ["turret", "issues"] });
-		await qc.invalidateQueries({ queryKey: ["turret", "issue", fingerprint] });
-		await qc.invalidateQueries({ queryKey: ["turret", "issue", fingerprint, "trend"] });
-		await qc.invalidateQueries({ queryKey: ["turret", "issue", fingerprint, "events"] });
-	},
-	})
+			await qc.invalidateQueries({ queryKey: ["turret", "issues"] });
+			await qc.invalidateQueries({
+				queryKey: ["turret", "issue", fingerprint],
+			});
+			await qc.invalidateQueries({
+				queryKey: ["turret", "issue", fingerprint, "trend"],
+			});
+			await qc.invalidateQueries({
+				queryKey: ["turret", "issue", fingerprint, "events"],
+			});
+		},
+	});
 
 	function setPreset(preset: RangePreset) {
-		const next = preset === "custom" ? { from: search.from, to: search.to } : presetToRange(preset, now);
+		const next =
+			preset === "custom"
+				? { from: search.from, to: search.to }
+				: presetToRange(preset, now);
 		const nextBucket = preset === "24h" ? "hour" : "day";
 		navigate({
 			to: "/ts_admin/turret/issues/$fingerprint",
@@ -154,7 +180,7 @@ function TurretIssueDetailPage() {
 				from: next.from,
 				to: next.to,
 			},
-		})
+		});
 	}
 
 	function saveTitle() {
@@ -173,32 +199,57 @@ function TurretIssueDetailPage() {
 		<section className="space-y-4">
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div className="space-y-1">
-					<h1 className="text-2xl font-semibold tracking-tight">Issue</h1>
-					<p className="text-sm text-muted-foreground">{fingerprint}</p>
+					<h1 className="text-2xl font-semibold tracking-tight">
+						Issue
+					</h1>
+					<p className="text-sm text-muted-foreground">
+						{fingerprint}
+					</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<Button
 						type="button"
 						variant="outline"
 						onClick={() =>
-								navigate({
+							navigate({
 								to: "/ts_admin/turret/issues",
-								search: { status: "open", preset: "24h", q: "", from: undefined, to: undefined, offset: 0, limit: 50 },
+								search: {
+									status: "open",
+									preset: "24h",
+									q: "",
+									from: undefined,
+									to: undefined,
+									offset: 0,
+									limit: 50,
+								},
 							})
 						}
 					>
 						Back to inbox
 					</Button>
-					<Button type="button" variant="outline" onClick={() => navigate({ to: "/ts_admin/turret" })}>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => navigate({ to: "/ts_admin/turret" })}
+					>
 						Dashboard
 					</Button>
 					<Button
 						type="button"
 						variant="outline"
 						onClick={() =>
-								navigate({
+							navigate({
 								to: "/ts_admin/turret/sessions",
-								search: { q: "", hasError: false, groupBy: "none", preset: "1h", from: undefined, to: undefined, offset: 0, limit: 50 },
+								search: {
+									q: "",
+									hasError: false,
+									groupBy: "none",
+									preset: "1h",
+									from: undefined,
+									to: undefined,
+									offset: 0,
+									limit: 50,
+								},
 							})
 						}
 					>
@@ -213,19 +264,35 @@ function TurretIssueDetailPage() {
 				</CardHeader>
 				<CardContent className="space-y-3">
 					{issueQuery.isLoading ? (
-						<div className="text-sm text-muted-foreground">Loading…</div>
+						<div className="text-sm text-muted-foreground">
+							Loading…
+						</div>
 					) : issueQuery.isError ? (
-						<div className="text-sm text-destructive">Failed to load issue.</div>
+						<div className="text-sm text-destructive">
+							Failed to load issue.
+						</div>
 					) : !issue ? (
-						<div className="text-sm text-muted-foreground">Not found (may have expired).</div>
+						<div className="text-sm text-muted-foreground">
+							Not found (may have expired).
+						</div>
 					) : (
 						<>
 							<div className="flex flex-wrap items-center gap-2">
-								<Badge variant={issue.status === "open" ? "destructive" : "secondary"}>
+								<Badge
+									variant={
+										issue.status === "open"
+											? "destructive"
+											: "secondary"
+									}
+								>
 									{issue.status}
 								</Badge>
 								<Button
-									variant={issue.status === "open" ? "default" : "outline"}
+									variant={
+										issue.status === "open"
+											? "default"
+											: "outline"
+									}
 									type="button"
 									disabled={updateMutation.isPending}
 									onClick={() => setStatus("open")}
@@ -233,7 +300,11 @@ function TurretIssueDetailPage() {
 									Open
 								</Button>
 								<Button
-									variant={issue.status === "resolved" ? "default" : "outline"}
+									variant={
+										issue.status === "resolved"
+											? "default"
+											: "outline"
+									}
 									type="button"
 									disabled={updateMutation.isPending}
 									onClick={() => setStatus("resolved")}
@@ -241,7 +312,11 @@ function TurretIssueDetailPage() {
 									Resolved
 								</Button>
 								<Button
-									variant={issue.status === "ignored" ? "default" : "outline"}
+									variant={
+										issue.status === "ignored"
+											? "default"
+											: "outline"
+									}
 									type="button"
 									disabled={updateMutation.isPending}
 									onClick={() => setStatus("ignored")}
@@ -252,16 +327,28 @@ function TurretIssueDetailPage() {
 
 							<div className="grid gap-3 md:grid-cols-2">
 								<div className="space-y-1">
-									<div className="text-xs text-muted-foreground">Title</div>
+									<div className="text-xs text-muted-foreground">
+										Title
+									</div>
 									<div className="flex flex-wrap items-center gap-2">
 										<Input
 											value={titleDraft}
-											onChange={(e) => setTitleDraft(e.target.value)}
+											onChange={(e) =>
+												setTitleDraft(e.target.value)
+											}
 											className="min-w-[260px] flex-1"
 										/>
 										<Button
 											type="button"
-											disabled={updateMutation.isPending || titleDraft.trim() === (issue.title ?? issue.sample.message ?? "").trim()}
+											disabled={
+												updateMutation.isPending ||
+												titleDraft.trim() ===
+													(
+														issue.title ??
+														issue.sample.message ??
+														""
+													).trim()
+											}
 											onClick={saveTitle}
 										>
 											Save
@@ -269,26 +356,46 @@ function TurretIssueDetailPage() {
 									</div>
 								</div>
 								<div className="space-y-1">
-									<div className="text-xs text-muted-foreground">Stats</div>
+									<div className="text-xs text-muted-foreground">
+										Stats
+									</div>
 									<div className="text-sm">
 										<div>
-											<span className="text-muted-foreground">First seen:</span> {new Date(issue.firstSeenAt).toLocaleString()}
+											<span className="text-muted-foreground">
+												First seen:
+											</span>{" "}
+											{new Date(
+												issue.firstSeenAt
+											).toLocaleString()}
 										</div>
 										<div>
-											<span className="text-muted-foreground">Last seen:</span> {new Date(issue.lastSeenAt).toLocaleString()}
+											<span className="text-muted-foreground">
+												Last seen:
+											</span>{" "}
+											{new Date(
+												issue.lastSeenAt
+											).toLocaleString()}
 										</div>
 										<div>
-											<span className="text-muted-foreground">Occurrences:</span> {issue.occurrencesTotal.toLocaleString()}
+											<span className="text-muted-foreground">
+												Occurrences:
+											</span>{" "}
+											{issue.occurrencesTotal.toLocaleString()}
 										</div>
 										<div>
-											<span className="text-muted-foreground">Sessions:</span> {issue.sessionsAffectedTotal.toLocaleString()}
+											<span className="text-muted-foreground">
+												Sessions:
+											</span>{" "}
+											{issue.sessionsAffectedTotal.toLocaleString()}
 										</div>
 									</div>
+								</div>
 							</div>
-						</div>
 
 							<div className="text-xs text-muted-foreground">
-								Counts reflect retained events. Session-bound events expire with session retention; non-session worker events expire after 24h.
+								Counts reflect retained events. Session-bound
+								events expire with session retention;
+								non-session worker events expire after 24h.
 							</div>
 						</>
 					)}
@@ -301,19 +408,47 @@ function TurretIssueDetailPage() {
 				</CardHeader>
 				<CardContent className="space-y-3">
 					<div className="flex flex-wrap items-center gap-2">
-						<Button variant={search.preset === "24h" ? "default" : "outline"} type="button" onClick={() => setPreset("24h")}>
+						<Button
+							variant={
+								search.preset === "24h" ? "default" : "outline"
+							}
+							type="button"
+							onClick={() => setPreset("24h")}
+						>
 							Last 24h
 						</Button>
-						<Button variant={search.preset === "7d" ? "default" : "outline"} type="button" onClick={() => setPreset("7d")}>
+						<Button
+							variant={
+								search.preset === "7d" ? "default" : "outline"
+							}
+							type="button"
+							onClick={() => setPreset("7d")}
+						>
 							Last 7d
 						</Button>
-						<Button variant={search.preset === "30d" ? "default" : "outline"} type="button" onClick={() => setPreset("30d")}>
+						<Button
+							variant={
+								search.preset === "30d" ? "default" : "outline"
+							}
+							type="button"
+							onClick={() => setPreset("30d")}
+						>
 							Last 30d
 						</Button>
-						<Button variant={search.preset === "custom" ? "default" : "outline"} type="button" onClick={() => setPreset("custom")}>
+						<Button
+							variant={
+								search.preset === "custom"
+									? "default"
+									: "outline"
+							}
+							type="button"
+							onClick={() => setPreset("custom")}
+						>
 							Custom
 						</Button>
-						<div className="text-xs text-muted-foreground">bucket: {search.bucket}</div>
+						<div className="text-xs text-muted-foreground">
+							bucket: {search.bucket}
+						</div>
 					</div>
 
 					{search.preset === "custom" ? (
@@ -324,8 +459,17 @@ function TurretIssueDetailPage() {
 									type="datetime-local"
 									value={toLocalDatetimeValue(search.from)}
 									onChange={(e) => {
-										const nextFrom = fromLocalDatetimeValue(e.target.value);
-									navigate({ to: "/ts_admin/turret/issues/$fingerprint", params: { fingerprint }, search: { ...search, from: nextFrom } });
+										const nextFrom = fromLocalDatetimeValue(
+											e.target.value
+										);
+										navigate({
+											to: "/ts_admin/turret/issues/$fingerprint",
+											params: { fingerprint },
+											search: {
+												...search,
+												from: nextFrom,
+											},
+										});
 									}}
 								/>
 							</div>
@@ -335,8 +479,14 @@ function TurretIssueDetailPage() {
 									type="datetime-local"
 									value={toLocalDatetimeValue(search.to)}
 									onChange={(e) => {
-										const nextTo = fromLocalDatetimeValue(e.target.value);
-									navigate({ to: "/ts_admin/turret/issues/$fingerprint", params: { fingerprint }, search: { ...search, to: nextTo } });
+										const nextTo = fromLocalDatetimeValue(
+											e.target.value
+										);
+										navigate({
+											to: "/ts_admin/turret/issues/$fingerprint",
+											params: { fingerprint },
+											search: { ...search, to: nextTo },
+										});
 									}}
 								/>
 							</div>
@@ -344,28 +494,58 @@ function TurretIssueDetailPage() {
 					) : null}
 
 					{trendQuery.isLoading ? (
-						<div className="text-sm text-muted-foreground">Loading…</div>
+						<div className="text-sm text-muted-foreground">
+							Loading…
+						</div>
 					) : trendQuery.isError ? (
-						<div className="text-sm text-destructive">Failed to load trend.</div>
+						<div className="text-sm text-destructive">
+							Failed to load trend.
+						</div>
 					) : chartData.length === 0 ? (
-						<div className="text-sm text-muted-foreground">No data.</div>
+						<div className="text-sm text-muted-foreground">
+							No data.
+						</div>
 					) : (
-						<ChartContainer config={{ count: { label: "count", color: "var(--color-chart-2)" } }} className="aspect-auto h-56 w-full">
-							<AreaChart data={chartData as any} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
+						<ChartContainer
+							config={{
+								count: {
+									label: "count",
+									color: "var(--color-chart-2)",
+								},
+							}}
+							className="aspect-auto h-56 w-full"
+						>
+							<AreaChart
+								data={chartData as any}
+								margin={{
+									left: 0,
+									right: 0,
+									top: 8,
+									bottom: 0,
+								}}
+							>
 								<XAxis
 									dataKey="bucketStartMs"
 									tickFormatter={(v) => {
-										const d = new Date(Number(v))
+										const d = new Date(Number(v));
 										return search.bucket === "hour"
-											? d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
-											: d.toLocaleDateString()
+											? d.toLocaleTimeString(undefined, {
+													hour: "2-digit",
+													minute: "2-digit",
+												})
+											: d.toLocaleDateString();
 									}}
 									minTickGap={24}
 								/>
 								<YAxis allowDecimals={false} width={32} />
 								<Tooltip
-									formatter={(value: any) => [String(value), "count"]}
-									labelFormatter={(label: any) => new Date(Number(label)).toLocaleString()}
+									formatter={(value: any) => [
+										String(value),
+										"count",
+									]}
+									labelFormatter={(label: any) =>
+										new Date(Number(label)).toLocaleString()
+									}
 								/>
 								<Area
 									type="monotone"
@@ -387,15 +567,21 @@ function TurretIssueDetailPage() {
 				</CardHeader>
 				<CardContent>
 					{eventsQuery.isLoading ? (
-						<div className="text-sm text-muted-foreground">Loading…</div>
+						<div className="text-sm text-muted-foreground">
+							Loading…
+						</div>
 					) : eventsQuery.isError ? (
-						<div className="text-sm text-destructive">Failed to load occurrences.</div>
-					) : !eventsQuery.data || eventsQuery.data.events.length === 0 ? (
+						<div className="text-sm text-destructive">
+							Failed to load occurrences.
+						</div>
+					) : !eventsQuery.data ||
+					  eventsQuery.data.events.length === 0 ? (
 						<Empty>
 							<EmptyHeader>
 								<EmptyTitle>No occurrences</EmptyTitle>
 								<EmptyDescription>
-									This issue may have fully expired under retention.
+									This issue may have fully expired under
+									retention.
 								</EmptyDescription>
 							</EmptyHeader>
 							<EmptyContent />
@@ -414,13 +600,27 @@ function TurretIssueDetailPage() {
 								</TableHeader>
 								<TableBody>
 									{eventsQuery.data.events.map((e) => {
-										const extra = parseJsonObject(e.extraJson);
-										const rayId = typeof extra?.ray_id === "string" ? extra.ray_id : null;
+										const extra = parseJsonObject(
+											e.extraJson
+										);
+										const rayId =
+											typeof extra?.ray_id === "string"
+												? extra.ray_id
+												: null;
 										return (
 											<TableRow key={e.id}>
-												<TableCell className="whitespace-nowrap">{new Date(e.ts).toLocaleString()}</TableCell>
-												<TableCell className="whitespace-nowrap">{e.source}</TableCell>
-												<TableCell className="max-w-[520px] truncate">{e.message ?? "(no message)"}</TableCell>
+												<TableCell className="whitespace-nowrap">
+													{new Date(
+														e.ts
+													).toLocaleString()}
+												</TableCell>
+												<TableCell className="whitespace-nowrap">
+													{e.source}
+												</TableCell>
+												<TableCell className="max-w-[520px] truncate">
+													{e.message ??
+														"(no message)"}
+												</TableCell>
 												<TableCell>
 													{e.sessionId ? (
 														<Button
@@ -428,15 +628,20 @@ function TurretIssueDetailPage() {
 															type="button"
 															onClick={() =>
 																navigate({
-													to: "/ts_admin/turret/sessions/$sessionId",
-																	params: { sessionId: e.sessionId as string },
+																	to: "/ts_admin/turret/sessions/$sessionId",
+																	params: {
+																		sessionId:
+																			e.sessionId as string,
+																	},
 																})
 															}
 														>
 															Open
 														</Button>
 													) : (
-														<span className="text-xs text-muted-foreground">-</span>
+														<span className="text-xs text-muted-foreground">
+															-
+														</span>
 													)}
 												</TableCell>
 												<TableCell>
@@ -447,7 +652,9 @@ function TurretIssueDetailPage() {
 																className="rounded-md border px-2.5 py-1 text-xs"
 																onClick={() => {
 																	try {
-																		void navigator.clipboard.writeText(rayId)
+																		void navigator.clipboard.writeText(
+																			rayId
+																		);
 																	} catch {
 																		// ignore
 																	}
@@ -456,7 +663,9 @@ function TurretIssueDetailPage() {
 																Copy ray
 															</button>
 															<a
-																href={CLOUDFLARE_TRACES_URL}
+																href={
+																	CLOUDFLARE_TRACES_URL
+																}
 																target="_blank"
 																rel="noreferrer"
 																className="rounded-md border px-2.5 py-1 text-xs"
@@ -466,11 +675,13 @@ function TurretIssueDetailPage() {
 															</a>
 														</div>
 													) : (
-														<span className="text-xs text-muted-foreground">-</span>
+														<span className="text-xs text-muted-foreground">
+															-
+														</span>
 													)}
 												</TableCell>
 											</TableRow>
-										)
+										);
 									})}
 								</TableBody>
 							</Table>
@@ -483,26 +694,43 @@ function TurretIssueDetailPage() {
 										navigate({
 											to: "/ts_admin/turret/issues/$fingerprint",
 											params: { fingerprint },
-											search: { ...search, eventsOffset: Math.max(0, search.eventsOffset - search.eventsLimit) },
-									})
-								}
+											search: {
+												...search,
+												eventsOffset: Math.max(
+													0,
+													search.eventsOffset -
+														search.eventsLimit
+												),
+											},
+										})
+									}
 									type="button"
 								>
 									Prev
 								</Button>
 								<div className="text-sm text-muted-foreground">
-									Showing {search.eventsOffset + 1}–{search.eventsOffset + eventsQuery.data.events.length}
+									Showing {search.eventsOffset + 1}–
+									{search.eventsOffset +
+										eventsQuery.data.events.length}
 								</div>
 								<Button
 									variant="outline"
-									disabled={eventsQuery.data.events.length < search.eventsLimit}
+									disabled={
+										eventsQuery.data.events.length <
+										search.eventsLimit
+									}
 									onClick={() =>
 										navigate({
 											to: "/ts_admin/turret/issues/$fingerprint",
 											params: { fingerprint },
-											search: { ...search, eventsOffset: search.eventsOffset + search.eventsLimit },
-									})
-								}
+											search: {
+												...search,
+												eventsOffset:
+													search.eventsOffset +
+													search.eventsLimit,
+											},
+										})
+									}
 									type="button"
 								>
 									Next
@@ -513,7 +741,7 @@ function TurretIssueDetailPage() {
 				</CardContent>
 			</Card>
 		</section>
-	)
+	);
 }
 
 export { Route };

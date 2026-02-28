@@ -14,7 +14,7 @@ if (!dbPathRaw) {
 	die(
 		"Missing DRIZZLE_DB_PATH.\n" +
 			"Run: node scripts/find-d1-sqlite.mjs turret_sessions\n" +
-			"or use npm run db:turret:studio:local"
+			"or use just studio-turret"
 	);
 }
 
