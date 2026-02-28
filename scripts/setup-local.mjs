@@ -53,8 +53,22 @@ if (missing.length > 0) {
 
 runNodeScript("scripts/dev-doctor.mjs");
 
-runCommand("npx", ["wrangler", "d1", "migrations", "apply", "CORE_DB", "--local"]);
-runCommand("npx", ["wrangler", "d1", "migrations", "apply", "TURRET_DB", "--local"]);
+runCommand("npx", [
+	"wrangler",
+	"d1",
+	"migrations",
+	"apply",
+	"CORE_DB",
+	"--local",
+]);
+runCommand("npx", [
+	"wrangler",
+	"d1",
+	"migrations",
+	"apply",
+	"TURRET_DB",
+	"--local",
+]);
 runNodeScript("scripts/create-admin-local.mjs");
 
 log("\nLocal setup complete.");
