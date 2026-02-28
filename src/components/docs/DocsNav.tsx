@@ -31,7 +31,7 @@ export function DocsNav({ pathname }: DocsNavProps) {
 	);
 
 	return (
-		<NavigationMenu viewport={false} className="flex-1">
+		<NavigationMenu className="flex-1">
 			<NavigationMenuList className="gap-1">
 				<NavigationMenuItem>
 					<NavigationMenuLink

@@ -16,6 +16,7 @@ import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { useQueryErrorResetBoundary } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import { reportError } from "../lib/error-tracker";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 type RouterContext = {
 	queryClient: QueryClient;
@@ -55,67 +56,71 @@ function RootComponent() {
 	const isImpersonating = Boolean(impersonatedBy);
 
 	return (
-		<div className="min-h-dvh bg-background text-foreground">
-			{isImpersonating ? (
-				<div className="border-b bg-amber-50 text-amber-900">
-					<div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm">
-						<div className="min-w-0">
-							<span className="font-medium">Impersonating</span>{" "}
-							<span className="text-amber-900/80">
-								Admin session:{" "}
-								{(impersonatedBy as string).slice(0, 8)}…
-							</span>
-						</div>
-						<div className="flex items-center gap-2">
-							<button
-								className="rounded-md border border-amber-200 bg-white px-3 py-1.5 text-sm"
-								onClick={async () => {
-									try {
-										await authClient.admin.stopImpersonating(
-											{} as any
-										);
-										await sessionQuery.refetch();
-										router.invalidate();
-									} catch {
-										// ignore
-									}
-								}}
-								type="button"
-							>
-								Stop impersonating
-							</button>
+		<TooltipProvider>
+			<div className="min-h-dvh bg-background text-foreground">
+				{isImpersonating ? (
+					<div className="border-b bg-amber-50 text-amber-900">
+						<div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm">
+							<div className="min-w-0">
+								<span className="font-medium">
+									Impersonating
+								</span>{" "}
+								<span className="text-amber-900/80">
+									Admin session:{" "}
+									{(impersonatedBy as string).slice(0, 8)}…
+								</span>
+							</div>
+							<div className="flex items-center gap-2">
+								<button
+									className="rounded-md border border-amber-200 bg-white px-3 py-1.5 text-sm"
+									onClick={async () => {
+										try {
+											await authClient.admin.stopImpersonating(
+												{} as any
+											);
+											await sessionQuery.refetch();
+											router.invalidate();
+										} catch {
+											// ignore
+										}
+									}}
+									type="button"
+								>
+									Stop impersonating
+								</button>
+							</div>
 						</div>
 					</div>
-				</div>
-			) : null}
-			<CatchBoundary
-				getResetKey={() => location.href}
-				errorComponent={RootSubtreeError}
-				onCatch={(error, errorInfo) => {
-					reportError(error, {
-						source: "router",
-						extra: {
-							href: location.href,
-							componentStack: errorInfo.componentStack,
-						},
-					});
+				) : null}
+				<CatchBoundary
+					getResetKey={() => location.href}
+					errorComponent={RootSubtreeError}
+					onCatch={(error, errorInfo) => {
+						reportError(error, {
+							source: "router",
+							extra: {
+								href: location.href,
+								componentStack: errorInfo.componentStack,
+							},
+						});
 
-					if (import.meta.env.DEV) {
-						console.error(error);
-						console.error(errorInfo);
-					}
-				}}
-			>
-				<Outlet />
-			</CatchBoundary>
+						if (import.meta.env.DEV) {
+							console.error(error);
+							console.error(errorInfo);
+						}
+					}}
+				>
+					<Outlet />
+				</CatchBoundary>
 
-			{import.meta.env.DEV ? (
-				<>
-					<ReactQueryDevtools buttonPosition="top-right" />
-					<TanStackRouterDevtools position="bottom-right" />
-				</>
-			) : null}
-		</div>
+				{import.meta.env.DEV ? (
+					<>
+						<ReactQueryDevtools buttonPosition="top-right" />
+						<TanStackRouterDevtools position="bottom-right" />
+					</>
+				) : null}
+			</div>
+		</TooltipProvider>
 	);
 }
 

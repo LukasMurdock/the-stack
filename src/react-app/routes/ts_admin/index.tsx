@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 const Route = createFileRoute("/ts_admin/")({
 	component: TsAdminIndexPage,
@@ -22,12 +22,18 @@ function TsAdminIndexPage() {
 					<CardTitle>Management</CardTitle>
 				</CardHeader>
 				<CardContent className="flex flex-wrap gap-2">
-					<Button asChild variant="outline">
-						<Link to="/ts_admin/users">Users</Link>
-					</Button>
-					<Button asChild variant="outline">
-						<Link to="/ts_admin/turret">Turret</Link>
-					</Button>
+					<Link
+						className={buttonVariants({ variant: "outline" })}
+						to="/ts_admin/users"
+					>
+						Users
+					</Link>
+					<Link
+						className={buttonVariants({ variant: "outline" })}
+						to="/ts_admin/turret"
+					>
+						Turret
+					</Link>
 				</CardContent>
 			</Card>
 		</section>
