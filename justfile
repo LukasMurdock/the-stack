@@ -43,6 +43,12 @@ check-fast:
 check-full:
     npx tsx --test "tests/**/*.test.ts" && npx astro build && npx tsc -b
 
+format:
+    npx oxfmt --write .
+
+format-check:
+    npx oxfmt --check .
+
 seed:
     node scripts/seed-local.mjs
 

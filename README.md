@@ -43,7 +43,7 @@ API-first, type-safe template for building fast, interactive apps on Cloudflare 
 - [React Email](https://react.email/) for email components
 - [Vitest](https://vitest.dev/) for testing framework
 - [Playwright](https://playwright.dev/) for end-to-end tests
-- [Prettier](https://prettier.io/) for formatting
+- [Oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) for formatting
 - [ESLint](https://eslint.org/) for linting
 - [opencode](https://opencode.ai/) for AI coding agent
     - [Cloudflare Skill](https://github.com/dmmulroy/cloudflare-skill) for Cloudflare platform reference docs

@@ -406,9 +406,9 @@ internalTurretIssuesApp.openapi(getIssue, async (c) => {
 		GROUP BY e.fingerprint;
 	`;
 
-	const row = (await env.TURRET_DB.prepare(stmt)
-		.bind(fingerprint)
-		.first()) as any | null;
+	const row = (await env.TURRET_DB.prepare(stmt).bind(fingerprint).first()) as
+		| any
+		| null;
 	if (!row) return c.json({ error: "Not Found" }, 404);
 
 	const issue = {

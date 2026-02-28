@@ -50,6 +50,7 @@ Before opening a PR, run:
 
 ```bash
 just check-fast
+npm run format:check
 ```
 
 For full local verification:
