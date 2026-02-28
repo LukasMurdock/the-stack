@@ -41,7 +41,7 @@ check-fast:
     npx tsx --test "tests/**/*.test.ts"
 
 check-full:
-    npx tsx --test "tests/**/*.test.ts" && npx tsc -b && npx astro build
+    npx tsx --test "tests/**/*.test.ts" && npx astro build && npx tsc -b
 
 seed:
     node scripts/seed-local.mjs
