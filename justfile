@@ -20,22 +20,22 @@ status:
     node scripts/dev-status.mjs
 
 cf-typegen:
-    wrangler types
+    npx wrangler types
 
 migrate-core:
-    wrangler d1 migrations apply CORE_DB --local
+    npx wrangler d1 migrations apply CORE_DB --local
 
 migrate-turret:
-    wrangler d1 migrations apply TURRET_DB --local
+    npx wrangler d1 migrations apply TURRET_DB --local
 
 studio-core:
-    wrangler d1 migrations apply CORE_DB --local && DRIZZLE_DB_PATH=$(node scripts/find-d1-sqlite.mjs core_users) node scripts/drizzle-studio-core-local.mjs
+    npx wrangler d1 migrations apply CORE_DB --local && DRIZZLE_DB_PATH=$(node scripts/find-d1-sqlite.mjs core_users) node scripts/drizzle-studio-core-local.mjs
 
 studio-turret:
-    wrangler d1 migrations apply TURRET_DB --local && DRIZZLE_DB_PATH=$(node scripts/find-d1-sqlite.mjs turret_sessions) node scripts/drizzle-studio-turret-local.mjs
+    npx wrangler d1 migrations apply TURRET_DB --local && DRIZZLE_DB_PATH=$(node scripts/find-d1-sqlite.mjs turret_sessions) node scripts/drizzle-studio-turret-local.mjs
 
 admin-create:
-    wrangler d1 migrations apply CORE_DB --local && node scripts/create-admin-local.mjs
+    npx wrangler d1 migrations apply CORE_DB --local && node scripts/create-admin-local.mjs
 
 check-fast:
     npx tsx --test "tests/**/*.test.ts"

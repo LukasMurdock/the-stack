@@ -117,9 +117,10 @@ try {
 	}).trim();
 	ok(`Wrangler available (${wranglerVersion})`);
 } catch {
-	warn(
+	fail(
 		"Wrangler not available via npx (install dependencies with npm install)"
 	);
+	failed = true;
 }
 
 const adminPasswordPath = path.resolve(cwd, ".wrangler/.admin-password");
