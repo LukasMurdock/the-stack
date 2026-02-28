@@ -20,42 +20,49 @@ type DocActionsDropdownProps = {
 
 export function DocActionsDropdown({ url }: DocActionsDropdownProps) {
 	const [copyStatus, setCopyStatus] = React.useState("Copy Markdown");
-	const [dropdownOpen, setDropdownOpen] = React.useState(false);
+	const absoluteUrl = React.useMemo(() => {
+		if (typeof window === "undefined") return url;
+		try {
+			return new URL(url, window.location.origin).href;
+		} catch {
+			return url;
+		}
+	}, [url]);
 
 	const fetchMarkdown = React.useCallback(async () => {
 		try {
-			const response = await fetch(url);
+			const response = await fetch(absoluteUrl);
 			if (!response.ok) return null;
 			return await response.text();
 		} catch (error) {
 			console.error("Failed to fetch markdown content:", error);
 			return null;
 		}
-	}, [url]);
+	}, [absoluteUrl]);
 
 	const handleAskGPT = React.useCallback(() => {
 		const content = encodeURIComponent(
 			"Please read the contents from the following link so i can ask question about it: " +
-				url
+				absoluteUrl
 		);
 		window.open(
 			`https://chatgpt.com/?q=${content}`,
 			"_blank",
 			"noopener,noreferrer"
 		);
-	}, [url]);
+	}, [absoluteUrl]);
 
 	const handleAskClaude = React.useCallback(() => {
 		const content = encodeURIComponent(
 			"Please read the contents from the following link so i can ask question about it: " +
-				url
+				absoluteUrl
 		);
 		window.open(
 			`https://claude.ai/new?q=${content}`,
 			"_blank",
 			"noopener,noreferrer"
 		);
-	}, [url]);
+	}, [absoluteUrl]);
 
 	const handleCopyMarkdown = React.useCallback(async () => {
 		const markdownContent = await fetchMarkdown();
@@ -75,15 +82,12 @@ export function DocActionsDropdown({ url }: DocActionsDropdownProps) {
 	}, [fetchMarkdown]);
 
 	const handleViewMarkdown = React.useCallback(() => {
-		window.open(url, "_blank", "noopener,noreferrer");
-	}, [url]);
+		window.open(absoluteUrl, "_blank", "noopener,noreferrer");
+	}, [absoluteUrl]);
 
 	return (
-		<DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
-			<DropdownMenuTrigger
-				onClick={() => setDropdownOpen((val) => !val)}
-				className="not-prose group relative flex w-fit flex-nowrap rounded-sm border border-black/15 py-1.5 px-2 transition-colors duration-300 ease-in-out hover:bg-black/5 hover:text-black focus-visible:bg-black/5 focus-visible:text-black dark:border-white/20 dark:hover:bg-white/5 dark:hover:text-white dark:focus-visible:bg-white/5 dark:focus-visible:text-white text-sm items-center justify-center gap-1.5"
-			>
+		<DropdownMenu>
+			<DropdownMenuTrigger className="not-prose group relative flex w-fit flex-nowrap rounded-sm border border-black/15 py-1.5 px-2 transition-colors duration-300 ease-in-out hover:bg-black/5 hover:text-black focus-visible:bg-black/5 focus-visible:text-black dark:border-white/20 dark:hover:bg-white/5 dark:hover:text-white dark:focus-visible:bg-white/5 dark:focus-visible:text-white text-sm items-center justify-center gap-1.5">
 				<div className="flex items-center justify-center gap-1.5 divide-x divide-border">
 					<div className="flex items-center justify-center gap-1.5 pr-1.5">
 						<CopyIcon className="size-3" />
