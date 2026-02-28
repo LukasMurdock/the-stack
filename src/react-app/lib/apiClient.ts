@@ -21,6 +21,12 @@ type ApiErrorPayload = {
 	message?: string;
 };
 
+type JsonResponseLike = {
+	ok: boolean;
+	status: number;
+	json(): Promise<unknown>;
+};
+
 class ApiError extends Error {
 	status: number;
 	payload?: unknown;
@@ -33,16 +39,17 @@ class ApiError extends Error {
 	}
 }
 
-async function tryParseJson(res: Response): Promise<unknown | undefined> {
+async function tryParseJson(
+	res: JsonResponseLike
+): Promise<unknown | undefined> {
 	try {
-		// Clone since the body can only be read once.
-		return await res.clone().json();
+		return await res.json();
 	} catch {
 		return undefined;
 	}
 }
 
-async function jsonOrThrow<T>(res: Response): Promise<T> {
+async function jsonOrThrow<T>(res: JsonResponseLike): Promise<T> {
 	if (!res.ok) {
 		const payload = await tryParseJson(res);
 		const apiPayload = payload as ApiErrorPayload | undefined;
