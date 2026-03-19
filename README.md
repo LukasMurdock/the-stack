@@ -39,7 +39,7 @@ API-first, type-safe template for building fast, interactive apps on Cloudflare 
 - [Turnstile](https://www.cloudflare.com/application-services/products/turnstile/) for CAPTCHA alternative
 - [Drizzle](https://orm.drizzle.team/) for ORM
 - [Turret](/docs/turret.md) for observability framework
-- [Resend](https://resend.com/) for email deliverability service (TODO: [Cloudflare Email Service](https://blog.cloudflare.com/email-service/))
+- [Resend](https://resend.com/) for email deliverability service
 - [React Email](https://react.email/) for email components
 - [Vitest](https://vitest.dev/) for testing framework
 - [Playwright](https://playwright.dev/) for end-to-end tests
