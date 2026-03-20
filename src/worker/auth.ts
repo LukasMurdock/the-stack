@@ -3,7 +3,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { makeCoreDb } from "../bindings/d1/core/db";
 import * as schema from "../bindings/d1/core/schema";
-import { openAPI, haveIBeenPwned, admin, apiKey } from "better-auth/plugins";
+import { openAPI, haveIBeenPwned, admin, bearer } from "better-auth/plugins";
 import { VerifyEmail } from "./emails/verify-email";
 import { sendEmail } from "./email/send-email";
 import { renderEmail } from "./emails/render";
@@ -117,9 +117,7 @@ function createAuth(env: AuthEnv, ctx?: ExecutionContextLike) {
 			admin({
 				adminRoles: ["admin"],
 			}),
-			apiKey({
-				storage: "secondary-storage",
-			}),
+			bearer(),
 			haveIBeenPwned({
 				customPasswordCompromisedMessage:
 					"Please choose a more secure password.",
