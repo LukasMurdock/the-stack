@@ -46,6 +46,8 @@ just new-route _public/example
 
 ## Validation
 
+Pre-commit formatting runs automatically on staged files via `lint-staged` + Husky.
+
 Before opening a PR, run:
 
 ```bash

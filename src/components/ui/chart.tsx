@@ -126,28 +126,28 @@ function ChartTooltipContent({
 	nameKey,
 	labelKey,
 }: React.ComponentProps<"div"> & {
-		active?: boolean;
-		payload?: ChartTooltipPayloadItem[];
-		label?: React.ReactNode;
-		labelFormatter?: (
-			value: React.ReactNode,
-			payload: ChartTooltipPayloadItem[]
-		) => React.ReactNode;
-		formatter?: (
-			value: number | string,
-			name: string,
-			item: ChartTooltipPayloadItem,
-			index: number,
-			itemPayload: unknown
-		) => React.ReactNode;
-		color?: string;
-		labelClassName?: string;
-		hideLabel?: boolean;
-		hideIndicator?: boolean;
-		indicator?: "line" | "dot" | "dashed";
-		nameKey?: string;
-		labelKey?: string;
-	}) {
+	active?: boolean;
+	payload?: ChartTooltipPayloadItem[];
+	label?: React.ReactNode;
+	labelFormatter?: (
+		value: React.ReactNode,
+		payload: ChartTooltipPayloadItem[]
+	) => React.ReactNode;
+	formatter?: (
+		value: number | string,
+		name: string,
+		item: ChartTooltipPayloadItem,
+		index: number,
+		itemPayload: unknown
+	) => React.ReactNode;
+	color?: string;
+	labelClassName?: string;
+	hideLabel?: boolean;
+	hideIndicator?: boolean;
+	indicator?: "line" | "dot" | "dashed";
+	nameKey?: string;
+	labelKey?: string;
+}) {
 	const { config } = useChart();
 
 	const tooltipLabel = React.useMemo(() => {
@@ -316,11 +316,11 @@ function ChartLegendContent({
 	verticalAlign = "bottom",
 	nameKey,
 }: React.ComponentProps<"div"> & {
-		payload?: ChartLegendPayloadItem[];
-		verticalAlign?: "top" | "bottom";
-		hideIcon?: boolean;
-		nameKey?: string;
-	}) {
+	payload?: ChartLegendPayloadItem[];
+	verticalAlign?: "top" | "bottom";
+	hideIcon?: boolean;
+	nameKey?: string;
+}) {
 	const { config } = useChart();
 
 	if (!payload?.length) {
