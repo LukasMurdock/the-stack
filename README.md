@@ -17,6 +17,8 @@ API-first, type-safe template for building fast, interactive apps on Cloudflare 
 
 - See `docs/ROADMAP.md` for priorities and execution phases.
 - See `CONTRIBUTING.md` for local workflow and PR expectations.
+- See `SECURITY.md` for vulnerability reporting.
+- See `LICENSE` for usage terms.
 
 ## Built with
 

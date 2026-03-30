@@ -91,6 +91,8 @@ just preflight
 
 ## Reporting bugs
 
+For security vulnerabilities, follow `SECURITY.md`.
+
 Please include:
 
 - Steps to reproduce
