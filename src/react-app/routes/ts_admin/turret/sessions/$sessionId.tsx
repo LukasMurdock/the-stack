@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type React from "react";
 import type { eventWithTime } from "@rrweb/types";
 
 import {
@@ -15,26 +14,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
-	getSessionChunk,
-	type TurretReplayChunkPayload,
-	type TurretRequestBreadcrumb,
-} from "../../../../lib/turretApi";
-import {
-	turretRequestSpansQueryOptions,
 	turretSessionBreadcrumbsQueryOptions,
 	turretSessionChunksQueryOptions,
 	turretSessionErrorsQueryOptions,
 	turretSessionFeedbackQueryOptions,
 	turretSessionMetaQueryOptions,
+	turretSessionSpansQueryOptions,
 } from "../../../../queries/turretQueries";
 
 import { requireTurretAdmin } from "../../../../lib/requireTurretAdmin";
-
-type RrwebPlayerInstance = {
-	getMetaData?: () => { startTime: number; totalTime?: number };
-	goto: (offset: number, play?: boolean) => void;
-	$destroy?: () => void;
-};
+import { RequestBreadcrumbRow } from "../../../../features/turret/session/RequestBreadcrumbRow";
+import {
+	isAbortError,
+	loadReplayEvents,
+} from "../../../../features/turret/session/replayLoader";
+import {
+	jumpReplayToTimestamp,
+	type RrwebPlayerInstance,
+} from "../../../../features/turret/session/replayPlayer";
 
 function parseJsonObject(input: string | null): Record<string, unknown> | null {
 	if (!input) return null;
@@ -55,139 +52,6 @@ const Route = createFileRoute("/ts_admin/turret/sessions/$sessionId")({
 	component: TurretSessionPage,
 });
 
-function RequestBreadcrumbRow(props: {
-	breadcrumb: TurretRequestBreadcrumb;
-	ts: number;
-	replayReady: boolean;
-	playerRef: React.RefObject<RrwebPlayerInstance | null>;
-}) {
-	const spansQuery = useQuery(
-		turretRequestSpansQueryOptions(props.breadcrumb.requestId)
-	);
-	const b = props.breadcrumb;
-	const traceUrl = CLOUDFLARE_TRACES_URL;
-
-	return (
-		<div className="rounded-md border bg-card p-3">
-			<div className="flex flex-wrap items-start justify-between gap-3">
-				<div className="min-w-0">
-					<div className="text-sm font-medium">
-						{b.method} {b.path}
-					</div>
-					<div className="mt-1 text-xs text-muted-foreground">
-						{b.status} · {b.durationMs}ms · d1 {b.d1QueriesCount}q/
-						{b.d1QueriesTimeMs}ms
-					</div>
-					<div className="mt-1 text-xs text-muted-foreground">
-						{new Date(props.ts).toLocaleString()} · {b.requestId}
-					</div>
-					{b.rayId ? (
-						<div className="mt-1 text-xs text-muted-foreground">
-							ray {b.rayId}
-						</div>
-					) : null}
-				</div>
-				<div className="flex items-center gap-2">
-					{b.rayId ? (
-						<>
-							<button
-								type="button"
-								className="rounded-md border px-2.5 py-1 text-xs"
-								onClick={() => {
-									try {
-										void navigator.clipboard.writeText(
-											b.rayId ?? ""
-										);
-									} catch {
-										// ignore
-									}
-								}}
-							>
-								Copy ray
-							</button>
-							<a
-								href={traceUrl}
-								target="_blank"
-								rel="noreferrer"
-								className="rounded-md border px-2.5 py-1 text-xs"
-								title="Open Cloudflare Traces (search by ray id)"
-							>
-								Trace
-							</a>
-						</>
-					) : null}
-					<details className="text-xs">
-						<summary className="cursor-pointer select-none text-muted-foreground">
-							D1 spans
-						</summary>
-						{spansQuery.isLoading ? (
-							<div className="mt-2 text-muted-foreground">
-								Loading…
-							</div>
-						) : spansQuery.isError ? (
-							<div className="mt-2 text-destructive">
-								Failed to load spans
-							</div>
-						) : !spansQuery.data ||
-						  spansQuery.data.spans.length === 0 ? (
-							<div className="mt-2 text-muted-foreground">
-								No spans
-							</div>
-						) : (
-							<div className="mt-2 space-y-2">
-								{spansQuery.data.spans.map((s) => (
-									<div
-										key={s.id}
-										className="rounded-md border bg-background p-2"
-									>
-										<div className="text-xs">
-											{s.kind} · {s.db} · {s.durationMs}ms
-										</div>
-										{s.sqlShape ? (
-											<pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-muted p-2 text-[11px]">
-												{s.sqlShape}
-											</pre>
-										) : null}
-										{s.errorMessage ? (
-											<pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-muted p-2 text-[11px] text-destructive">
-												{s.errorMessage}
-											</pre>
-										) : null}
-									</div>
-								))}
-							</div>
-						)}
-					</details>
-					<button
-						type="button"
-						className="rounded-md border px-2.5 py-1 text-xs"
-						disabled={!props.replayReady}
-						onClick={() => {
-							const player = props.playerRef.current;
-							if (!player) return;
-							const meta = player.getMetaData?.();
-							if (!meta || typeof meta.startTime !== "number")
-								return;
-							const startTime = meta.startTime;
-							const totalTime =
-								typeof meta.totalTime === "number"
-									? meta.totalTime
-									: Infinity;
-							const offset = Math.max(
-								0,
-								Math.min(totalTime, props.ts - startTime)
-							);
-							player.goto(offset, false);
-						}}
-					>
-						Jump
-					</button>
-				</div>
-			</div>
-		</div>
-	);
-}
-
 function TurretSessionPage() {
 	const navigate = useNavigate();
 	const { sessionId } = Route.useParams();
@@ -203,6 +67,12 @@ function TurretSessionPage() {
 		turretSessionBreadcrumbsQueryOptions(sessionId, {
 			limit: breadcrumbsLimit,
 			offset: breadcrumbsOffset,
+		})
+	);
+	const sessionSpansQuery = useQuery(
+		turretSessionSpansQueryOptions(sessionId, {
+			limit: 5000,
+			offset: 0,
 		})
 	);
 
@@ -340,38 +210,29 @@ function TurretSessionPage() {
 				total: sortedSeqs.length,
 			});
 
-			const events: eventWithTime[] = [];
-			for (let i = 0; i < sortedSeqs.length; i++) {
-				if (controller.signal.aborted) return;
-				const seq = sortedSeqs[i];
-				let payload: TurretReplayChunkPayload;
-				try {
-					payload = await getSessionChunk(sessionId, seq, {
-						signal: controller.signal,
-					});
-				} catch (err) {
-					if (!active || controller.signal.aborted) return;
-					setReplayStatus({
-						state: "error",
-						message:
-							err instanceof Error
-								? err.message
-								: "Failed to load replay chunk",
-					});
+			let events: eventWithTime[];
+			try {
+				events = await loadReplayEvents({
+					sessionId,
+					seqs: sortedSeqs,
+					signal: controller.signal,
+					onProgress: (loaded, total) => {
+						if (!active || controller.signal.aborted) return;
+						setReplayStatus({ state: "loading", loaded, total });
+					},
+				});
+			} catch (err) {
+				if (!active || controller.signal.aborted || isAbortError(err)) {
 					return;
 				}
-
-				if (!active || controller.signal.aborted) return;
-
-				if (payload && Array.isArray(payload.events)) {
-					events.push(...(payload.events as eventWithTime[]));
-				}
-
 				setReplayStatus({
-					state: "loading",
-					loaded: i + 1,
-					total: sortedSeqs.length,
+					state: "error",
+					message:
+						err instanceof Error
+							? err.message
+							: "Failed to load replay chunk",
 				});
+				return;
 			}
 
 			if (!active || controller.signal.aborted) return;
@@ -715,40 +576,12 @@ function TurretSessionPage() {
 																replayStatus.state !==
 																"ready"
 															}
-															onClick={() => {
-																const player =
-																	playerRef.current;
-																if (!player)
-																	return;
-																const meta =
-																	player.getMetaData?.();
-																if (
-																	!meta ||
-																	typeof meta.startTime !==
-																		"number"
+															onClick={() =>
+																jumpReplayToTimestamp(
+																	playerRef.current,
+																	ts
 																)
-																	return;
-																const startTime =
-																	meta.startTime;
-																const totalTime =
-																	typeof meta.totalTime ===
-																	"number"
-																		? meta.totalTime
-																		: Infinity;
-																const offset =
-																	Math.max(
-																		0,
-																		Math.min(
-																			totalTime,
-																			ts -
-																				startTime
-																		)
-																	);
-																player.goto(
-																	offset,
-																	false
-																);
-															}}
+															}
 														>
 															Jump
 														</button>
@@ -822,39 +655,12 @@ function TurretSessionPage() {
 															replayLibStatus.state !==
 															"ready"
 														}
-														onClick={() => {
-															const player =
-																playerRef.current;
-															if (!player) return;
-															const meta =
-																player.getMetaData?.();
-															if (
-																!meta ||
-																typeof meta.startTime !==
-																	"number"
+														onClick={() =>
+															jumpReplayToTimestamp(
+																playerRef.current,
+																f.ts
 															)
-																return;
-															const startTime =
-																meta.startTime;
-															const totalTime =
-																typeof meta.totalTime ===
-																"number"
-																	? meta.totalTime
-																	: Infinity;
-															const offset =
-																Math.max(
-																	0,
-																	Math.min(
-																		totalTime,
-																		f.ts -
-																			startTime
-																	)
-																);
-															player.goto(
-																offset,
-																false
-															);
-														}}
+														}
 													>
 														Jump
 													</button>
@@ -958,40 +764,12 @@ function TurretSessionPage() {
 																replayStatus.state !==
 																"ready"
 															}
-															onClick={() => {
-																const player =
-																	playerRef.current;
-																if (!player)
-																	return;
-																const meta =
-																	player.getMetaData?.();
-																if (
-																	!meta ||
-																	typeof meta.startTime !==
-																		"number"
+															onClick={() =>
+																jumpReplayToTimestamp(
+																	playerRef.current,
+																	ts
 																)
-																	return;
-																const startTime =
-																	meta.startTime;
-																const totalTime =
-																	typeof meta.totalTime ===
-																	"number"
-																		? meta.totalTime
-																		: Infinity;
-																const offset =
-																	Math.max(
-																		0,
-																		Math.min(
-																			totalTime,
-																			ts -
-																				startTime
-																		)
-																	);
-																player.goto(
-																	offset,
-																	false
-																);
-															}}
+															}
 														>
 															Jump
 														</button>
@@ -1045,16 +823,30 @@ function TurretSessionPage() {
 								<div className="text-sm text-muted-foreground">
 									No requests recorded for this session.
 								</div>
+							) : sessionSpansQuery.isError ? (
+								<div className="text-sm text-destructive">
+									Failed to load spans
+								</div>
+							) : sessionSpansQuery.isLoading ? (
+								<div className="text-sm text-muted-foreground">
+									Loading spans…
+								</div>
 							) : (
 								<div className="space-y-2">
 									{breadcrumbsQuery.data.breadcrumbs.map(
 										(b) => {
 											const ts = new Date(b.ts).getTime();
+											const spans =
+												sessionSpansQuery.data
+													?.spansByRequestId[
+													b.requestId
+												] ?? [];
 											return (
 												<RequestBreadcrumbRow
 													key={b.id}
 													breadcrumb={b}
 													ts={ts}
+													spans={spans}
 													replayReady={
 														replayStatus.state ===
 														"ready"
@@ -1072,6 +864,9 @@ function TurretSessionPage() {
 													.breadcrumbs.length
 											}{" "}
 											· Limit {breadcrumbsLimit}
+											{sessionSpansQuery.data?.hasMore
+												? " · spans truncated"
+												: ""}
 										</div>
 										<div className="flex items-center gap-2">
 											<button

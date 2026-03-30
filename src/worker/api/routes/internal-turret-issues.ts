@@ -1,5 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { createAuth, type AuthEnv } from "../../auth";
+import { turretIssueStatusSchema } from "../../../contracts/turret";
+import { requireInternalTurretAdmin } from "./_shared/admin-auth";
 
 type D1Database = globalThis.D1Database;
 
@@ -13,9 +14,7 @@ const ErrorResponseSchema = z
 	})
 	.openapi("ErrorResponse");
 
-const IssueStatusSchema = z
-	.enum(["open", "resolved", "ignored"])
-	.openapi("TurretIssueStatus");
+const IssueStatusSchema = turretIssueStatusSchema;
 
 const IssueSampleSchema = z
 	.object({
@@ -113,23 +112,7 @@ const IssueUpdateSchema = z
 	})
 	.openapi("TurretIssueUpdate");
 
-function isAdminRole(role: unknown): boolean {
-	if (!role || typeof role !== "string") return false;
-	return role
-		.split(",")
-		.map((r) => r.trim())
-		.some((r) => r === "admin");
-}
-
-internalTurretIssuesApp.use("/internal/turret/*", async (c, next) => {
-	const env = c.env as unknown as AuthEnv;
-	const auth = createAuth(env, c.executionCtx);
-	const session = await auth.api.getSession({ headers: c.req.raw.headers });
-	if (!session?.user) return c.json({ error: "Unauthorized" }, 401);
-	const user = session.user as unknown as { role?: string };
-	if (!isAdminRole(user.role)) return c.json({ error: "Forbidden" }, 403);
-	await next();
-});
+internalTurretIssuesApp.use("/internal/turret/*", requireInternalTurretAdmin);
 
 const SAFE_LIKE = /[%_\\]/g;
 function escapeLike(input: string): string {
@@ -309,7 +292,7 @@ internalTurretIssuesApp.openapi(listIssues, async (c) => {
 	const issues = rows.map((r) => {
 		return {
 			fingerprint: String(r.fingerprint),
-			status: (r.status ?? "open") as "open" | "resolved" | "ignored",
+			status: (r.status ?? "open") as z.infer<typeof IssueStatusSchema>,
 			title: r.title != null ? String(r.title) : null,
 			firstSeenAt: Number(r.firstSeenAt ?? 0),
 			lastSeenAt: Number(r.lastSeenAt ?? 0),
@@ -413,7 +396,7 @@ internalTurretIssuesApp.openapi(getIssue, async (c) => {
 
 	const issue = {
 		fingerprint: String(row.fingerprint),
-		status: (row.status ?? "open") as "open" | "resolved" | "ignored",
+		status: (row.status ?? "open") as z.infer<typeof IssueStatusSchema>,
 		title:
 			row.stateTitle != null
 				? String(row.stateTitle)
@@ -728,7 +711,7 @@ internalTurretIssuesApp.openapi(patchIssue, async (c) => {
 		.first()) as any;
 	const issue = {
 		fingerprint: String(row.fingerprint),
-		status: (row.status ?? "open") as "open" | "resolved" | "ignored",
+		status: (row.status ?? "open") as z.infer<typeof IssueStatusSchema>,
 		title:
 			row.stateTitle != null
 				? String(row.stateTitle)

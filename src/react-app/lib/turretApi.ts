@@ -1,4 +1,11 @@
 import { jsonOrThrow } from "./apiClient";
+import type {
+	TurretFeedbackKind as ContractTurretFeedbackKind,
+	TurretFeedbackStatus as ContractTurretFeedbackStatus,
+	TurretIssueStatus as ContractTurretIssueStatus,
+	TurretRequestSpan as ContractTurretRequestSpan,
+	TurretSessionSpansGroupedResponse as ContractTurretSessionSpansGroupedResponse,
+} from "../../contracts/turret";
 
 async function internalTurretFetch(
 	path: string,
@@ -114,25 +121,14 @@ export type TurretBreadcrumbsResponse = {
 	offset: number;
 };
 
-export type TurretRequestSpan = {
-	id: string;
-	requestId: string;
-	ts: string;
-	kind: string;
-	db: string | null;
-	durationMs: number;
-	sqlShape: string | null;
-	rowsRead: number | null;
-	rowsWritten: number | null;
-	errorMessage: string | null;
-	extraJson: string | null;
-	expiresAt: string;
-	createdAt: string;
-};
+export type TurretRequestSpan = ContractTurretRequestSpan;
 
 export type TurretSpansResponse = {
 	spans: TurretRequestSpan[];
 };
+
+export type TurretSessionSpansGroupedResponse =
+	ContractTurretSessionSpansGroupedResponse;
 
 export type TurretMetaResponse = {
 	session: TurretSession;
@@ -186,7 +182,7 @@ export type TurretDashboardUsersResponse = {
 	retentionDeltaPctWoW: number | null;
 };
 
-export type TurretIssueStatus = "open" | "resolved" | "ignored";
+export type TurretIssueStatus = ContractTurretIssueStatus;
 
 export type TurretIssueSample = {
 	errorId: string | null;
@@ -264,8 +260,8 @@ export type TurretIssueUpdate = {
 	title?: string | null;
 };
 
-export type TurretFeedbackKind = "bug" | "idea" | "praise" | "other";
-export type TurretFeedbackStatus = "open" | "triaged" | "resolved";
+export type TurretFeedbackKind = ContractTurretFeedbackKind;
+export type TurretFeedbackStatus = ContractTurretFeedbackStatus;
 
 export type TurretFeedbackItem = {
 	id: string;
@@ -351,13 +347,18 @@ async function getSessionBreadcrumbs(
 	return jsonOrThrow<TurretBreadcrumbsResponse>(res);
 }
 
-async function getRequestSpans(
-	requestId: string
-): Promise<TurretSpansResponse> {
-	const res = await internalTurretFetch(
-		`/request/${encodeURIComponent(requestId)}/spans`
+async function getSessionSpans(
+	sessionId: string,
+	opts?: { limit?: number; offset?: number }
+): Promise<TurretSessionSpansGroupedResponse> {
+	const url = new URL(
+		`/api/internal/turret/session/${encodeURIComponent(sessionId)}/spans`,
+		window.location.origin
 	);
-	return jsonOrThrow<TurretSpansResponse>(res);
+	url.searchParams.set("limit", String(opts?.limit ?? 5000));
+	url.searchParams.set("offset", String(opts?.offset ?? 0));
+	const res = await fetch(url.toString(), { credentials: "include" });
+	return jsonOrThrow<TurretSessionSpansGroupedResponse>(res);
 }
 
 export type TurretReplayChunkPayload = {
@@ -560,7 +561,7 @@ export {
 	getSessionChunk,
 	getSessionErrors,
 	getSessionBreadcrumbs,
-	getRequestSpans,
+	getSessionSpans,
 	getFeatures,
 	setFeatures,
 	getCompliance,

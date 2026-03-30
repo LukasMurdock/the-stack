@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { createAuth, type AuthEnv } from "../../auth";
 import { readTurretFeatures, writeTurretFeatures } from "../../turret/features";
+import { requireInternalTurretAdmin } from "./_shared/admin-auth";
 
 type TurretCfgEnv = {
 	TURRET_CFG: {
@@ -35,25 +35,7 @@ const TurretFeaturesUpdateSchema = z
 	})
 	.openapi("TurretFeaturesUpdate");
 
-function isAdminRole(role: unknown): boolean {
-	if (!role || typeof role !== "string") return false;
-	return role
-		.split(",")
-		.map((r) => r.trim())
-		.some((r) => r === "admin");
-}
-
-internalTurretFeaturesApp.use("/internal/turret/*", async (c, next) => {
-	const env = c.env as unknown as AuthEnv;
-	const auth = createAuth(env, c.executionCtx);
-
-	const session = await auth.api.getSession({ headers: c.req.raw.headers });
-	if (!session?.user) return c.json({ error: "Unauthorized" }, 401);
-	const user = session.user as unknown as { role?: string };
-	if (!isAdminRole(user.role)) return c.json({ error: "Forbidden" }, 403);
-
-	await next();
-});
+internalTurretFeaturesApp.use("/internal/turret/*", requireInternalTurretAdmin);
 const getFeatures = createRoute({
 	method: "get",
 	path: "/internal/turret/features",

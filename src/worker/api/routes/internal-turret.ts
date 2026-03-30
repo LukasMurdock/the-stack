@@ -1,24 +1,20 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { makeTurretDb } from "../../../bindings/d1/turret/db";
-import { createAuth, type AuthEnv } from "../../auth";
+import {
+	turretRequestSpanSchema,
+	turretSessionSpansGroupedResponseSchema,
+} from "../../../contracts/turret";
+import { requireInternalTurretAdmin } from "./_shared/admin-auth";
+import {
+	loadSessionSpansGrouped,
+	normalizeSessionSpansPagination,
+} from "./_shared/session-spans";
+import { startOfUtcWeekMs } from "./_shared/time";
 
 type D1Database = globalThis.D1Database;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
-
-function startOfUtcWeekMs(ms: number): number {
-	// Monday 00:00:00 UTC
-	const d = new Date(ms);
-	const day = d.getUTCDay();
-	const daysSinceMonday = (day + 6) % 7;
-	const startOfDay = Date.UTC(
-		d.getUTCFullYear(),
-		d.getUTCMonth(),
-		d.getUTCDate()
-	);
-	return startOfDay - daysSinceMonday * DAY_MS;
-}
 
 function pctDelta(current: number, previous: number): number | null {
 	if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
@@ -107,9 +103,12 @@ const BreadcrumbsResponseSchema = z
 
 const SpansResponseSchema = z
 	.object({
-		spans: z.array(z.unknown()),
+		spans: z.array(turretRequestSpanSchema),
 	})
 	.openapi("TurretSpansResponse");
+
+const SessionSpansGroupedResponseSchema =
+	turretSessionSpansGroupedResponseSchema;
 
 const getSessionBreadcrumbs = createRoute({
 	method: "get",
@@ -160,6 +159,42 @@ const getRequestSpans = createRoute({
 		},
 		403: {
 			description: "Forbidden",
+			content: { "application/json": { schema: ErrorResponseSchema } },
+		},
+	},
+});
+
+const getSessionSpans = createRoute({
+	method: "get",
+	path: "/internal/turret/session/{id}/spans",
+	request: {
+		params: z.object({
+			id: z.string().openapi({ example: "<session-id>" }),
+		}),
+		query: z.object({
+			limit: z.string().optional(),
+			offset: z.string().optional(),
+		}),
+	},
+	responses: {
+		200: {
+			description: "List spans for all requests in a session",
+			content: {
+				"application/json": {
+					schema: SessionSpansGroupedResponseSchema,
+				},
+			},
+		},
+		401: {
+			description: "Unauthorized",
+			content: { "application/json": { schema: ErrorResponseSchema } },
+		},
+		403: {
+			description: "Forbidden",
+			content: { "application/json": { schema: ErrorResponseSchema } },
+		},
+		500: {
+			description: "Internal Server Error",
 			content: { "application/json": { schema: ErrorResponseSchema } },
 		},
 	},
@@ -354,31 +389,7 @@ const getChunk = createRoute({
 	},
 });
 
-function isAdminRole(role: unknown): boolean {
-	if (!role || typeof role !== "string") return false;
-	// Better Auth stores multiple roles as comma-separated values.
-	return role
-		.split(",")
-		.map((r) => r.trim())
-		.some((r) => r === "admin");
-}
-
-internalTurretApp.use("/internal/turret/*", async (c, next) => {
-	const env = c.env as unknown as AuthEnv;
-	const auth = createAuth(env, c.executionCtx);
-
-	const session = await auth.api.getSession({ headers: c.req.raw.headers });
-	if (!session?.user) {
-		return c.json({ error: "Unauthorized" }, 401);
-	}
-
-	const user = session.user as unknown as { role?: string };
-	if (!isAdminRole(user.role)) {
-		return c.json({ error: "Forbidden" }, 403);
-	}
-
-	await next();
-});
+internalTurretApp.use("/internal/turret/*", requireInternalTurretAdmin);
 
 internalTurretApp.openapi(getHealth, async (c) => {
 	// Quick sanity check that the binding exists.
@@ -641,6 +652,35 @@ internalTurretApp.openapi(getSessionBreadcrumbs, async (c) => {
 		offset,
 	});
 	return c.json({ breadcrumbs: rows, limit, offset }, 200);
+});
+
+internalTurretApp.openapi(getSessionSpans, async (c) => {
+	const env = c.env as unknown as { TURRET_DB: D1Database };
+	const { id: sessionId } = c.req.valid("param");
+	const { limit: limitRaw, offset: offsetRaw } = c.req.valid("query");
+	const { limit, offset } = normalizeSessionSpansPagination({
+		limitRaw,
+		offsetRaw,
+	});
+	const spansResult = await loadSessionSpansGrouped({
+		db: env.TURRET_DB,
+		sessionId,
+		limit,
+		offset,
+	});
+	if (!spansResult.ok) {
+		return c.json({ error: spansResult.error }, 500);
+	}
+
+	return c.json(
+		{
+			spansByRequestId: spansResult.spansByRequestId,
+			limit,
+			offset,
+			hasMore: spansResult.hasMore,
+		},
+		200
+	);
 });
 
 internalTurretApp.openapi(getRequestSpans, async (c) => {

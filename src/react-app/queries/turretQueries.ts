@@ -5,8 +5,8 @@ import {
 	getSessionBreadcrumbs,
 	getSessionChunks,
 	getSessionErrors,
+	getSessionSpans,
 	getSessionMeta,
-	getRequestSpans,
 	listSessions,
 	setCompliance,
 	setFeatures,
@@ -71,10 +71,13 @@ const turretSessionBreadcrumbsQueryOptions = (
 		retry: false,
 	});
 
-const turretRequestSpansQueryOptions = (requestId: string) =>
+const turretSessionSpansQueryOptions = (
+	sessionId: string,
+	input?: { limit?: number; offset?: number }
+) =>
 	queryOptions({
-		queryKey: ["turret", "request", requestId, "spans"],
-		queryFn: () => getRequestSpans(requestId),
+		queryKey: ["turret", "session", sessionId, "spans", input],
+		queryFn: () => getSessionSpans(sessionId, input),
 		retry: false,
 	});
 
@@ -182,7 +185,7 @@ export {
 	turretSessionChunksQueryOptions,
 	turretSessionErrorsQueryOptions,
 	turretSessionBreadcrumbsQueryOptions,
-	turretRequestSpansQueryOptions,
+	turretSessionSpansQueryOptions,
 	turretFeaturesQueryOptions,
 	turretFeaturesMutation,
 	turretComplianceQueryOptions,

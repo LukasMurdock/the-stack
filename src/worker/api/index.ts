@@ -9,6 +9,7 @@ import { routes as internalTurretComplianceRoutes } from "./routes/internal-turr
 import { routes as internalTurretIssuesRoutes } from "./routes/internal-turret-issues";
 import { routes as internalTurretFeedbackRoutes } from "./routes/internal-turret-feedback";
 import { routes as turretRoutes } from "./routes/turret";
+import { isAdminRole } from "./routes/_shared/admin-auth";
 
 const api = new OpenAPIHono();
 
@@ -22,14 +23,6 @@ const apiRoutes = api
 	.route("/", internalTurretComplianceRoutes)
 	.route("/", internalTurretIssuesRoutes)
 	.route("/", internalTurretFeedbackRoutes);
-
-function isAdminRole(role: unknown): boolean {
-	if (!role || typeof role !== "string") return false;
-	return role
-		.split(",")
-		.map((r) => r.trim())
-		.some((r) => r === "admin");
-}
 
 type OpenApiDoc = { paths?: Record<string, unknown> };
 
