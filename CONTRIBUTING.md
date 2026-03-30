@@ -2,6 +2,8 @@
 
 Thanks for helping improve The Stack.
 
+See `docs/ROADMAP.md` for current priorities and rollout phases.
+
 `just` is required for local development and contribution workflows.
 
 Install `just`:
@@ -16,11 +18,18 @@ cargo install just
 
 ## Local setup
 
-1. Generate a Better Auth secret:
+1. Copy local env vars and set required values:
 
 ```bash
-npx @better-auth/cli@latest secret
+cp .dev.vars.example .dev.vars
+just secret-auth
 ```
+
+Set these in `.dev.vars` before `just setup`:
+
+- `BETTER_AUTH_SECRET`
+- `APP_URL` (use `http://localhost:4321` for local)
+- `ADMIN_EMAIL`
 
 2. Bootstrap local environment:
 

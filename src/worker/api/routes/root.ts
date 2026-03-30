@@ -76,6 +76,9 @@ const getThrow = createRoute({
 	method: "get",
 	path: "/throw",
 	responses: {
+		404: {
+			description: "Not Found",
+		},
 		500: {
 			description: "Throws (test endpoint)",
 		},
@@ -86,11 +89,19 @@ const getFail = createRoute({
 	method: "get",
 	path: "/fail",
 	responses: {
+		404: {
+			description: "Not Found",
+		},
 		500: {
 			description: "Returns 500 (test endpoint)",
 		},
 	},
 });
+
+function isDebugFaultRouteEnabled(env: { APP_ENV?: string }): boolean {
+	const appEnv = (env.APP_ENV ?? "").toLowerCase();
+	return appEnv === "local" || appEnv === "dev" || appEnv === "development";
+}
 
 const routes = rootRoutes
 	.openapi(getHealth, (c) => {
@@ -115,10 +126,16 @@ const routes = rootRoutes
 			200
 		);
 	})
-	.openapi(getThrow, () => {
+	.openapi(getThrow, (c) => {
+		if (!isDebugFaultRouteEnabled(c.env as { APP_ENV?: string })) {
+			return c.json({ error: "Not Found" }, 404);
+		}
 		throw new Error("Intentional test error");
 	})
 	.openapi(getFail, (c) => {
+		if (!isDebugFaultRouteEnabled(c.env as { APP_ENV?: string })) {
+			return c.json({ error: "Not Found" }, 404);
+		}
 		return c.json({ error: "Intentional test 5xx" }, 500);
 	});
 

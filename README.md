@@ -41,9 +41,9 @@ API-first, type-safe template for building fast, interactive apps on Cloudflare 
 - [Turret](/docs/turret.md) for observability framework
 - [Resend](https://resend.com/) for email deliverability service
 - [React Email](https://react.email/) for email components
-- [Vitest](https://vitest.dev/) for testing framework
+- [Node.js test runner](https://nodejs.org/api/test.html) + [tsx](https://tsx.is/) for tests
 - [Playwright](https://playwright.dev/) for end-to-end tests
-- [Oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) for formatting
+- [Oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) for formatting (`npm run format`, `npm run format:check`)
 - [ESLint](https://eslint.org/) for linting
 - [opencode](https://opencode.ai/) for AI coding agent
     - [Cloudflare Skill](https://github.com/dmmulroy/cloudflare-skill) for Cloudflare platform reference docs
@@ -123,6 +123,8 @@ See `docs/turret.md`.
 ### 10-minute quickstart (golden path)
 
 Use this exact flow for a first local run.
+
+For current priorities and planned phases, see `docs/ROADMAP.md`.
 
 Prerequisites:
 
@@ -210,19 +212,19 @@ Set local secrets/vars:
 cp .dev.vars.example .dev.vars
 ```
 
-Bootstrap local dev (install, migrations, admin bootstrap):
-
-```bash
-just setup
-```
-
-Then edit `.dev.vars` and set at least:
+Then set required values in `.dev.vars` before setup:
 
 - `BETTER_AUTH_SECRET`
 - `APP_URL` (used for email links)
 - `ADMIN_EMAIL` (used by the local admin bootstrap script)
 
 For local, set `APP_URL` to `http://localhost:4321`.
+
+Bootstrap local dev (install, migrations, admin bootstrap):
+
+```bash
+just setup
+```
 
 Optional:
 

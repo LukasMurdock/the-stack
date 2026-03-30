@@ -56,6 +56,9 @@
 		"EMAIL_FROM": "The Stack <[email protected]>",
 		"APP_ENV": "local"
 	},
+	"secrets": {
+		"required": ["BETTER_AUTH_SECRET"]
+	},
 	// Local secrets/vars are loaded from `.dev.vars`.
 	// Production vars should be set in `env.production.vars` below.
 	// Secrets (set via `wrangler secret put`):
@@ -86,7 +89,7 @@
 	"r2_buckets": [
 		{
 			"binding": "TURRET_REPLAY_BUCKET",
-			"bucket_name": "turret-replay-production"
+			"bucket_name": "turret-replay-local"
 		}
 	],
 	"analytics_engine_datasets": [
@@ -144,6 +147,9 @@
 				"APP_ENV": "production",
 				"APP_URL": "https://your-app.example",
 				"ADMIN_EMAIL": "admin@your-app.example"
+			},
+			"secrets": {
+				"required": ["BETTER_AUTH_SECRET", "BOOTSTRAP_SECRET"]
 			},
 			// Secrets (set via `wrangler secret put --env production`):
 			// - BETTER_AUTH_SECRET

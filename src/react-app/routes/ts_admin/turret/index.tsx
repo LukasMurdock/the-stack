@@ -433,7 +433,7 @@ function TurretDashboardPage() {
 																]?.value;
 															return v == null
 																? "-"
-																: "${v.toFixed(1)}%";
+																: `${v.toFixed(1)}%`;
 														})()
 													: "-"}
 										</div>

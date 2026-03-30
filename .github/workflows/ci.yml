@@ -34,7 +34,7 @@ jobs:
               run: npm ci
 
             - name: Format check
-              run: npx oxfmt --check .
+              run: npm run format:check
 
             - name: Fast checks
               run: just check-fast
@@ -64,7 +64,7 @@ jobs:
               run: npm ci
 
             - name: Format check
-              run: npx oxfmt --check .
+              run: npm run format:check
 
             - name: Full checks
               run: just check-full

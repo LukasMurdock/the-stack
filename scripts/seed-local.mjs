@@ -5,9 +5,15 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const SqliteDatabase = require("better-sqlite3");
 
-function runNpmScript(name) {
-	process.stdout.write(`\n> npm run ${name}\n`);
-	execFileSync("npm", ["run", name], { stdio: "inherit" });
+function runLocalMigration(databaseBinding) {
+	process.stdout.write(
+		`\n> npx wrangler d1 migrations apply ${databaseBinding} --local\n`
+	);
+	execFileSync(
+		"npx",
+		["wrangler", "d1", "migrations", "apply", databaseBinding, "--local"],
+		{ stdio: "inherit" }
+	);
 }
 
 function findSqlitePath(tableName) {
@@ -29,8 +35,8 @@ function iso(tsMs) {
 	return new Date(tsMs).toISOString();
 }
 
-runNpmScript("db:core:migrate:local");
-runNpmScript("db:turret:migrate:local");
+runLocalMigration("CORE_DB");
+runLocalMigration("TURRET_DB");
 
 const coreDb = new SqliteDatabase(findSqlitePath("core_users"));
 const turretDb = new SqliteDatabase(findSqlitePath("turret_sessions"));

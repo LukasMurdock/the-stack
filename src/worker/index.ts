@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 import { trimTrailingSlash } from "hono/trailing-slash";
 import { eq, sql } from "drizzle-orm";
 import { makeTurretDb } from "../bindings/d1/turret/db";
@@ -20,6 +19,64 @@ type Bindings = AuthEnv & {
 const app = new Hono<{ Bindings: Bindings }>({
 	strict: true,
 });
+
+const LOCAL_DEV_CORS_ORIGINS = new Set([
+	"http://localhost:4321",
+	"http://127.0.0.1:4321",
+]);
+
+function isLocalOrDevEnvironment(appEnv: string | undefined): boolean {
+	const normalized = (appEnv ?? "").toLowerCase();
+	return (
+		normalized === "local" ||
+		normalized === "dev" ||
+		normalized === "development"
+	);
+}
+
+function resolveAppOrigin(appUrl: string | undefined): string | null {
+	if (!appUrl) return null;
+	try {
+		return new URL(appUrl).origin;
+	} catch {
+		return null;
+	}
+}
+
+function resolveAllowedCorsOrigins(env: {
+	APP_ENV?: string;
+	APP_URL?: string;
+}): Set<string> {
+	const allowed = new Set<string>();
+
+	const appOrigin = resolveAppOrigin(env.APP_URL);
+	if (appOrigin) allowed.add(appOrigin);
+
+	if (isLocalOrDevEnvironment(env.APP_ENV)) {
+		for (const origin of LOCAL_DEV_CORS_ORIGINS) {
+			allowed.add(origin);
+		}
+	}
+
+	return allowed;
+}
+
+function setCorsHeaders(
+	c: { header(name: string, value: string): void },
+	origin: string
+): void {
+	c.header("Access-Control-Allow-Origin", origin);
+	c.header(
+		"Access-Control-Allow-Methods",
+		"GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS"
+	);
+	c.header(
+		"Access-Control-Allow-Headers",
+		"Authorization,Content-Type,X-Requested-With,X-Request-Id,X-Turret-Session-Id,X-Turret-Replay-Ts"
+	);
+	c.header("Access-Control-Max-Age", "86400");
+	c.header("Vary", "Origin");
+}
 
 function shouldSkipTurretErrorCapture(req: Request): boolean {
 	const url = new URL(req.url);
@@ -160,7 +217,29 @@ async function recordWorkerError(args: {
 }
 
 // CORS should be registered before routes.
-app.use("/api/*", cors());
+app.use("/api/*", async (c, next) => {
+	const origin = c.req.header("origin");
+	if (!origin) {
+		if (c.req.method === "OPTIONS") {
+			return c.body(null, 204);
+		}
+		await next();
+		return;
+	}
+
+	const allowedOrigins = resolveAllowedCorsOrigins(c.env);
+	if (!allowedOrigins.has(origin)) {
+		return c.json({ error: "Forbidden" }, 403);
+	}
+
+	if (c.req.method === "OPTIONS") {
+		setCorsHeaders(c, origin);
+		return c.body(null, 204);
+	}
+
+	await next();
+	setCorsHeaders(c, origin);
+});
 
 // Canonicalize `/api/*` to no trailing slash.
 // This middleware only redirects for GET requests that result in a 404.
@@ -411,8 +490,6 @@ app.onError((err, c) => {
 	return c.json(
 		{
 			error: "Internal Server Error",
-			message: err.message,
-			// Don't expose stack traces in production!
 		},
 		500
 	);

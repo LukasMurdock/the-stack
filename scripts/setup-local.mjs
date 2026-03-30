@@ -47,7 +47,9 @@ const missing = requiredKeys.filter((key) => {
 
 if (missing.length > 0) {
 	log("Please update .dev.vars before continuing.");
-	log(`Missing required values: ${missing.join(", ")}`);
+	log("Required values: BETTER_AUTH_SECRET, APP_URL, ADMIN_EMAIL");
+	log(`Missing or placeholder values: ${missing.join(", ")}`);
+	log("Tip: run `just secret-auth` to generate BETTER_AUTH_SECRET.");
 	process.exit(1);
 }
 
