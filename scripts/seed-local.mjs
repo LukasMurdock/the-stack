@@ -7,11 +7,19 @@ const SqliteDatabase = require("better-sqlite3");
 
 function runLocalMigration(databaseBinding) {
 	process.stdout.write(
-		`\n> npx wrangler d1 migrations apply ${databaseBinding} --local\n`
+		`\n> pnpm exec wrangler d1 migrations apply ${databaseBinding} --local\n`
 	);
 	execFileSync(
-		"npx",
-		["wrangler", "d1", "migrations", "apply", databaseBinding, "--local"],
+		"pnpm",
+		[
+			"exec",
+			"wrangler",
+			"d1",
+			"migrations",
+			"apply",
+			databaseBinding,
+			"--local",
+		],
 		{ stdio: "inherit" }
 	);
 }

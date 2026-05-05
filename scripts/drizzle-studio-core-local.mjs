@@ -22,8 +22,9 @@ const dbPath = path.resolve(process.cwd(), dbPathRaw);
 const dbUrl = `file:${dbPath}`;
 
 const child = spawn(
-	"npx",
+	"pnpm",
 	[
+		"exec",
 		"drizzle-kit",
 		"studio",
 		"--config",

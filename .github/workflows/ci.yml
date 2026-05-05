@@ -22,7 +22,10 @@ jobs:
               uses: actions/setup-node@v4
               with:
                   node-version: 22
-                  cache: npm
+                  cache: pnpm
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
 
             - name: Setup just
               uses: taiki-e/install-action@just
@@ -31,10 +34,10 @@ jobs:
               run: just --version
 
             - name: Install dependencies
-              run: npm ci
+              run: pnpm install --frozen-lockfile
 
             - name: Format check
-              run: npm run format:check
+              run: pnpm run format:check
 
             - name: Fast checks
               run: just check-fast
@@ -52,7 +55,10 @@ jobs:
               uses: actions/setup-node@v4
               with:
                   node-version: 22
-                  cache: npm
+                  cache: pnpm
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
 
             - name: Setup just
               uses: taiki-e/install-action@just
@@ -61,10 +67,10 @@ jobs:
               run: just --version
 
             - name: Install dependencies
-              run: npm ci
+              run: pnpm install --frozen-lockfile
 
             - name: Format check
-              run: npm run format:check
+              run: pnpm run format:check
 
             - name: Full checks
               run: just check-full

@@ -8,11 +8,11 @@ Production has one Worker:
 
 - Main app Worker: `wrangler.json` (`the-stack-production`)
 
-`npm run deploy` intentionally fails to prevent accidental deploys.
+`pnpm run deploy` intentionally fails to prevent accidental deploys.
 
 ## Prerequisites
 
-- Node.js + npm
+- Node.js + pnpm
 - Cloudflare account + Wrangler auth
 - Production IDs/secrets configured in both Wrangler configs
 
@@ -21,9 +21,9 @@ Before first deploy, replace placeholders in `wrangler.json`:
 - `env.production.vars.APP_URL`, `ADMIN_EMAIL`, and D1 IDs
 
 ```bash
-npx wrangler whoami
+pnpm exec wrangler whoami
 # If needed:
-npx wrangler login
+pnpm exec wrangler login
 ```
 
 ## Deploy (Go/No-Go)
@@ -64,7 +64,7 @@ Expected:
 Tail logs as needed:
 
 ```bash
-npx wrangler tail --env production
+pnpm exec wrangler tail --env production
 ```
 
 ## Rollback
@@ -72,8 +72,8 @@ npx wrangler tail --env production
 ### Roll back worker
 
 ```bash
-npx wrangler versions list --env production --config wrangler.json
-npx wrangler rollback <version-id> --env production --config wrangler.json
+pnpm exec wrangler versions list --env production --config wrangler.json
+pnpm exec wrangler rollback <version-id> --env production --config wrangler.json
 ```
 
 After rollback, re-run verify checks and keep incident notes with the version ID.

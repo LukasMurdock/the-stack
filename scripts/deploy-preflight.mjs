@@ -63,19 +63,19 @@ if (placeholderDbIdMatches.length > 0) {
 }
 
 try {
-	run("npm", ["run", "test"]);
+	run("pnpm", ["run", "test"]);
 	ok("Fast checks passed");
 } catch (error) {
-	fail("Fast checks failed (npm run test)");
+	fail("Fast checks failed (pnpm run test)");
 	failed = true;
 }
 
 if (!skipBuild) {
 	try {
-		run("npm", ["run", "build"]);
+		run("pnpm", ["run", "build"]);
 		ok("Build passed");
 	} catch {
-		fail("Build failed (npm run build)");
+		fail("Build failed (pnpm run build)");
 		failed = true;
 	}
 } else {
@@ -85,7 +85,7 @@ if (!skipBuild) {
 if (!skipDryRun) {
 	let canUseWrangler = true;
 	try {
-		run("npx", ["wrangler", "--version"]);
+		run("pnpm", ["exec", "wrangler", "--version"]);
 	} catch {
 		canUseWrangler = false;
 		warn("Wrangler unavailable; skipping dry-run");
@@ -93,10 +93,10 @@ if (!skipDryRun) {
 
 	if (canUseWrangler) {
 		try {
-			run("npx", ["wrangler", "whoami"]);
+			run("pnpm", ["exec", "wrangler", "whoami"]);
 		} catch {
 			warn(
-				"Wrangler auth unavailable (npx wrangler whoami failed); skipping dry-run"
+				"Wrangler auth unavailable (pnpm exec wrangler whoami failed); skipping dry-run"
 			);
 			canUseWrangler = false;
 		}
@@ -104,7 +104,8 @@ if (!skipDryRun) {
 
 	if (canUseWrangler) {
 		try {
-			run("npx", [
+			run("pnpm", [
+				"exec",
 				"wrangler",
 				"deploy",
 				"--config",

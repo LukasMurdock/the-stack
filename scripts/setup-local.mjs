@@ -55,7 +55,8 @@ if (missing.length > 0) {
 
 runNodeScript("scripts/dev-doctor.mjs");
 
-runCommand("npx", [
+runCommand("pnpm", [
+	"exec",
 	"wrangler",
 	"d1",
 	"migrations",
@@ -63,7 +64,8 @@ runCommand("npx", [
 	"CORE_DB",
 	"--local",
 ]);
-runCommand("npx", [
+runCommand("pnpm", [
+	"exec",
 	"wrangler",
 	"d1",
 	"migrations",

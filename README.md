@@ -45,7 +45,7 @@ API-first, type-safe template for building fast, interactive apps on Cloudflare 
 - [React Email](https://react.email/) for email components
 - [Node.js test runner](https://nodejs.org/api/test.html) + [tsx](https://tsx.is/) for tests
 - [Playwright](https://playwright.dev/) for end-to-end tests
-- [Oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) for formatting (`npm run format`, `npm run format:check`)
+- [Oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) for formatting (`pnpm run format`, `pnpm run format:check`)
 - [ESLint](https://eslint.org/) for linting
 - [opencode](https://opencode.ai/) for AI coding agent
     - [Cloudflare Skill](https://github.com/dmmulroy/cloudflare-skill) for Cloudflare platform reference docs
@@ -180,7 +180,7 @@ Quick troubleshooting:
 | Symptom                                       | Likely cause                | Fix                                                               |
 | --------------------------------------------- | --------------------------- | ----------------------------------------------------------------- |
 | `Missing required values` during `just setup` | `.dev.vars` not filled      | Set `BETTER_AUTH_SECRET`, `APP_URL`, `ADMIN_EMAIL` in `.dev.vars` |
-| `Wrangler not available` in doctor output     | dependencies not installed  | Run `npm install` then `just doctor`                              |
+| `Wrangler not available` in doctor output     | dependencies not installed  | Run `pnpm install` then `just doctor`                             |
 | `Could not find a local D1 sqlite file`       | migrations not applied yet  | Run `just migrate-core` and `just migrate-turret`                 |
 | Login works but no account exists             | invite-only mode is default | Run `just admin-create` or set `AUTH_SIGNUP_MODE=open`            |
 
@@ -402,14 +402,14 @@ curl -X POST "https://<your-domain>/api/internal/bootstrap-admin" \
   -H "x-bootstrap-secret: <BOOTSTRAP_SECRET>"
 ```
 
-`npm run deploy` intentionally fails to prevent accidental deploys. Use `just deploy-production` for explicit production deploys.
+`pnpm run deploy` intentionally fails to prevent accidental deploys. Use `just deploy-production` for explicit production deploys.
 
 ## Logs
 
 Tail production logs:
 
 ```bash
-npx wrangler tail --env production
+pnpm exec wrangler tail --env production
 ```
 
 Or use `just logs`.

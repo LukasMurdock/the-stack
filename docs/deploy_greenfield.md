@@ -35,7 +35,7 @@ Provision resources with Wrangler CLI, then copy the resulting IDs/names into `w
 Create:
 
 ```bash
-npx wrangler d1 create core-production
+pnpm exec wrangler d1 create core-production
 ```
 
 - Copy the returned `database_id` into `wrangler.json` -> `env.production.d1_databases[0].database_id`.
@@ -48,7 +48,7 @@ Migrations (recommended workflow):
 just migrate-core
 
 # Apply to production (remote)
-npx wrangler d1 migrations apply CORE_DB --remote --env production
+pnpm exec wrangler d1 migrations apply CORE_DB --remote --env production
 ```
 
 Notes:
@@ -61,7 +61,7 @@ Notes:
 Create:
 
 ```bash
-npx wrangler kv namespace create core-kv-production
+pnpm exec wrangler kv namespace create core-kv-production
 ```
 
 - Copy the returned namespace id into `wrangler.json` -> `env.production.kv_namespaces`.
@@ -75,7 +75,7 @@ KV gotcha:
 Create:
 
 ```bash
-npx wrangler r2 bucket create core-bucket-production
+pnpm exec wrangler r2 bucket create core-bucket-production
 ```
 
 - Copy the bucket name into `wrangler.json` -> `env.production.r2_buckets`.
@@ -89,7 +89,7 @@ R2 gotcha:
 Create:
 
 ```bash
-npx wrangler queues create core-queue-production
+pnpm exec wrangler queues create core-queue-production
 ```
 
 - Configure the producer/consumer bindings in `wrangler.json` under `env.production.queues`.
@@ -112,7 +112,7 @@ Rules:
 Before a production deploy that includes migration changes:
 
 ```bash
-npx wrangler deploy --config wrangler.json --env production --dry-run
+pnpm exec wrangler deploy --config wrangler.json --env production --dry-run
 ```
 
 ### 4) Set Production Secrets
@@ -120,8 +120,8 @@ npx wrangler deploy --config wrangler.json --env production --dry-run
 Store secrets via Wrangler (never commit them):
 
 ```bash
-npx wrangler secret put SOME_SECRET --env production
-npx wrangler secret list --env production
+pnpm exec wrangler secret put SOME_SECRET --env production
+pnpm exec wrangler secret list --env production
 ```
 
 At minimum, set on main worker:

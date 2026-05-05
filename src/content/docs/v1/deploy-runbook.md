@@ -30,5 +30,5 @@ curl -i "https://<your-domain>/api/scalar"
 ## Rollback
 
 ```bash
-npx wrangler rollback <version-id> --env production --config wrangler.json
+pnpm exec wrangler rollback <version-id> --env production --config wrangler.json
 ```

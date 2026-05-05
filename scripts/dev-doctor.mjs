@@ -112,13 +112,17 @@ try {
 }
 
 try {
-	const wranglerVersion = execFileSync("npx", ["wrangler", "--version"], {
-		encoding: "utf8",
-	}).trim();
+	const wranglerVersion = execFileSync(
+		"pnpm",
+		["exec", "wrangler", "--version"],
+		{
+			encoding: "utf8",
+		}
+	).trim();
 	ok(`Wrangler available (${wranglerVersion})`);
 } catch {
 	fail(
-		"Wrangler not available via npx (install dependencies with npm install)"
+		"Wrangler not available via pnpm exec (install dependencies with pnpm install)"
 	);
 	failed = true;
 }
