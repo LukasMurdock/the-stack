@@ -67,8 +67,5 @@ logs:
 db-generate-core name:
     drizzle-kit generate --config src/bindings/d1/core/drizzle.config.ts --name {{ name }}
 
-new-api name:
-    node scripts/new-api.mjs {{ name }}
-
 new-route path:
     node scripts/new-route.mjs {{ path }}

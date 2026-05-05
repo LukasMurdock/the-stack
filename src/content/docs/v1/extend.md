@@ -10,7 +10,7 @@ Use this track when adding new product features.
 
 ## Recommended sequence
 
-1. Add API route scaffold (`just new-api <name>`).
+1. Add the API route using the existing route patterns.
 2. Add app route scaffold (`just new-route <path>`).
 3. Add smoke tests for new path behavior.
 4. Update docs with verify and rollback notes.

@@ -428,12 +428,6 @@ Full validation (used on main/nightly):
 just check-full
 ```
 
-Scaffold a new API route and wire it into `src/worker/api/index.ts`:
-
-```bash
-just new-api billing-status
-```
-
 Scaffold a new TanStack route file under `src/react-app/routes`:
 
 ```bash

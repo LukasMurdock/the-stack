@@ -49,7 +49,6 @@ Optional helpers:
 just doctor
 just status
 just seed
-just new-api example-status
 just new-route _public/example
 ```
 
