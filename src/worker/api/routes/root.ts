@@ -1,3 +1,4 @@
+import type { Bindings } from "../../index";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import {
 	isOpenSignupMode,
@@ -5,7 +6,7 @@ import {
 } from "../../auth-signup-mode";
 import { resolveTurretModeStatus } from "../../turret/mode";
 
-const rootApp = new OpenAPIHono();
+const rootApp = new OpenAPIHono<{ Bindings: Bindings }>();
 
 const NameResponseSchema = z
 	.object({
@@ -105,14 +106,10 @@ function isDebugFaultRouteEnabled(env: { APP_ENV?: string }): boolean {
 
 const routes = rootRoutes
 	.openapi(getHealth, (c) => {
-		const signupMode = resolveAuthSignupMode(
-			(c.env as { AUTH_SIGNUP_MODE?: string }).AUTH_SIGNUP_MODE
-		);
+		const signupMode = resolveAuthSignupMode(c.env.AUTH_SIGNUP_MODE);
 		const turretMode = resolveTurretModeStatus({
-			modeRaw: (c.env as { TURRET_MODE?: string }).TURRET_MODE,
-			hasSigningKey: Boolean(
-				(c.env as { TURRET_SIGNING_KEY?: string }).TURRET_SIGNING_KEY
-			),
+			modeRaw: c.env.TURRET_MODE,
+			hasSigningKey: Boolean(c.env.TURRET_SIGNING_KEY),
 		});
 		return c.json(
 			{
@@ -127,13 +124,13 @@ const routes = rootRoutes
 		);
 	})
 	.openapi(getThrow, (c) => {
-		if (!isDebugFaultRouteEnabled(c.env as { APP_ENV?: string })) {
+		if (!isDebugFaultRouteEnabled(c.env)) {
 			return c.json({ error: "Not Found" }, 404);
 		}
 		throw new Error("Intentional test error");
 	})
 	.openapi(getFail, (c) => {
-		if (!isDebugFaultRouteEnabled(c.env as { APP_ENV?: string })) {
+		if (!isDebugFaultRouteEnabled(c.env)) {
 			return c.json({ error: "Not Found" }, 404);
 		}
 		return c.json({ error: "Intentional test 5xx" }, 500);

@@ -1,3 +1,4 @@
+import { getRequestLocation } from "../../lib/cloudflareRequest";
 declare module "hono" {
 	interface ContextVariableMap {
 		requestId: string;
@@ -49,8 +50,7 @@ export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 		const replayTs = replayTsRaw ? Number(replayTsRaw) : NaN;
 		const ts = Number.isFinite(replayTs) ? replayTs : Date.now();
 		const rayId = request.headers.get("cf-ray") ?? null;
-		const colo =
-			(request as Request & { cf?: { colo?: string } }).cf?.colo ?? null;
+		const colo = getRequestLocation(request).colo ?? null;
 
 		const shouldCaptureBreadcrumb =
 			!shouldSkipTurretBreadcrumbCapture(request);

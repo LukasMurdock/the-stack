@@ -1,3 +1,5 @@
+import type { TurretSummary } from "../../src/contracts/observability";
+import type { SummaryQuery } from "../../src/react-app/features/turret/dashboard/summaryQuery";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createElement } from "react";
@@ -12,7 +14,7 @@ const totals = {
 	avgDurationMs: 112,
 	p95DurationMs: 845,
 };
-const data = {
+const data: TurretSummary = {
 	from: 7_000_000,
 	to: 10_600_000,
 	replay: {
@@ -39,7 +41,7 @@ const data = {
 	},
 };
 
-function query(value: unknown, error = false) {
+function query(value: TurretSummary | undefined, error = false): SummaryQuery {
 	return {
 		data: value,
 		isError: error,
@@ -47,7 +49,7 @@ function query(value: unknown, error = false) {
 		isRefetchError: false,
 		dataUpdatedAt: 10_600_000,
 		refetch: async () => ({}),
-	} as never;
+	};
 }
 
 test("dashboard renders full replay totals and sampled request health with release context", () => {
@@ -69,7 +71,7 @@ test("dashboard renders full replay totals and sampled request health with relea
 });
 
 test("missing and failed telemetry render unavailable, while loading is distinct", () => {
-	const failed = {
+	const failed: TurretSummary = {
 		...data,
 		operations: { state: "unavailable", reason: "query_failed" },
 		replay: { state: "unavailable" },

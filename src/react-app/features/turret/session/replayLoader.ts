@@ -1,3 +1,4 @@
+import { isRecord } from "@/lib/isRecord";
 import type { eventWithTime } from "@rrweb/types";
 
 import { getReplaySessionChunk } from "../../../lib/turretApi";
@@ -6,6 +7,25 @@ export const REPLAY_CHUNK_CONCURRENCY = 6;
 
 export function isAbortError(error: unknown): boolean {
 	return error instanceof Error && error.name === "AbortError";
+}
+
+export function decodeReplayEvents(events: unknown[]): eventWithTime[] {
+	for (const event of events) {
+		if (
+			!isRecord(event) ||
+			typeof event.type !== "number" ||
+			!Number.isInteger(event.type) ||
+			event.type < 0 ||
+			event.type > 7 ||
+			typeof event.timestamp !== "number" ||
+			!Number.isFinite(event.timestamp) ||
+			!("data" in event)
+		) {
+			throw new Error("Invalid replay event envelope");
+		}
+	}
+	// SAFETY: tags (rrweb 2's event types 0–7), finite timestamps, and data presence were checked above. Nested payloads pass through under the owned rrweb recorder/replayer contract.
+	return events as eventWithTime[];
 }
 
 export async function loadReplayEvents(input: {
@@ -47,7 +67,7 @@ export async function loadReplayEvents(input: {
 					if (signal.aborted || loadController.signal.aborted) return;
 
 					if (payload && Array.isArray(payload.events)) {
-						results[index] = payload.events as eventWithTime[];
+						results[index] = decodeReplayEvents(payload.events);
 					}
 
 					loaded += 1;

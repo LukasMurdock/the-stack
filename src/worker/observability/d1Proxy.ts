@@ -79,7 +79,7 @@ function wrapD1Database(args: {
 							target,
 							values
 						);
-						// first()/raw() return user data, not D1 metadata.
+						// SAFETY: only native D1 all()/run() results carry query metadata; first()/raw() return user data and are excluded from this assertion.
 						record(
 							sqlShape,
 							startedAt,

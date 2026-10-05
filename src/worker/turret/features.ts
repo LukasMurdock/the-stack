@@ -18,11 +18,7 @@ const TurretFeaturesSchema = z.object({
 type TurretFeatures = z.infer<typeof TurretFeaturesSchema>;
 
 function normalizeTurretFeatures(input: unknown): TurretFeatures {
-	const obj =
-		input && typeof input === "object"
-			? (input as Record<string, unknown>)
-			: ({} as Record<string, unknown>);
-	const parsed = TurretFeaturesSchema.safeParse(obj);
+	const parsed = TurretFeaturesSchema.safeParse(input);
 	if (parsed.success) return parsed.data;
 	// If the stored config ever becomes invalid/corrupt, fall back to defaults.
 	return TurretFeaturesSchema.parse({});

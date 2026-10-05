@@ -15,6 +15,7 @@ import { createAuth, type AuthEnv } from "./auth";
 export type Bindings = AuthEnv &
 	OperationEnvironment & {
 		ANALYTICS_SQL?: AnalyticsSqlBinding;
+		TURRET_MODE?: string;
 		CF_VERSION_METADATA?: WorkerVersionMetadata;
 	};
 

@@ -1,3 +1,8 @@
+import { readSqlRow } from "../helpers/sqlite-d1";
+import { z } from "zod";
+import { testBindings } from "../helpers/worker";
+import { isRecord } from "../../src/lib/isRecord";
+import { createSqliteD1 } from "../helpers/sqlite-d1";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test, { type TestContext } from "node:test";
@@ -5,7 +10,6 @@ import Database from "better-sqlite3";
 import { Hono } from "hono";
 import worker, { type Bindings } from "../../src/worker/index";
 import { observeRequest } from "../../src/worker/observability/request";
-import type { TraceSpan } from "../../src/worker/observability/tracing";
 import { observePageRequest } from "../../src/worker/observability/page";
 
 function fixture() {
@@ -39,46 +43,7 @@ function fixture() {
 	sqlite.exec(
 		"ALTER TABLE turret_session_errors ADD COLUMN expires_at integer"
 	);
-	class Statement {
-		constructor(
-			readonly text: string,
-			readonly values: unknown[] = []
-		) {}
-		bind(...values: unknown[]) {
-			assert.ok(values.length <= 100, "D1 parameter limit exceeded");
-			return new Statement(this.text, values);
-		}
-		async run() {
-			const result = sqlite.prepare(this.text).run(...this.values);
-			return {
-				results: [],
-				meta: { rows_read: 0, rows_written: result.changes },
-			};
-		}
-		async all() {
-			return {
-				results: sqlite.prepare(this.text).all(...this.values),
-				meta: { rows_read: 1, rows_written: 0 },
-			};
-		}
-		async raw() {
-			return sqlite
-				.prepare(this.text)
-				.raw()
-				.all(...this.values);
-		}
-		async first() {
-			return sqlite.prepare(this.text).get(...this.values) ?? null;
-		}
-	}
-	const db = {
-		prepare(sql: string) {
-			return new Statement(sql);
-		},
-		async batch(statements: Statement[]) {
-			return Promise.all(statements.map((statement) => statement.run()));
-		},
-	};
+	const db = createSqliteD1(sqlite);
 	sqlite.exec(
 		readFileSync(
 			new URL(
@@ -94,39 +59,71 @@ function fixture() {
 		attributes: Record<string, unknown>;
 		errors: unknown[];
 	}[] = [];
+	class TestSpan implements Span {
+		readonly isTraced = true;
+		readonly record: (typeof spans)[number];
+		constructor(name = "unnamed") {
+			this.record = { name, attributes: {}, errors: [] };
+			spans.push(this.record);
+		}
+		setAttribute(key: string, value: boolean | number | string) {
+			this.record.attributes[key] = value;
+			return this;
+		}
+		setAttributes(attributes: Parameters<Span["setAttributes"]>[0]) {
+			Object.assign(this.record.attributes, attributes);
+			return this;
+		}
+		recordException(error: Parameters<Span["recordException"]>[0]) {
+			this.record.errors.push(error);
+		}
+		updateName(name: string) {
+			this.record.name = name;
+			return this;
+		}
+		setStatus(_status: TracingSpanStatus) {
+			return this;
+		}
+		end() {}
+	}
+	const tracing: Tracing = {
+		enterSpan<T, A extends unknown[]>(
+			name: string,
+			operation: (span: Span, ...args: A) => T,
+			...args: A
+		): T {
+			return operation(new TestSpan(name), ...args);
+		},
+		startActiveSpan<T, A extends unknown[]>(
+			name: string,
+			operation: (span: Span, ...args: A) => T,
+			...args: A
+		): T {
+			return operation(new TestSpan(name), ...args);
+		},
+		startSpan: (name) => new TestSpan(name),
+		getActiveSpan: () => undefined,
+		Span: TestSpan,
+	};
 	const ctx = {
 		waitUntil(promise: Promise<unknown>) {
 			background.push(promise);
 		},
 		passThroughOnException() {},
-		props: {},
-		tracing: {
-			enterSpan<T>(name: string, operation: (span: TraceSpan) => T): T {
-				const record = {
-					name,
-					attributes: {} as Record<string, unknown>,
-					errors: [] as unknown[],
-				};
-				spans.push(record);
-				return operation({
-					setAttributes(attributes) {
-						Object.assign(record.attributes, attributes);
-					},
-					recordException(error) {
-						record.errors.push(error);
-					},
-				});
-			},
+		abort(reason?: unknown) {
+			throw reason;
 		},
+		props: {},
+		tracing,
 	};
-	const env = {
+	const env = testBindings({
 		APP_ENV: "local",
 		APP_URL: "http://localhost:4321",
 		TURRET_MODE: "off",
 		TURRET_DB: db,
 		CORE_DB: db,
-		CF_VERSION_METADATA: { id: "version-1" },
-	} as unknown as Bindings;
+		CF_VERSION_METADATA: { id: "version-1", tag: "", timestamp: "" },
+	});
 	return {
 		sqlite,
 		db,
@@ -166,9 +163,17 @@ test("operational metrics survive broken replay storage and cover excluded route
 		[];
 	f.env.TURRET_METRICS = {
 		writeDataPoint(point) {
-			points.push(point);
+			points.push(
+				z
+					.object({
+						blobs: z.array(z.string()),
+						doubles: z.array(z.number()),
+						indexes: z.array(z.string()),
+					})
+					.parse(point)
+			);
 		},
-	} as never;
+	};
 	f.sqlite.exec("DROP TABLE turret_request_breadcrumbs");
 	for (const path of [
 		"/api/missing",
@@ -179,7 +184,7 @@ test("operational metrics survive broken replay storage and cover excluded route
 		const response = await worker.fetch(
 			new Request(`http://localhost:4321${path}?token=secret`),
 			f.env,
-			f.ctx as never
+			f.ctx
 		);
 		assert.notEqual(response.status, 500);
 	}
@@ -190,7 +195,7 @@ test("operational metrics survive broken replay storage and cover excluded route
 	await app.fetch(
 		new Request("http://localhost:4321/api/auth/example"),
 		{ ...f.env },
-		f.ctx as never
+		f.ctx
 	);
 	await f.flush();
 	assert.equal(points.length, 5);
@@ -214,11 +219,11 @@ test("a failing metrics binding leaves the response and request correlation inta
 		writeDataPoint() {
 			throw new Error("metrics unavailable");
 		},
-	} as never;
+	};
 	const response = await worker.fetch(
 		new Request("http://localhost:4321/api/health"),
 		f.env,
-		f.ctx as never
+		f.ctx
 	);
 	assert.equal(response.status, 200);
 	assert.ok(response.headers.get("x-request-id"));
@@ -237,9 +242,17 @@ test("Astro boundary preserves response streams and logs thrown errors with safe
 	const points: { blobs: string[]; doubles: number[] }[] = [];
 	f.env.TURRET_METRICS = {
 		writeDataPoint(point) {
-			points.push(point);
+			points.push(
+				z
+					.object({
+						blobs: z.array(z.string()),
+						doubles: z.array(z.number()),
+						indexes: z.array(z.string()),
+					})
+					.parse(point)
+			);
 		},
-	} as never;
+	};
 	const request = new Request(
 		"http://localhost:4321/private/customer-email?token=secret",
 		{
@@ -299,18 +312,20 @@ test("Worker exceptions keep their stack, fingerprint and correlation without a 
 			},
 		}),
 		f.env,
-		f.ctx as never
+		f.ctx
 	);
 	assert.equal(response.status, 500);
 	assert.equal(response.headers.get("x-request-id"), "request-1");
 	await f.flush();
 	const rows = f.sqlite
-		.prepare("SELECT * FROM turret_session_errors")
-		.all() as Record<string, unknown>[];
+		.prepare<unknown[], Record<string, unknown>>(
+			"SELECT * FROM turret_session_errors"
+		)
+		.all();
 	assert.equal(rows.length, 1);
 	assert.equal(rows[0].session_id, sessionId);
 	assert.equal(
-		f.sqlite.prepare("SELECT error_count FROM turret_sessions").get()
+		readSqlRow(f.sqlite, "SELECT error_count FROM turret_sessions")
 			.error_count,
 		1
 	);
@@ -326,7 +341,7 @@ test("Worker exceptions keep their stack, fingerprint and correlation without a 
 		(event) => event.action === "api.request"
 	);
 	assert.equal(
-		(event?.error as Record<string, unknown> | undefined)?.kind,
+		isRecord(event?.error) ? event.error.kind : undefined,
 		"exception"
 	);
 	assert.equal(f.spans[0].attributes["request.id"], "request-1");
@@ -347,7 +362,7 @@ test("Returned 5xx, ingestion failures and CORS rejections all emit structured e
 			headers: { origin: "https://external.example" },
 		}),
 	]) {
-		const response = await worker.fetch(request, f.env, f.ctx as never);
+		const response = await worker.fetch(request, f.env, f.ctx);
 		assert.ok(response.headers.get("x-request-id"));
 	}
 	await f.flush();
@@ -358,13 +373,15 @@ test("Returned 5xx, ingestion failures and CORS rejections all emit structured e
 		events.map((event) => event.status),
 		[500, 503, 403]
 	);
-	assert.equal((events[0].error as Record<string, unknown>).kind, "http_5xx");
+	assert.equal(
+		isRecord(events[0].error) ? events[0].error.kind : undefined,
+		"http_5xx"
+	);
 	assert.equal(events[2].error, undefined);
 	assert.equal(f.spans[1].name, "turret.ingest");
 	assert.equal(
-		f.sqlite
-			.prepare("SELECT count(*) AS n FROM turret_session_errors")
-			.get().n,
+		readSqlRow(f.sqlite, "SELECT count(*) AS n FROM turret_session_errors")
+			.n,
 		1
 	);
 });
@@ -383,30 +400,26 @@ test("D1 replay spans are bounded, inserted within D1 limits, and exclude teleme
 	const response = await app.fetch(
 		new Request("http://localhost:4321/api/example"),
 		{ ...f.env },
-		f.ctx as never
+		f.ctx
 	);
 	assert.equal(response.status, 200);
 	await f.flush();
 	assert.equal(
-		f.sqlite.prepare("SELECT count(*) AS n FROM turret_request_spans").get()
+		readSqlRow(f.sqlite, "SELECT count(*) AS n FROM turret_request_spans")
 			.n,
 		100
 	);
 	assert.equal(
-		f.sqlite
-			.prepare(
-				"SELECT d1_queries_count AS n FROM turret_request_breadcrumbs"
-			)
-			.get().n,
+		readSqlRow(
+			f.sqlite,
+			"SELECT d1_queries_count AS n FROM turret_request_breadcrumbs"
+		).n,
 		105
 	);
 	const event = wideEvents(logs).find(
 		(event) => event.action === "api.request"
 	);
-	assert.equal(
-		(event?.d1 as Record<string, unknown> | undefined)?.droppedSpans,
-		5
-	);
+	assert.equal(isRecord(event?.d1) ? event.d1.droppedSpans : undefined, 5);
 	assert.equal(f.env.CORE_DB, f.db);
 });
 
@@ -415,13 +428,17 @@ test("Cleanup emits completion, preserves failure, and never masks scheduled err
 	const f = fixture();
 	t.after(() => f.sqlite.close());
 	await worker.scheduled(
-		{ cron: "0 * * * *" } as never,
+		{ cron: "0 * * * *", scheduledTime: Date.now(), noRetry() {} },
 		f.env,
-		f.ctx as never
+		f.ctx
 	);
 	f.sqlite.exec("DROP TABLE turret_request_spans");
 	await assert.rejects(
-		worker.scheduled({ cron: "0 * * * *" } as never, f.env, f.ctx as never),
+		worker.scheduled(
+			{ cron: "0 * * * *", scheduledTime: Date.now(), noRetry() {} },
+			f.env,
+			f.ctx
+		),
 		/Failed query/
 	);
 	const events = wideEvents(logs).filter(
@@ -443,7 +460,7 @@ test("Concurrent requests isolate shared bindings and replace invalid request ID
 			})
 	);
 	const responses = await Promise.all(
-		requests.map((request) => worker.fetch(request, f.env, f.ctx as never))
+		requests.map((request) => worker.fetch(request, f.env, f.ctx))
 	);
 	await f.flush();
 	assert.equal(f.env.CORE_DB, f.db);
@@ -458,14 +475,13 @@ test("Concurrent requests isolate shared bindings and replace invalid request ID
 	);
 	assert.equal(events.length, 2);
 	assert.ok(
-		events.every(
-			(event) => (event.d1 as Record<string, unknown>).queries === 0
-		)
+		events.every((event) => isRecord(event.d1) && event.d1.queries === 0)
 	);
 	assert.equal(
-		f.sqlite
-			.prepare("SELECT count(*) AS n FROM turret_request_breadcrumbs")
-			.get().n,
+		readSqlRow(
+			f.sqlite,
+			"SELECT count(*) AS n FROM turret_request_breadcrumbs"
+		).n,
 		2
 	);
 });

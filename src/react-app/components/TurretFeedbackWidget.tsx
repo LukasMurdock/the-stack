@@ -1,3 +1,4 @@
+import { turretFeedbackKindSchema } from "@/contracts/turret";
 import { useMemo, useState } from "react";
 
 import { getTurretContext } from "../lib/turretContext";
@@ -24,6 +25,13 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+
+const feedbackKindLabels = {
+	bug: "Bug",
+	idea: "Idea",
+	praise: "Praise",
+	other: "Other",
+} satisfies Record<TurretFeedbackKind, string>;
 
 function TurretFeedbackWidget() {
 	const [open, setOpen] = useState(false);
@@ -99,20 +107,26 @@ function TurretFeedbackWidget() {
 							<div className="text-sm font-medium">Type</div>
 							<Select
 								value={kind}
-								onValueChange={(v) =>
-									setKind(v as TurretFeedbackKind)
-								}
+								onValueChange={(v) => {
+									const parsed =
+										turretFeedbackKindSchema.safeParse(v);
+									if (parsed.success) setKind(parsed.data);
+								}}
 							>
 								<SelectTrigger className="mt-1">
 									<SelectValue placeholder="Select type" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="bug">Bug</SelectItem>
-									<SelectItem value="idea">Idea</SelectItem>
-									<SelectItem value="praise">
-										Praise
-									</SelectItem>
-									<SelectItem value="other">Other</SelectItem>
+									{turretFeedbackKindSchema.options.map(
+										(value) => (
+											<SelectItem
+												key={value}
+												value={value}
+											>
+												{feedbackKindLabels[value]}
+											</SelectItem>
+										)
+									)}
 								</SelectContent>
 							</Select>
 						</div>

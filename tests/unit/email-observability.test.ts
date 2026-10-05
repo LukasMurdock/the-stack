@@ -1,3 +1,4 @@
+import { testBindings, unavailableD1 } from "../helpers/worker";
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
 import {
@@ -5,7 +6,7 @@ import {
 	resolveEmailTransport,
 	type EmailEnvironment,
 } from "../../src/worker/email/send-email";
-import { createAuth, type AuthEnv } from "../../src/worker/auth";
+import { createAuth } from "../../src/worker/auth";
 import type {
 	ObservabilityContext,
 	TraceAttributes,
@@ -176,12 +177,8 @@ test("legacy sender display names remain supported and header injection is rejec
 		EMAIL: {
 			async send(input) {
 				sends++;
-				assert.equal(
-					(input as EmailMessageBuilder).from &&
-						typeof (input as EmailMessageBuilder).from,
-					"object"
-				);
-				assert.deepEqual((input as EmailMessageBuilder).from, {
+				assert.equal(input.from && typeof input.from, "object");
+				assert.deepEqual(input.from, {
 					email: "sender@example.com",
 					name: "Existing Project",
 				});
@@ -232,7 +229,8 @@ test("explicit Resend transport retains error tracing and validates acceptance I
 		/Invalid sender/
 	);
 	assert.equal(trace.errors.length, 1);
-	assert.equal((trace.errors[0] as Error).name, "validation_error");
+	assert.ok(trace.errors[0] instanceof Error);
+	assert.equal(trace.errors[0].name, "validation_error");
 	t.mock.method(
 		globalThis,
 		"fetch",
@@ -260,37 +258,40 @@ test("Better Auth callbacks render both email types, schedule delivery, and keep
 	const logs = captureLogs(t);
 	const trace = tracing();
 	const messages: EmailMessageBuilder[] = [];
-	const env = {
+	const env = testBindings({
 		...production,
 		PRODUCT_NAME: "Starter",
 		APP_URL: "https://app.example.com",
 		BETTER_AUTH_SECRET:
 			"auth-email-test-secret-with-at-least-32-characters",
-		CORE_DB: {},
-		CORE_KV: {},
-		CF_VERSION_METADATA: { id: "release-1" },
+		CORE_DB: unavailableD1("Email callbacks must not query D1"),
+
+		CF_VERSION_METADATA: { id: "release-1", tag: "", timestamp: "" },
 		EMAIL: {
-			async send(input: EmailMessageBuilder) {
+			async send(input: EmailMessage | EmailMessageBuilder) {
+				if (!("subject" in input))
+					throw new Error("Expected email builder");
 				messages.push(input);
 				return { messageId: "accepted-id" };
 			},
 		},
-	} as unknown as AuthEnv;
+	});
 	const auth = createAuth(env, trace.ctx, "auth-request-id");
 	const url = "https://app.example.com/reset-password?token=auth-secret";
 	const payload = {
-		user: { email: "user@example.net" },
+		user: {
+			id: "test-user",
+			name: "Test",
+			email: "user@example.net",
+			emailVerified: false,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		},
 		url,
 		token: "auth-secret",
-	} as never;
-	await auth.options.emailAndPassword?.sendResetPassword?.(
-		payload,
-		undefined
-	);
-	await auth.options.emailVerification?.sendVerificationEmail?.(
-		payload,
-		undefined
-	);
+	};
+	await auth.options.emailAndPassword?.sendResetPassword?.(payload);
+	await auth.options.emailVerification?.sendVerificationEmail?.(payload);
 	assert.equal(trace.pending.length, 2);
 	await Promise.all(trace.pending);
 	assert.equal(messages.length, 2);
@@ -315,10 +316,7 @@ test("Better Auth callbacks render both email types, schedule delivery, and keep
 	env.EMAIL.send = async () => {
 		throw failure;
 	};
-	await auth.options.emailAndPassword?.sendResetPassword?.(
-		payload,
-		undefined
-	);
+	await auth.options.emailAndPassword?.sendResetPassword?.(payload);
 	await Promise.all(trace.pending);
 	const output = JSON.stringify(logs);
 	assert.match(output, /email.send_failed/);

@@ -50,3 +50,31 @@ export type {
 	TurretRequestSpan,
 	TurretReplaySessionSpansGroupedResponse,
 };
+
+export const turretInitResponseSchema = z.object({
+	session_id: z.string(),
+	upload_token: z.string(),
+	policy_version: z.string(),
+	rrweb: z.record(z.string(), z.unknown()),
+	console: z
+		.object({
+			enabled: z.boolean().default(true),
+			level: z
+				.array(z.enum(["log", "info", "warn", "error"]))
+				.default(["log", "info", "warn", "error"]),
+			lengthThreshold: z.number().int().min(0).default(200),
+			stringifyOptions: z
+				.object({
+					stringLengthLimit: z.number().int().optional(),
+					numOfKeysLimit: z.number().int().min(0).default(30),
+					depthOfLimit: z.number().int().min(0).default(2),
+				})
+				.default({ numOfKeysLimit: 30, depthOfLimit: 2 }),
+		})
+		.default({
+			enabled: true,
+			level: ["log", "info", "warn", "error"],
+			lengthThreshold: 200,
+			stringifyOptions: { numOfKeysLimit: 30, depthOfLimit: 2 },
+		}),
+});

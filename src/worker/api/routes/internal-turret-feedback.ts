@@ -1,3 +1,4 @@
+import type { Bindings } from "../../index";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import {
 	turretFeedbackKindSchema,
@@ -5,9 +6,7 @@ import {
 } from "../../../contracts/turret";
 import { requireInternalTurretAdmin } from "./_shared/admin-auth";
 
-type D1Database = globalThis.D1Database;
-
-const internalTurretFeedbackApp = new OpenAPIHono();
+const internalTurretFeedbackApp = new OpenAPIHono<{ Bindings: Bindings }>();
 
 const ErrorResponseSchema = z
 	.object({
@@ -101,7 +100,7 @@ const listFeedback = createRoute({
 });
 
 internalTurretFeedbackApp.openapi(listFeedback, async (c) => {
-	const env = c.env as unknown as { TURRET_DB: D1Database };
+	const env = c.env;
 	const qv = c.req.valid("query");
 	const now = Date.now();
 	const fromMs = parseMs(qv.from) ?? now - 30 * 24 * 60 * 60 * 1000;
@@ -161,10 +160,8 @@ internalTurretFeedbackApp.openapi(listFeedback, async (c) => {
 
 	const res = await env.TURRET_DB.prepare(sqlText)
 		.bind(...params)
-		.all();
-	const rows = (res.results ?? []) as unknown as z.infer<
-		typeof FeedbackItemSchema
-	>[];
+		.all<z.infer<typeof FeedbackItemSchema>>();
+	const rows = res.results;
 
 	return c.json(
 		{
@@ -207,7 +204,7 @@ const listReplaySessionFeedback = createRoute({
 });
 
 internalTurretFeedbackApp.openapi(listReplaySessionFeedback, async (c) => {
-	const env = c.env as unknown as { TURRET_DB: D1Database };
+	const env = c.env;
 	const { id: sessionId } = c.req.valid("param");
 	const { limit: limitRaw, offset: offsetRaw } = c.req.valid("query");
 	const limit = Math.max(1, Math.min(200, Number(limitRaw ?? "50") || 50));
@@ -235,12 +232,10 @@ internalTurretFeedbackApp.openapi(listReplaySessionFeedback, async (c) => {
 
 	const res = await env.TURRET_DB.prepare(sqlText)
 		.bind(sessionId, limit, offset)
-		.all();
+		.all<z.infer<typeof FeedbackItemSchema>>();
 	return c.json(
 		{
-			feedback: (res.results ?? []) as unknown as z.infer<
-				typeof FeedbackItemSchema
-			>[],
+			feedback: res.results,
 			limit,
 			offset,
 		},
@@ -293,7 +288,7 @@ const patchFeedback = createRoute({
 });
 
 internalTurretFeedbackApp.openapi(patchFeedback, async (c) => {
-	const env = c.env as unknown as { TURRET_DB: D1Database };
+	const env = c.env;
 	const { id } = c.req.valid("param");
 	const { status } = c.req.valid("json");
 	const now = Date.now();

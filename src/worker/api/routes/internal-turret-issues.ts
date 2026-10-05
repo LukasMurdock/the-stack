@@ -1,12 +1,11 @@
+import type { Bindings } from "../../index";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { turretIssueStatusSchema } from "../../../contracts/turret";
 import { requireInternalTurretAdmin } from "./_shared/admin-auth";
 
-type D1Database = globalThis.D1Database;
-
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const internalTurretIssuesApp = new OpenAPIHono();
+const internalTurretIssuesApp = new OpenAPIHono<{ Bindings: Bindings }>();
 
 const ErrorResponseSchema = z
 	.object({
@@ -160,7 +159,7 @@ const listIssues = createRoute({
 });
 
 internalTurretIssuesApp.openapi(listIssues, async (c) => {
-	const env = c.env as unknown as { TURRET_DB: D1Database };
+	const env = c.env;
 	const {
 		status: statusRaw,
 		q: qRaw,
@@ -292,7 +291,7 @@ internalTurretIssuesApp.openapi(listIssues, async (c) => {
 	const issues = rows.map((r) => {
 		return {
 			fingerprint: String(r.fingerprint),
-			status: (r.status ?? "open") as z.infer<typeof IssueStatusSchema>,
+			status: IssueStatusSchema.parse(r.status ?? "open"),
 			title: r.title != null ? String(r.title) : null,
 			firstSeenAt: Number(r.firstSeenAt ?? 0),
 			lastSeenAt: Number(r.lastSeenAt ?? 0),
@@ -347,7 +346,7 @@ const getIssue = createRoute({
 });
 
 internalTurretIssuesApp.openapi(getIssue, async (c) => {
-	const env = c.env as unknown as { TURRET_DB: D1Database };
+	const env = c.env;
 	const { fingerprint } = c.req.valid("param");
 
 	const stmt = `
@@ -396,7 +395,7 @@ internalTurretIssuesApp.openapi(getIssue, async (c) => {
 
 	const issue = {
 		fingerprint: String(row.fingerprint),
-		status: (row.status ?? "open") as z.infer<typeof IssueStatusSchema>,
+		status: IssueStatusSchema.parse(row.status ?? "open"),
 		title:
 			row.stateTitle != null
 				? String(row.stateTitle)
@@ -458,7 +457,7 @@ const getIssueTrend = createRoute({
 });
 
 internalTurretIssuesApp.openapi(getIssueTrend, async (c) => {
-	const env = c.env as unknown as { TURRET_DB: D1Database };
+	const env = c.env;
 	const { fingerprint } = c.req.valid("param");
 	const { from, to, bucket: bucketRaw } = c.req.valid("query");
 
@@ -540,7 +539,7 @@ const getIssueEvents = createRoute({
 });
 
 internalTurretIssuesApp.openapi(getIssueEvents, async (c) => {
-	const env = c.env as unknown as { TURRET_DB: D1Database };
+	const env = c.env;
 	const { fingerprint } = c.req.valid("param");
 	const { limit: limitRaw, offset: offsetRaw } = c.req.valid("query");
 	const limit = Math.max(1, Math.min(200, Number(limitRaw ?? "50") || 50));
@@ -625,7 +624,7 @@ const patchIssue = createRoute({
 });
 
 internalTurretIssuesApp.openapi(patchIssue, async (c) => {
-	const env = c.env as unknown as { TURRET_DB: D1Database };
+	const env = c.env;
 	const { fingerprint } = c.req.valid("param");
 	const body = c.req.valid("json");
 
@@ -644,7 +643,9 @@ internalTurretIssuesApp.openapi(patchIssue, async (c) => {
 		.bind(fingerprint)
 		.first<Record<string, unknown>>();
 
-	const nextStatus = (body.status ?? current?.status ?? "open") as string;
+	const nextStatus = IssueStatusSchema.parse(
+		body.status ?? current?.status ?? "open"
+	);
 	const nextTitle = body.title !== undefined ? body.title : current?.title;
 
 	await env.TURRET_DB.prepare(
@@ -710,7 +711,7 @@ internalTurretIssuesApp.openapi(patchIssue, async (c) => {
 	if (!row) return c.json({ error: "Not Found" }, 404);
 	const issue = {
 		fingerprint: String(row.fingerprint),
-		status: (row.status ?? "open") as z.infer<typeof IssueStatusSchema>,
+		status: IssueStatusSchema.parse(row.status ?? "open"),
 		title:
 			row.stateTitle != null
 				? String(row.stateTitle)

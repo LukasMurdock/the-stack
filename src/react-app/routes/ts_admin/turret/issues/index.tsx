@@ -66,14 +66,14 @@ const Route = createFileRoute("/ts_admin/turret/issues/")({
 			s.status === "resolved" ||
 			s.status === "ignored" ||
 			s.status === "open"
-				? (s.status as TurretIssueStatus)
+				? s.status
 				: "open";
 		const preset: RangePreset =
 			s.preset === "24h" ||
 			s.preset === "7d" ||
 			s.preset === "30d" ||
 			s.preset === "custom"
-				? (s.preset as RangePreset)
+				? s.preset
 				: "24h";
 		return {
 			status,

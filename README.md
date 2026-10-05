@@ -67,6 +67,13 @@ the Node 22 runtime in CI.
 `pnpm run lint` and both CI check recipes reject lint errors. The rules are
 syntax-based; `tsc -b` provides type checking.
 
+A selective [anti-slop](https://github.com/dmmulroy/anti-slop) policy adds checks
+for chained and widened assertions, opaque types, module mocking, and copied
+reducer accumulators. Necessary assertions explain their invariant in a nearby
+`SAFETY:` comment. The vendored source and licenses live in
+`tools/oxlint/anti-slop/`; its pinned upstream revision is recorded in
+`UPSTREAM.json`. Oxlint and `@oxlint/plugins` use matching exact versions.
+
 Production builds select the Cloudflare environment before bundling:
 `CLOUDFLARE_ENV=production pnpm run build`. Deploy the generated configuration
 at `dist/server/wrangler.json`; `just deploy-production` handles both steps.

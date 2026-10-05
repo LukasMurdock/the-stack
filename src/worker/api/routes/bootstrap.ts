@@ -1,13 +1,12 @@
+import type { Bindings } from "../../index";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { eq } from "drizzle-orm";
 import { makeCoreDb } from "../../../bindings/d1/core/db";
 
-// OpenAPIHono's route typing is strict about enumerated status codes.
-// For early-return error handling, we cast to never to keep the code readable.
 import * as schema from "../../../bindings/d1/core/schema";
-import { createAuth, type AuthEnv } from "../../auth";
+import { createAuth } from "../../auth";
 
-const bootstrapApp = new OpenAPIHono();
+const bootstrapApp = new OpenAPIHono<{ Bindings: Bindings }>();
 
 const BootstrapResponseSchema = z
 	.object({
@@ -73,31 +72,27 @@ function randomPassword(length = 48): string {
 }
 
 const routes = bootstrapApp.openapi(postBootstrapAdmin, async (c) => {
-	const env = c.env as unknown as AuthEnv & {
-		BOOTSTRAP_SECRET?: string;
-		ADMIN_EMAIL?: string;
-		APP_URL?: string;
-	};
+	const env = c.env;
 
 	const expectedSecret = env.BOOTSTRAP_SECRET;
 	const providedSecret = c.req.header("x-bootstrap-secret") ?? "";
 	if (!expectedSecret || !timingSafeEqual(providedSecret, expectedSecret)) {
 		return c.json({ ok: false, status: "already_bootstrapped" }, 401, {
 			"Cache-Control": "no-store",
-		}) as never;
+		});
 	}
 
 	const adminEmail = env.ADMIN_EMAIL;
 	if (!adminEmail) {
 		return c.json({ ok: false, status: "already_bootstrapped" }, 500, {
 			"Cache-Control": "no-store",
-		}) as never;
+		});
 	}
 
 	if (!env.APP_URL) {
 		return c.json({ ok: false, status: "already_bootstrapped" }, 500, {
 			"Cache-Control": "no-store",
-		}) as never;
+		});
 	}
 
 	const bootstrappedKey = `bootstrap:admin:${adminEmail.toLowerCase()}`;
@@ -105,7 +100,7 @@ const routes = bootstrapApp.openapi(postBootstrapAdmin, async (c) => {
 	if (already) {
 		return c.json({ ok: true, status: "already_bootstrapped" }, 409, {
 			"Cache-Control": "no-store",
-		}) as never;
+		});
 	}
 
 	const db = makeCoreDb(env.CORE_DB);
@@ -140,7 +135,7 @@ const routes = bootstrapApp.openapi(postBootstrapAdmin, async (c) => {
 		if (!createdUser) {
 			return c.json({ ok: false, status: "already_bootstrapped" }, 500, {
 				"Cache-Control": "no-store",
-			}) as never;
+			});
 		}
 
 		userId = createdUser.id;

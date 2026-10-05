@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { useDraftValue } from "@/react-app/hooks/useDraftValue";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -72,9 +73,8 @@ function fromLocalDatetimeValue(v: string): number | undefined {
 function parseJsonObject(input: string | null): Record<string, unknown> | null {
 	if (!input) return null;
 	try {
-		const parsed = JSON.parse(input) as unknown;
-		if (!parsed || typeof parsed !== "object") return null;
-		return parsed as Record<string, unknown>;
+		const parsed: unknown = JSON.parse(input);
+		return z.record(z.string(), z.unknown()).parse(parsed);
 	} catch {
 		return null;
 	}
@@ -87,7 +87,7 @@ const Route = createFileRoute("/ts_admin/turret/issues/$fingerprint")({
 			s.preset === "7d" ||
 			s.preset === "30d" ||
 			s.preset === "custom"
-				? (s.preset as RangePreset)
+				? s.preset
 				: "7d";
 		const bucket: "hour" | "day" =
 			s.bucket === "hour" || s.bucket === "day"
@@ -630,15 +630,18 @@ function TurretIssueDetailPage() {
 														<Button
 															variant="outline"
 															type="button"
-															onClick={() =>
-																navigate({
+															onClick={() => {
+																const sessionId =
+																	e.sessionId;
+																if (!sessionId)
+																	return;
+																void navigate({
 																	to: "/ts_admin/turret/replay-sessions/$sessionId",
 																	params: {
-																		sessionId:
-																			e.sessionId as string,
+																		sessionId,
 																	},
-																})
-															}
+																});
+															}}
 														>
 															Open
 														</Button>

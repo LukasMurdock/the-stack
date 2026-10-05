@@ -4,10 +4,10 @@ import {
 } from "../../contracts/observability";
 
 export type AnalyticsSqlBinding = {
-	query<T extends Record<string, unknown>>(input: {
+	query(input: {
 		query: string;
 		params: Record<string, string | number>;
-	}): Promise<{ data: T[] }>;
+	}): Promise<{ data: Record<string, unknown>[] }>;
 };
 type SummaryEnvironment = {
 	APP_ENV?: string;

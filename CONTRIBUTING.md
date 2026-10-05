@@ -66,6 +66,20 @@ pnpm run format:check
 Linting uses `.oxlintrc.json`. `pnpm run lint` runs Oxlint directly and rejects
 lint errors. Fix violations rather than adding exceptions for existing code.
 
+The selective anti-slop rules apply to owned JavaScript and TypeScript, including
+tests. Prefer inference, typed bindings, boundary parsing, and `satisfies` over
+assertions. When an assertion is necessary, add a nearby `// SAFETY:` comment
+explaining the specific invariant; the comment must describe evidence, not just
+silence lint. Do not add double assertions or a baseline.
+
+The plugin is vendored from the revision recorded in
+`tools/oxlint/anti-slop/UPSTREAM.json`. Preserve both MIT licenses and the
+ESLint Stylistic provenance when updating it. Vendored source is excluded from
+lint and formatting. Upgrade `oxlint` and `@oxlint/plugins` together at identical
+exact versions, then run the plugin integration tests.
+`pnpm test` synchronizes generated types, typechecks test fixtures, and runs the
+Node test suite.
+
 TypeScript 7 provides `tsc` through `@typescript/native`. The `typescript` alias
 retains Microsoft's TypeScript 6 API for framework tools and JS lint plugins;
 `tsc6` is available for diagnosing compatibility differences. Keep both packages.

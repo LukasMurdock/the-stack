@@ -1,3 +1,4 @@
+import type { Bindings } from "../../index";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import {
 	readTurretCompliance,
@@ -6,14 +7,7 @@ import {
 } from "../../turret/compliance";
 import { requireInternalTurretAdmin } from "./_shared/admin-auth";
 
-type TurretCfgEnv = {
-	TURRET_CFG: {
-		get(key: string, type: "json"): Promise<unknown>;
-		put(key: string, value: string): Promise<void>;
-	};
-};
-
-const internalTurretComplianceApp = new OpenAPIHono();
+const internalTurretComplianceApp = new OpenAPIHono<{ Bindings: Bindings }>();
 
 const ErrorResponseSchema = z
 	.object({
@@ -72,7 +66,7 @@ const getCompliance = createRoute({
 });
 
 internalTurretComplianceApp.openapi(getCompliance, async (c) => {
-	const policy = await readTurretCompliance(c.env as unknown as TurretCfgEnv);
+	const policy = await readTurretCompliance(c.env);
 	return c.json({ policy }, 200);
 });
 
@@ -107,9 +101,7 @@ const putCompliance = createRoute({
 
 internalTurretComplianceApp.openapi(putCompliance, async (c) => {
 	const body = c.req.valid("json");
-	const current = await readTurretCompliance(
-		c.env as unknown as TurretCfgEnv
-	);
+	const current = await readTurretCompliance(c.env);
 	const next = {
 		...current,
 		...(body.retentionDays !== undefined
@@ -122,7 +114,7 @@ internalTurretComplianceApp.openapi(putCompliance, async (c) => {
 	};
 	// Re-parse to ensure we always store a normalized object.
 	const normalized = TurretComplianceSchema.parse(next);
-	await writeTurretCompliance(c.env as unknown as TurretCfgEnv, normalized);
+	await writeTurretCompliance(c.env, normalized);
 	return c.json({ policy: normalized }, 200);
 });
 

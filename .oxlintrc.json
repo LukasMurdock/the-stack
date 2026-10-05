@@ -1,6 +1,6 @@
 {
 	"$schema": "./node_modules/oxlint/configuration_schema.json",
-	"plugins": [],
+	"plugins": ["oxc"],
 	"categories": {
 		"correctness": "off"
 	},
@@ -14,7 +14,19 @@
 		".astro/**",
 		".tanstack/**",
 		".wrangler/**",
-		".tmp-jscpd/**"
+		".tmp-jscpd/**",
+		"tools/oxlint/anti-slop/**",
+		".agent/**",
+		".agents/**",
+		".claude/**",
+		".codex/**",
+		".opencode/**",
+		".continue/**",
+		".cursor/**",
+		".gemini/**",
+		".pi/**",
+		".roo/**",
+		".windsurf/**"
 	],
 	"overrides": [
 		{
@@ -154,5 +166,21 @@
 				"browser": true
 			}
 		}
-	]
+	],
+	"jsPlugins": [
+		{
+			"name": "anti-slop",
+			"specifier": "./tools/oxlint/anti-slop/index.ts"
+		}
+	],
+	"rules": {
+		"anti-slop/no-chained-type-assertions": "error",
+		"anti-slop/no-widen-then-assert": "error",
+		"anti-slop/no-object-parameters": "error",
+		"anti-slop/no-unknown-type-aliases": "error",
+		"anti-slop/no-module-mocking": "error",
+		"anti-slop/no-reduce-accumulator-copy": "error",
+		"anti-slop/require-safety-comment-for-type-assertion": "error",
+		"oxc/no-accumulating-spread": "error"
+	}
 }

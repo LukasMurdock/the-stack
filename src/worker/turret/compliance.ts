@@ -65,11 +65,7 @@ const TurretComplianceSchema = z.object({
 type TurretCompliance = z.infer<typeof TurretComplianceSchema>;
 
 function normalizeTurretCompliance(input: unknown): TurretCompliance {
-	const obj =
-		input && typeof input === "object"
-			? (input as Record<string, unknown>)
-			: ({} as Record<string, unknown>);
-	const parsed = TurretComplianceSchema.safeParse(obj);
+	const parsed = TurretComplianceSchema.safeParse(input);
 	if (parsed.success) return parsed.data;
 	return TurretComplianceSchema.parse({});
 }

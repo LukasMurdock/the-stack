@@ -4,10 +4,14 @@ import test from "node:test";
 import { safeRedirectTarget } from "../../src/react-app/routes/_public/login";
 
 test("safeRedirectTarget allows same-origin /app redirects", () => {
-	const previousWindow = (globalThis as { window?: unknown }).window;
-	(globalThis as { window: { location: { origin: string } } }).window = {
-		location: { origin: "http://localhost:4321" },
-	};
+	const previousWindow = Object.getOwnPropertyDescriptor(
+		globalThis,
+		"window"
+	);
+	Object.defineProperty(globalThis, "window", {
+		configurable: true,
+		value: { location: { origin: "http://localhost:4321" } },
+	});
 
 	try {
 		assert.equal(
@@ -16,18 +20,22 @@ test("safeRedirectTarget allows same-origin /app redirects", () => {
 		);
 	} finally {
 		if (previousWindow === undefined) {
-			delete (globalThis as { window?: unknown }).window;
+			Reflect.deleteProperty(globalThis, "window");
 		} else {
-			(globalThis as { window: unknown }).window = previousWindow;
+			Object.defineProperty(globalThis, "window", previousWindow);
 		}
 	}
 });
 
 test("safeRedirectTarget rejects external and non-app paths", () => {
-	const previousWindow = (globalThis as { window?: unknown }).window;
-	(globalThis as { window: { location: { origin: string } } }).window = {
-		location: { origin: "http://localhost:4321" },
-	};
+	const previousWindow = Object.getOwnPropertyDescriptor(
+		globalThis,
+		"window"
+	);
+	Object.defineProperty(globalThis, "window", {
+		configurable: true,
+		value: { location: { origin: "http://localhost:4321" } },
+	});
 
 	try {
 		assert.equal(safeRedirectTarget("https://example.com/app"), null);
@@ -35,9 +43,9 @@ test("safeRedirectTarget rejects external and non-app paths", () => {
 		assert.equal(safeRedirectTarget(undefined), null);
 	} finally {
 		if (previousWindow === undefined) {
-			delete (globalThis as { window?: unknown }).window;
+			Reflect.deleteProperty(globalThis, "window");
 		} else {
-			(globalThis as { window: unknown }).window = previousWindow;
+			Object.defineProperty(globalThis, "window", previousWindow);
 		}
 	}
 });

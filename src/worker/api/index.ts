@@ -1,6 +1,7 @@
+import type { Bindings } from "../index";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
-import { createAuth, type AuthEnv } from "../auth";
+import { createAuth } from "../auth";
 import { routes as rootRoutes } from "./routes/root";
 import { routes as bootstrapRoutes } from "./routes/bootstrap";
 import { routes as internalTurretSummaryRoutes } from "./routes/internal-turret-summary";
@@ -12,7 +13,7 @@ import { routes as internalTurretFeedbackRoutes } from "./routes/internal-turret
 import { routes as turretRoutes } from "./routes/turret";
 import { isAdminRole } from "./routes/_shared/admin-auth";
 
-const api = new OpenAPIHono();
+const api = new OpenAPIHono<{ Bindings: Bindings }>();
 
 // Capture the returned type so the client can infer routes.
 const apiRoutes = api
@@ -44,10 +45,10 @@ function filterOpenApiForNonAdmin(doc: OpenApiDoc): OpenApiDoc {
 }
 
 api.get("/doc", async (c) => {
-	const env = c.env as unknown as AuthEnv;
+	const env = c.env;
 	const auth = createAuth(env, c.executionCtx);
 	const session = await auth.api.getSession({ headers: c.req.raw.headers });
-	const user = session?.user as unknown as { role?: string } | undefined;
+	const user = session?.user;
 	const isAdmin = isAdminRole(user?.role);
 
 	const doc = api.getOpenAPIDocument({

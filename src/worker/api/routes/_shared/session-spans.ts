@@ -81,7 +81,7 @@ export async function loadReplaySessionSpansGrouped(input: {
 		.bind(sessionId, limit + 1, offset)
 		.all();
 
-	const rawRows = (res.results ?? []) as Array<Record<string, unknown>>;
+	const rawRows = res.results;
 	const hasMore = rawRows.length > limit;
 	const candidateRows = hasMore ? rawRows.slice(0, limit) : rawRows;
 	const parsedSpans = z.array(turretRequestSpanSchema).safeParse(

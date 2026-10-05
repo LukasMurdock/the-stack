@@ -287,7 +287,7 @@ export type TurretFeedbackListResponse = {
 
 async function turretHealth(): Promise<{ ok: true }> {
 	const res = await internalTurretFetch("/health");
-	return jsonOrThrow(res) as Promise<{ ok: true }>;
+	return jsonOrThrow<{ ok: true }>(res);
 }
 
 async function listReplaySessions(

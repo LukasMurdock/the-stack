@@ -8,15 +8,6 @@ type RequireCoreAdminOpts = {
 	};
 };
 
-function getUserFromSessionResponse(res: unknown): unknown | null {
-	if (!res || typeof res !== "object") return null;
-	if (!("data" in res)) return null;
-	const data = (res as { data?: unknown }).data;
-	if (!data || typeof data !== "object") return null;
-	if (!("user" in data)) return null;
-	return (data as { user?: unknown }).user ?? null;
-}
-
 function redirectToLogin(currentHref: string): never {
 	throw redirect({
 		to: "/login",
@@ -29,20 +20,11 @@ function redirectToLogin(currentHref: string): never {
 
 async function requireCoreAdmin({ location }: RequireCoreAdminOpts) {
 	// 1) Signed-in check
-	let user: unknown;
 	try {
-		const res = await (
-			authClient as unknown as {
-				getSession: () => Promise<unknown>;
-			}
-		).getSession();
-		user = getUserFromSessionResponse(res);
+		const { data, error } = await authClient.getSession();
+		if (error || !data?.user) redirectToLogin(location.href);
 	} catch (err) {
 		if (isRedirect(err)) throw err;
-		redirectToLogin(location.href);
-	}
-
-	if (!user) {
 		redirectToLogin(location.href);
 	}
 

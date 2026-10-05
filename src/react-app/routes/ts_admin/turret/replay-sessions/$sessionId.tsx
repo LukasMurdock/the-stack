@@ -1,3 +1,5 @@
+import { isRecord } from "@/lib/isRecord";
+import { z } from "zod";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -36,9 +38,8 @@ import {
 function parseJsonObject(input: string | null): Record<string, unknown> | null {
 	if (!input) return null;
 	try {
-		const parsed = JSON.parse(input) as unknown;
-		if (!parsed || typeof parsed !== "object") return null;
-		return parsed as Record<string, unknown>;
+		const parsed: unknown = JSON.parse(input);
+		return z.record(z.string(), z.unknown()).parse(parsed);
 	} catch {
 		return null;
 	}
@@ -130,8 +131,8 @@ function TurretReplaySessionPage() {
 			)
 				continue;
 			const candidate: unknown = data.payload;
-			if (!candidate || typeof candidate !== "object") continue;
-			const logData = candidate as Record<string, unknown>;
+			if (!isRecord(candidate)) continue;
+			const logData = candidate;
 
 			const ts = typeof ev.timestamp === "number" ? ev.timestamp : NaN;
 			if (!Number.isFinite(ts)) continue;

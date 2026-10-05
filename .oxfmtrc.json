@@ -7,5 +7,9 @@
 	"useTabs": true,
 	"printWidth": 80,
 	"sortPackageJson": false,
-	"ignorePatterns": ["dist", "**/routeTree.gen.ts"]
+	"ignorePatterns": [
+		"dist",
+		"**/routeTree.gen.ts",
+		"tools/oxlint/anti-slop/**"
+	]
 }

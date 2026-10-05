@@ -1,4 +1,4 @@
-import type { UseQueryResult } from "@tanstack/react-query";
+import type { SummaryQuery } from "./summaryQuery";
 
 import {
 	Card,
@@ -11,7 +11,6 @@ import {
 import type { TurretSummary } from "../../../lib/turretApi";
 import { formatSummaryWindow } from "./summaryFormat";
 
-type SummaryQuery = UseQueryResult<TurretSummary>;
 type ReplayTotals = Extract<
 	TurretSummary["replay"],
 	{ state: "ready" }

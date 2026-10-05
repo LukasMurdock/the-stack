@@ -1,5 +1,6 @@
 import type { MiddlewareHandler } from "hono";
-import { createAuth, type AuthEnv } from "../../../auth";
+import type { Bindings } from "../../../index";
+import { createAuth } from "../../../auth";
 
 function isAdminRole(role: unknown): boolean {
 	if (!role || typeof role !== "string") return false;
@@ -9,8 +10,10 @@ function isAdminRole(role: unknown): boolean {
 		.some((value) => value === "admin");
 }
 
-const requireInternalTurretAdmin: MiddlewareHandler = async (c, next) => {
-	const env = c.env as unknown as AuthEnv;
+const requireInternalTurretAdmin: MiddlewareHandler<{
+	Bindings: Bindings;
+}> = async (c, next) => {
+	const env = c.env;
 	const auth = createAuth(env, c.executionCtx);
 	const session = await auth.api.getSession({ headers: c.req.raw.headers });
 
@@ -18,7 +21,7 @@ const requireInternalTurretAdmin: MiddlewareHandler = async (c, next) => {
 		return c.json({ error: "Unauthorized" }, 401);
 	}
 
-	const user = session.user as unknown as { role?: string };
+	const user = session.user;
 	if (!isAdminRole(user.role)) {
 		return c.json({ error: "Forbidden" }, 403);
 	}

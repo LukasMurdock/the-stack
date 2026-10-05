@@ -1,3 +1,4 @@
+import type { Bindings } from "../../index";
 import type { TypedResponse } from "hono";
 import type { JSONValue } from "hono/utils/types";
 import { and, eq, or, like, gte, lte, type SQL } from "drizzle-orm";
@@ -15,8 +16,6 @@ import {
 } from "./_shared/session-spans";
 import { startOfUtcWeekMs } from "./_shared/time";
 
-type D1Database = globalThis.D1Database;
-
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
 
@@ -31,7 +30,7 @@ function escapeLike(input: string): string {
 	return input.replace(SAFE_LIKE, (m) => `\\${m}`);
 }
 
-const internalTurretApp = new OpenAPIHono();
+const internalTurretApp = new OpenAPIHono<{ Bindings: Bindings }>();
 
 const ErrorResponseSchema = z
 	.object({
@@ -442,9 +441,7 @@ internalTurretApp.get("/internal/turret/session/:id/spans", (c) => {
 
 internalTurretApp.openapi(getHealth, async (c) => {
 	// Quick sanity check that the binding exists.
-	await (c.env as { TURRET_DB: D1Database }).TURRET_DB.prepare(
-		"SELECT 1"
-	).first();
+	await c.env.TURRET_DB.prepare("SELECT 1").first();
 	return c.json({ ok: true as const }, 200);
 });
 
@@ -461,7 +458,7 @@ internalTurretApp.openapi(getReplaySessions, async (c) => {
 	const limit = Number(limitRaw ?? "50");
 	const offset = Number(offsetRaw ?? "0");
 
-	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
+	const db = makeTurretDb(c.env.TURRET_DB);
 
 	const filters: (SQL | undefined)[] = [];
 	const table = turretSessions;
@@ -489,25 +486,22 @@ internalTurretApp.openapi(getReplaySessions, async (c) => {
 });
 
 internalTurretApp.openapi(getDashboard, async (c) => {
-	const env = c.env as unknown as {
-		TURRET_DB: D1Database;
-		CORE_DB: D1Database;
-	};
+	const env = c.env;
 	const { to: toRaw } = c.req.valid("query");
 	const to = toRaw ? Number(toRaw) : Date.now();
 	const nowMs = Number.isFinite(to) ? to : Date.now();
 	const currentWeekStart = startOfUtcWeekMs(nowMs);
 
-	const totalUsersNowRow = (await env.CORE_DB.prepare(
+	const totalUsersNowRow = await env.CORE_DB.prepare(
 		"SELECT COUNT(*) AS c FROM auth_user"
-	).first()) as { c?: unknown } | null;
+	).first<{ c: number }>();
 	const totalUsersNow = Number(totalUsersNowRow?.c ?? 0);
 
-	const newUsers24hRow = (await env.CORE_DB.prepare(
+	const newUsers24hRow = await env.CORE_DB.prepare(
 		"SELECT COUNT(*) AS c FROM auth_user WHERE created_at >= ? AND created_at < ?"
 	)
 		.bind(nowMs - DAY_MS, nowMs)
-		.first()) as { c?: unknown } | null;
+		.first<{ c: number }>();
 	const newUsers24h = Number(newUsers24hRow?.c ?? 0);
 
 	const activeFrom = nowMs - DAY_MS;
@@ -622,7 +616,7 @@ internalTurretApp.openapi(getDashboard, async (c) => {
 
 internalTurretApp.openapi(getReplaySessionMeta, async (c) => {
 	const { id: sessionId } = c.req.valid("param");
-	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
+	const db = makeTurretDb(c.env.TURRET_DB);
 	const row = await db.query.turretSessions.findFirst({
 		where: (t, ops) => ops.eq(t.sessionId, sessionId),
 	});
@@ -632,7 +626,7 @@ internalTurretApp.openapi(getReplaySessionMeta, async (c) => {
 
 internalTurretApp.openapi(getChunks, async (c) => {
 	const { id: sessionId } = c.req.valid("param");
-	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
+	const db = makeTurretDb(c.env.TURRET_DB);
 	const rows = await db.query.turretSessionChunks.findMany({
 		where: (t, ops) => ops.eq(t.sessionId, sessionId),
 	});
@@ -641,7 +635,7 @@ internalTurretApp.openapi(getChunks, async (c) => {
 
 internalTurretApp.openapi(getReplaySessionErrors, async (c) => {
 	const { id: sessionId } = c.req.valid("param");
-	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
+	const db = makeTurretDb(c.env.TURRET_DB);
 	const rows = await db.query.turretSessionErrors.findMany({
 		where: (t, ops) => ops.eq(t.sessionId, sessionId),
 		orderBy: (t, ops) => [ops.asc(t.ts)],
@@ -654,7 +648,7 @@ internalTurretApp.openapi(getReplaySessionBreadcrumbs, async (c) => {
 	const { limit: limitRaw, offset: offsetRaw } = c.req.valid("query");
 	const limit = Number(limitRaw ?? "200");
 	const offset = Number(offsetRaw ?? "0");
-	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
+	const db = makeTurretDb(c.env.TURRET_DB);
 	const rows = await db.query.turretRequestBreadcrumbs.findMany({
 		where: (t, ops) => ops.eq(t.sessionId, sessionId),
 		orderBy: (t, ops) => [ops.asc(t.ts)],
@@ -665,7 +659,7 @@ internalTurretApp.openapi(getReplaySessionBreadcrumbs, async (c) => {
 });
 
 internalTurretApp.openapi(getReplaySessionSpans, async (c) => {
-	const env = c.env as unknown as { TURRET_DB: D1Database };
+	const env = c.env;
 	const { id: sessionId } = c.req.valid("param");
 	const { limit: limitRaw, offset: offsetRaw } = c.req.valid("query");
 	const { limit, offset } = normalizeReplaySessionSpansPagination({
@@ -695,7 +689,7 @@ internalTurretApp.openapi(getReplaySessionSpans, async (c) => {
 
 internalTurretApp.openapi(getRequestSpans, async (c) => {
 	const { requestId } = c.req.valid("param");
-	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
+	const db = makeTurretDb(c.env.TURRET_DB);
 	const rows = await db.query.turretRequestSpans.findMany({
 		where: (t, ops) => ops.eq(t.requestId, requestId),
 		orderBy: (t, ops) => [ops.asc(t.createdAt)],
@@ -706,7 +700,7 @@ internalTurretApp.openapi(getRequestSpans, async (c) => {
 internalTurretApp.openapi(getChunk, async (ctx) => {
 	const { id: sessionId, seq: seqRaw } = ctx.req.valid("param");
 	const seq = Number(seqRaw);
-	const db = makeTurretDb((ctx.env as { TURRET_DB: D1Database }).TURRET_DB);
+	const db = makeTurretDb(ctx.env.TURRET_DB);
 
 	const chunk = await db.query.turretSessionChunks.findFirst({
 		where: (t, ops) =>
@@ -714,18 +708,10 @@ internalTurretApp.openapi(getChunk, async (ctx) => {
 	});
 	if (!chunk) return ctx.json({ error: "Not Found" }, 404);
 
-	const obj = await (
-		ctx.env as {
-			TURRET_REPLAY_BUCKET: {
-				get(
-					key: string
-				): Promise<{ body: ReadableStream<Uint8Array> } | null>;
-			};
-		}
-	).TURRET_REPLAY_BUCKET.get((chunk as unknown as { r2Key: string }).r2Key);
+	const obj = await ctx.env.TURRET_REPLAY_BUCKET.get(chunk.r2Key);
 	if (!obj) return ctx.json({ error: "Not Found" }, 404);
 
-	// R2 stores the JSON uploaded by this Worker; keep the body streaming.
+	// SAFETY: this Worker stores JSON in R2, and this response sets its JSON content type and 200 status. The Hono marker describes that streaming response without buffering it.
 	return new Response(obj.body, {
 		status: 200,
 		headers: {

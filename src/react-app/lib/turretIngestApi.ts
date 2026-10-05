@@ -1,19 +1,6 @@
-export type TurretInitResponse = {
-	session_id: string;
-	upload_token: string;
-	policy_version: string;
-	rrweb: Record<string, unknown>;
-	console: {
-		enabled: boolean;
-		level: ("log" | "info" | "warn" | "error")[];
-		lengthThreshold: number;
-		stringifyOptions: {
-			stringLengthLimit?: number;
-			numOfKeysLimit: number;
-			depthOfLimit: number;
-		};
-	};
-};
+import type { z } from "zod";
+import { turretInitResponseSchema } from "../../contracts/turret";
+export type TurretInitResponse = z.infer<typeof turretInitResponseSchema>;
 
 export type TurretBlockedReason =
 	| "rrweb_import_failed"
@@ -28,7 +15,8 @@ type TurretReplaySessionErrorPayload = {
 	extra?: Record<string, unknown>;
 };
 
-export type TurretFeedbackKind = "bug" | "idea" | "praise" | "other";
+import type { TurretFeedbackKind } from "../../contracts/turret";
+export type { TurretFeedbackKind } from "../../contracts/turret";
 
 type TurretReplaySessionFeedbackPayload = {
 	ts: number;
@@ -70,7 +58,7 @@ async function turretInitReplaySession(input: {
 		throw new Error(msg);
 	}
 
-	return res.json() as Promise<TurretInitResponse>;
+	return turretInitResponseSchema.parse(await res.json());
 }
 
 async function turretUploadChunk(input: {

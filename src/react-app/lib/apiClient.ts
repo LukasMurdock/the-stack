@@ -1,3 +1,4 @@
+import { isRecord } from "../../lib/isRecord";
 import { hc } from "hono/client";
 import type { ApiType } from "../../worker/api";
 
@@ -52,16 +53,19 @@ async function tryParseJson(
 async function jsonOrThrow<T>(res: JsonResponseLike): Promise<T> {
 	if (!res.ok) {
 		const payload = await tryParseJson(res);
-		const apiPayload = payload as ApiErrorPayload | undefined;
+		const apiPayload = isRecord(payload) ? payload : undefined;
 
 		const message =
-			apiPayload?.message ??
-			apiPayload?.error ??
-			`Request failed: ${res.status}`;
+			typeof apiPayload?.message === "string"
+				? apiPayload.message
+				: typeof apiPayload?.error === "string"
+					? apiPayload.error
+					: `Request failed: ${res.status}`;
 
 		throw new ApiError({ message, status: res.status, payload });
 	}
 
+	// SAFETY: callers supply the JSON contract of the owned API route they requested, after the HTTP success check. This transport boundary does not perform runtime validation.
 	return res.json() as Promise<T>;
 }
 

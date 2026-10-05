@@ -16,6 +16,7 @@ export function useDraftValue<T>(initialValue: T, scope: string) {
 				current.scope === scope && current.edit
 					? current.edit.value
 					: initialValue;
+			// SAFETY: React treats function-valued SetStateAction inputs as updaters; the function check below selects that branch before the call.
 			const next =
 				typeof update === "function"
 					? (update as (value: T) => T)(previous)

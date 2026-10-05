@@ -1,3 +1,4 @@
+import { getRequestLocation } from "../../lib/cloudflareRequest";
 import { createRequestLogger } from "evlog";
 import "./evlog";
 import { recordOperation, type OperationEnvironment } from "./metrics";
@@ -15,7 +16,7 @@ export async function observePageRequest(
 	const requestId = resolveRequestId(request.headers.get("x-request-id"));
 	const route = "/astro/*";
 	const started = Date.now();
-	const colo = (request as Request & { cf?: { colo?: string } }).cf?.colo;
+	const colo = getRequestLocation(request).colo;
 	const log = createRequestLogger({
 		requestId,
 		waitUntil: ctx.waitUntil.bind(ctx),

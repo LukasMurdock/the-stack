@@ -1,3 +1,5 @@
+import { testBindings, unavailableD1 } from "../helpers/worker";
+import { createSqliteD1 } from "../helpers/sqlite-d1";
 import assert from "node:assert/strict";
 import test from "node:test";
 import Database from "better-sqlite3";
@@ -12,19 +14,7 @@ function replayDb() {
 	sqlite.exec(
 		`CREATE TABLE turret_sessions (started_at INTEGER, has_error INTEGER, capture_blocked INTEGER)`
 	);
-	const db = {
-		prepare(sql: string) {
-			return {
-				bind(...values: number[]) {
-					return {
-						async first() {
-							return sqlite.prepare(sql).get(...values);
-						},
-					};
-				},
-			};
-		},
-	} as unknown as D1Database;
+	const db = createSqliteD1(sqlite);
 	return { sqlite, db };
 }
 
@@ -67,9 +57,7 @@ test("operational queries are fixed, bounded, parameterized and coalesced", asyn
 	const calls: { query: string; params: Record<string, string | number> }[] =
 		[];
 	const binding: AnalyticsSqlBinding = {
-		async query<T extends Record<string, unknown>>(
-			input: (typeof calls)[number]
-		) {
+		async query(input: (typeof calls)[number]) {
 			calls.push(input);
 			const totals = {
 				requests: "20",
@@ -90,7 +78,7 @@ test("operational queries are fixed, bounded, parameterized and coalesced", asyn
 								version: "release-1",
 							}
 						: totals,
-				] as unknown as T[],
+				],
 			};
 		},
 	};
@@ -194,13 +182,9 @@ test("missing aggregate rows are unavailable, while a valid empty window is zero
 		],
 	]) {
 		const binding: AnalyticsSqlBinding = {
-			async query<T extends Record<string, unknown>>(input: {
-				query: string;
-			}) {
+			async query(input: { query: string }) {
 				return {
-					data: (input.query.includes("GROUP BY")
-						? []
-						: totals) as T[],
+					data: input.query.includes("GROUP BY") ? [] : totals,
 				};
 			},
 		};
@@ -233,26 +217,22 @@ test("unauthenticated summary requests cannot query account telemetry", async ()
 	let queries = 0;
 	const response = await routes.fetch(
 		new Request("http://local.test/internal/turret/summary"),
-		{
+		testBindings({
 			APP_ENV: "local",
 			APP_URL: "http://local.test",
 			PRODUCT_NAME: "The Stack",
 			EMAIL_FROM: "admin@localhost.test",
 			BETTER_AUTH_SECRET:
 				"summary-test-secret-with-at-least-32-characters",
-			CORE_DB: {
-				prepare() {
-					throw new Error("unauthenticated request queried D1");
-				},
-			},
+			CORE_DB: unavailableD1("unauthenticated request queried D1"),
 			ANALYTICS_SQL: {
 				query() {
 					queries++;
 					throw new Error("unauthorized");
 				},
 			},
-		} as never,
-		{ waitUntil() {}, passThroughOnException() {}, props: {} } as never
+		}),
+		{ waitUntil() {}, passThroughOnException() {}, props: {} }
 	);
 	assert.equal(response.status, 401);
 	assert.equal(queries, 0);

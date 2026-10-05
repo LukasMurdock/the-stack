@@ -1,3 +1,4 @@
+import { headerSessionSchema } from "./contracts/auth";
 import { defineMiddleware } from "astro:middleware";
 
 // Fetch Better Auth session for SSR-aware header rendering.
@@ -23,7 +24,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
 			},
 		});
 
-		context.locals.session = res.ok ? await res.json() : null;
+		const parsed = headerSessionSchema.safeParse(
+			res.ok ? await res.json() : null
+		);
+		context.locals.session = parsed.success ? parsed.data : null;
 	} catch {
 		context.locals.session = null;
 	}

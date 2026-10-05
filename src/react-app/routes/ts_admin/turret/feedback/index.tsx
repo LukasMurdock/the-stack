@@ -1,3 +1,7 @@
+import {
+	turretFeedbackKindSchema,
+	turretFeedbackStatusSchema,
+} from "@/contracts/turret";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -111,19 +115,25 @@ function TurretFeedbackPage() {
 						<Select
 							value={status}
 							onValueChange={(v) => {
-								setStatus(v as TurretFeedbackStatus);
-								setOffset(0);
+								const parsed =
+									turretFeedbackStatusSchema.safeParse(v);
+								if (parsed.success) {
+									setStatus(parsed.data);
+									setOffset(0);
+								}
 							}}
 						>
 							<SelectTrigger>
 								<SelectValue placeholder="Status" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="open">open</SelectItem>
-								<SelectItem value="triaged">triaged</SelectItem>
-								<SelectItem value="resolved">
-									resolved
-								</SelectItem>
+								{turretFeedbackStatusSchema.options.map(
+									(value) => (
+										<SelectItem key={value} value={value}>
+											{value}
+										</SelectItem>
+									)
+								)}
 							</SelectContent>
 						</Select>
 					</div>
@@ -132,15 +142,17 @@ function TurretFeedbackPage() {
 						<Select
 							value={kind}
 							onValueChange={(v) => {
-								if (
-									v === "all" ||
-									v === "bug" ||
-									v === "idea" ||
-									v === "praise" ||
-									v === "other"
-								)
+								if (v === "all") {
 									setKind(v);
-								setOffset(0);
+									setOffset(0);
+									return;
+								}
+								const parsed =
+									turretFeedbackKindSchema.safeParse(v);
+								if (parsed.success) {
+									setKind(parsed.data);
+									setOffset(0);
+								}
 							}}
 						>
 							<SelectTrigger>
@@ -148,10 +160,13 @@ function TurretFeedbackPage() {
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="all">all</SelectItem>
-								<SelectItem value="bug">bug</SelectItem>
-								<SelectItem value="idea">idea</SelectItem>
-								<SelectItem value="praise">praise</SelectItem>
-								<SelectItem value="other">other</SelectItem>
+								{turretFeedbackKindSchema.options.map(
+									(value) => (
+										<SelectItem key={value} value={value}>
+											{value}
+										</SelectItem>
+									)
+								)}
 							</SelectContent>
 						</Select>
 					</div>

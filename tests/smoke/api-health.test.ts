@@ -1,3 +1,5 @@
+import { testBindings } from "../helpers/worker";
+import { z } from "zod";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -5,19 +7,20 @@ import { rootApp, routes } from "../../src/worker/api/routes/root";
 
 void routes;
 
-type HealthResponse = {
-	ok: boolean;
-	auth: {
-		signupMode: "invite_only" | "open";
-		selfSignUpEnabled: boolean;
-	};
-	turret: {
-		configuredMode: "off" | "basic" | "full";
-		effectiveMode: "off" | "basic" | "full";
-		ingestEnabled: boolean;
-		reason: string | null;
-	};
-};
+const healthResponseSchema = z.object({
+	ok: z.boolean(),
+	auth: z.object({
+		signupMode: z.enum(["invite_only", "open"]),
+		selfSignUpEnabled: z.boolean(),
+	}),
+	turret: z.object({
+		configuredMode: z.enum(["off", "basic", "full"]),
+		effectiveMode: z.enum(["off", "basic", "full"]),
+		ingestEnabled: z.boolean(),
+		reason: z.string().nullable(),
+	}),
+});
+type HealthResponse = z.infer<typeof healthResponseSchema>;
 
 function makeCtx() {
 	return {
@@ -30,12 +33,12 @@ function makeCtx() {
 async function getHealth(signupMode?: string): Promise<HealthResponse> {
 	const res = await rootApp.fetch(
 		new Request("http://local.test/health"),
-		{ AUTH_SIGNUP_MODE: signupMode } as Record<string, unknown>,
-		makeCtx() as never
+		testBindings({ AUTH_SIGNUP_MODE: signupMode }),
+		makeCtx()
 	);
 
 	assert.equal(res.status, 200);
-	return (await res.json()) as HealthResponse;
+	return healthResponseSchema.parse(await res.json());
 }
 
 test("health defaults to invite_only auth mode", async () => {

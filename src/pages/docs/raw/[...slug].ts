@@ -7,12 +7,10 @@ export async function getStaticPaths() {
 	}));
 }
 
-type GlobMap = Record<string, () => Promise<string>>;
-
-const rawDocs = import.meta.glob("/src/content/docs/**/*.{md,mdx}", {
+const rawDocs = import.meta.glob<string>("/src/content/docs/**/*.{md,mdx}", {
 	query: "?raw",
 	import: "default",
-}) as GlobMap;
+});
 
 export async function GET({ params }: { params: { slug: string } }) {
 	const entry = await getEntry("docs", params.slug);

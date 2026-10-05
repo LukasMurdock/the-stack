@@ -1,3 +1,5 @@
+import { isRecord } from "@/lib/isRecord";
+import { cssProperties } from "@/lib/cssProperties";
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
 
@@ -86,7 +88,7 @@ ${prefix} [data-chart=${id}] {
 ${colorConfig
 	.map(([key, itemConfig]) => {
 		const color =
-			itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+			itemConfig.theme?.[theme === "dark" ? "dark" : "light"] ||
 			itemConfig.color;
 		return color ? `  --color-${key}: ${color};` : null;
 	})
@@ -160,7 +162,7 @@ function ChartTooltipContent({
 		const itemConfig = getPayloadConfigFromPayload(config, item, key);
 		const value =
 			!labelKey && typeof label === "string"
-				? config[label as keyof typeof config]?.label || label
+				? config[label]?.label || label
 				: itemConfig?.label;
 
 		if (labelFormatter) {
@@ -256,14 +258,12 @@ function ChartTooltipContent({
 																	"dashed",
 														}
 													)}
-													style={
-														{
-															"--color-bg":
-																indicatorColor,
-															"--color-border":
-																indicatorColor,
-														} as React.CSSProperties
-													}
+													style={cssProperties({
+														"--color-bg":
+															indicatorColor,
+														"--color-border":
+															indicatorColor,
+													})}
 												/>
 											)
 										)}
@@ -375,37 +375,28 @@ function getPayloadConfigFromPayload(
 	payload: unknown,
 	key: string
 ) {
-	if (typeof payload !== "object" || payload === null) {
+	if (!isRecord(payload)) {
 		return undefined;
 	}
 
 	const payloadPayload =
-		"payload" in payload &&
-		typeof payload.payload === "object" &&
-		payload.payload !== null
+		"payload" in payload && isRecord(payload.payload)
 			? payload.payload
 			: undefined;
 
 	let configLabelKey: string = key;
 
-	if (
-		key in payload &&
-		typeof payload[key as keyof typeof payload] === "string"
-	) {
-		configLabelKey = payload[key as keyof typeof payload] as string;
+	if (key in payload && typeof payload[key] === "string") {
+		configLabelKey = payload[key];
 	} else if (
 		payloadPayload &&
 		key in payloadPayload &&
-		typeof payloadPayload[key as keyof typeof payloadPayload] === "string"
+		typeof payloadPayload[key] === "string"
 	) {
-		configLabelKey = payloadPayload[
-			key as keyof typeof payloadPayload
-		] as string;
+		configLabelKey = payloadPayload[key];
 	}
 
-	return configLabelKey in config
-		? config[configLabelKey]
-		: config[key as keyof typeof config];
+	return configLabelKey in config ? config[configLabelKey] : config[key];
 }
 
 export {

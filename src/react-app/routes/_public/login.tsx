@@ -1,3 +1,4 @@
+import { authPolicyResponseSchema } from "@/contracts/auth";
 import {
 	Link,
 	createFileRoute,
@@ -66,12 +67,7 @@ function LoginPage() {
 			if (!res.ok) {
 				throw new Error(`Failed to load auth policy (${res.status})`);
 			}
-			const data = (await res.json()) as {
-				auth?: {
-					signupMode?: "invite_only" | "open";
-					selfSignUpEnabled?: boolean;
-				};
-			};
+			const data = authPolicyResponseSchema.parse(await res.json());
 			const signupMode =
 				data.auth?.signupMode === "open" ? "open" : "invite_only";
 			const selfSignUpEnabled =

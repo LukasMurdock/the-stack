@@ -39,37 +39,14 @@ import {
 
 import { requireTurretAdmin } from "../../../../lib/requireTurretAdmin";
 
-type RangePreset = "15m" | "1h" | "24h" | "custom";
-
-type GroupBy = "none" | "user";
+import {
+	parseReplaySearch,
+	type RangePreset,
+	type GroupBy,
+} from "../../../../features/turret/session/replaySearch";
 
 const Route = createFileRoute("/ts_admin/turret/replay-sessions/")({
-	validateSearch: (s: Record<string, unknown>) => {
-		const legacyGrouped =
-			s.grouped === true || s.grouped === "true" || s.grouped === "1";
-		const groupBy: GroupBy =
-			s.groupBy === "none" || s.groupBy === "user"
-				? (s.groupBy as GroupBy)
-				: legacyGrouped
-					? "user"
-					: "none";
-		return {
-			q: typeof s.q === "string" ? s.q : "",
-			hasError: s.hasError === "1",
-			groupBy,
-			preset:
-				s.preset === "15m" ||
-				s.preset === "1h" ||
-				s.preset === "24h" ||
-				s.preset === "custom"
-					? (s.preset as RangePreset)
-					: ("1h" as RangePreset),
-			from: typeof s.from === "string" ? Number(s.from) : undefined,
-			to: typeof s.to === "string" ? Number(s.to) : undefined,
-			offset: typeof s.offset === "string" ? Number(s.offset) : 0,
-			limit: typeof s.limit === "string" ? Number(s.limit) : 50,
-		};
-	},
+	validateSearch: parseReplaySearch,
 	beforeLoad: requireTurretAdmin,
 	component: TurretReplaySessionsPage,
 });

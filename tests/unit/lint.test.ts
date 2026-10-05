@@ -1,3 +1,4 @@
+import { z } from "zod";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -35,9 +36,9 @@ export function Component({ id }: { id: string }) {
 		{ encoding: "utf8" }
 	);
 	assert.equal(result.status, 1, result.stderr);
-	const report = JSON.parse(result.stdout) as {
-		diagnostics: { code: string }[];
-	};
+	const report = z
+		.object({ diagnostics: z.array(z.object({ code: z.string() })) })
+		.parse(JSON.parse(result.stdout));
 	const codes = report.diagnostics.map((entry) => entry.code);
 	for (const expected of [
 		"typescript(no-explicit-any)",

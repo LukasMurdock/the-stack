@@ -1,4 +1,4 @@
-import type { UseQueryResult } from "@tanstack/react-query";
+import type { SummaryQuery } from "./summaryQuery";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,6 @@ import {
 	formatTime,
 } from "./summaryFormat";
 
-type SummaryQuery = UseQueryResult<TurretSummary>;
 type ReadyOperations = Extract<TurretSummary["operations"], { state: "ready" }>;
 type UnavailableReason = Extract<
 	TurretSummary["operations"],

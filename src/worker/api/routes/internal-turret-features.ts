@@ -1,15 +1,9 @@
+import type { Bindings } from "../../index";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { readTurretFeatures, writeTurretFeatures } from "../../turret/features";
 import { requireInternalTurretAdmin } from "./_shared/admin-auth";
 
-type TurretCfgEnv = {
-	TURRET_CFG: {
-		get(key: string, type: "json"): Promise<unknown>;
-		put(key: string, value: string): Promise<void>;
-	};
-};
-
-const internalTurretFeaturesApp = new OpenAPIHono();
+const internalTurretFeaturesApp = new OpenAPIHono<{ Bindings: Bindings }>();
 
 const ErrorResponseSchema = z
 	.object({
@@ -60,7 +54,7 @@ const getFeatures = createRoute({
 });
 
 internalTurretFeaturesApp.openapi(getFeatures, async (c) => {
-	const features = await readTurretFeatures(c.env as unknown as TurretCfgEnv);
+	const features = await readTurretFeatures(c.env);
 	return c.json({ features }, 200);
 });
 
@@ -99,14 +93,14 @@ const putFeatures = createRoute({
 
 internalTurretFeaturesApp.openapi(putFeatures, async (c) => {
 	const body = c.req.valid("json");
-	const current = await readTurretFeatures(c.env as unknown as TurretCfgEnv);
+	const current = await readTurretFeatures(c.env);
 	const next = {
 		...current,
 		...(body.storeUserEmail !== undefined
 			? { storeUserEmail: body.storeUserEmail }
 			: {}),
 	};
-	await writeTurretFeatures(c.env as unknown as TurretCfgEnv, next);
+	await writeTurretFeatures(c.env, next);
 	return c.json({ features: next }, 200);
 });
 

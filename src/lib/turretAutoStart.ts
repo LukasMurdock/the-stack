@@ -12,9 +12,12 @@ async function hasAuthenticatedSession(): Promise<boolean> {
 			cache: "no-store",
 		});
 		if (!res.ok) return false;
-		const payload = (await res.json()) as unknown;
+		const payload: unknown = await res.json();
 		return Boolean(
-			(payload as { user?: unknown } | null | undefined)?.user
+			payload &&
+			typeof payload === "object" &&
+			"user" in payload &&
+			payload.user
 		);
 	} catch {
 		return false;

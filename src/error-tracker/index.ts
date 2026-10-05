@@ -1,3 +1,5 @@
+import { isRecord } from "../lib/isRecord";
+import { getRequestLocation } from "../lib/cloudflareRequest";
 /**
  * Error Tracker SDK for Cloudflare Workers (Server-Side)
  *
@@ -199,7 +201,7 @@ function createContext<E>(
 		}
 
 		// Extract Cloudflare-specific context
-		const cf = (request as Request & { cf?: { colo?: string } }).cf;
+		const cf = getRequestLocation(request);
 		context.cloudflare = {
 			ray_id: request.headers.get("cf-ray") ?? undefined,
 			colo: cf?.colo,
@@ -209,16 +211,30 @@ function createContext<E>(
 	return context;
 }
 
-/**
- * Get the error tracker binding from env
- */
+function isErrorTracker(binding: unknown): binding is ErrorTracker {
+	// The deployed service owns method signatures; validate the dynamic binding's RPC surface before using it.
+	return (
+		isRecord(binding) &&
+		typeof binding.captureException === "function" &&
+		typeof binding.captureMessage === "function" &&
+		typeof binding.captureEvent === "function"
+	);
+}
+
+/** Get the error tracker binding from env after checking its RPC methods. */
 function getBinding<E>(env: E, bindingName: string): ErrorTracker | null {
-	const binding = (env as Record<string, unknown>)[bindingName];
+	const binding: unknown = isRecord(env) ? env[bindingName] : undefined;
 	if (!binding) {
 		console.warn(`[ErrorTracker] Binding "${bindingName}" not found`);
 		return null;
 	}
-	return binding as ErrorTracker;
+	if (!isErrorTracker(binding)) {
+		console.warn(
+			`[ErrorTracker] Binding "${bindingName}" does not implement the tracker interface`
+		);
+		return null;
+	}
+	return binding;
 }
 
 /**
@@ -363,10 +379,7 @@ export async function captureException<E extends Record<string, unknown>>(
 	if (!binding) return null;
 
 	try {
-		const result = await binding.captureException(
-			error,
-			context as CaptureContext
-		);
+		const result = await binding.captureException(error, context);
 		return result.eventId;
 	} catch (e) {
 		console.error("[ErrorTracker] Failed to capture exception:", e);
@@ -388,11 +401,7 @@ export async function captureMessage<E extends Record<string, unknown>>(
 	if (!binding) return null;
 
 	try {
-		const result = await binding.captureMessage(
-			message,
-			level,
-			context as CaptureContext
-		);
+		const result = await binding.captureMessage(message, level, context);
 		return result.eventId;
 	} catch (e) {
 		console.error("[ErrorTracker] Failed to capture message:", e);
@@ -458,10 +467,7 @@ export function honoErrorTracker<E>(
 	) {
 		const config = getConfig(c.env);
 		const bindingName = config.bindingName ?? "TURRET";
-		const tracker = getBinding(
-			c.env as Record<string, unknown>,
-			bindingName
-		);
+		const tracker = getBinding(c.env, bindingName);
 		const context = createContext(config, c.env, c.req.raw);
 
 		// Make context available to route handlers

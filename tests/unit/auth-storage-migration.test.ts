@@ -1,3 +1,4 @@
+import { readSqlRow } from "../helpers/sqlite-d1";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
@@ -108,15 +109,16 @@ if (args[2] === "kv" && args[4] === "list") {
 		);
 	}
 	assert.equal(
-		sqlite
-			.prepare("SELECT value FROM auth_storage WHERE key = 'existing'")
-			.get().value,
+		readSqlRow(
+			sqlite,
+			"SELECT value FROM auth_storage WHERE key = 'existing'"
+		).value,
 		"current D1 value"
 	);
 	// A retry before cutover is safe and does not replace destination records.
 	sqlite.exec(readFileSync(join(directory, "output.sql"), "utf8"));
 	assert.equal(
-		sqlite.prepare("SELECT count(*) AS n FROM auth_storage").get().n,
+		readSqlRow(sqlite, "SELECT count(*) AS n FROM auth_storage").n,
 		5
 	);
 });

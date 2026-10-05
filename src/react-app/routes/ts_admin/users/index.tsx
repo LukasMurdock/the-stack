@@ -96,7 +96,7 @@ function TsAdminUsersPage() {
 				query: listInput,
 			});
 			if (error) throw new Error(error.message ?? "Failed to list users");
-			return (data ?? { users: [] }) as unknown as ListUsersResponse;
+			return data ?? { users: [] };
 		},
 	});
 

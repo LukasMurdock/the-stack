@@ -1,3 +1,4 @@
+import { getRequestLocation } from "../../lib/cloudflareRequest";
 import { eq, sql } from "drizzle-orm";
 import { makeTurretDb } from "../../bindings/d1/turret/db";
 import * as turretSchema from "../../bindings/d1/turret/schema";
@@ -53,8 +54,7 @@ export async function recordWorkerError(args: {
 	const replayTs = replayTsRaw ? Number(replayTsRaw) : NaN;
 	const ts = Number.isFinite(replayTs) ? replayTs : Date.now();
 	const rayId = args.request.headers.get("cf-ray") ?? undefined;
-	const colo = (args.request as Request & { cf?: { colo?: string } }).cf
-		?.colo;
+	const colo = getRequestLocation(args.request).colo;
 
 	let message: string | null = null;
 	let stack: string | null = null;

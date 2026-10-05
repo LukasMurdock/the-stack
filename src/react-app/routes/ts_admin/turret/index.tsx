@@ -150,8 +150,8 @@ function TurretDashboardPage() {
 		hasError: false,
 		groupBy: "none" as const,
 		preset: "1h" as const,
-		from: undefined as number | undefined,
-		to: undefined as number | undefined,
+		from: undefined,
+		to: undefined,
 		offset: 0,
 		limit: 50,
 	};
@@ -203,7 +203,7 @@ function TurretDashboardPage() {
 	const dashboard = dashboardUsersQuery.data;
 	const recentUserRows = useMemo(() => {
 		const sessions = recentUsersQuery.data?.sessions ?? [];
-		const out = [] as typeof sessions;
+		const out: typeof sessions = [];
 		const seen = new Set<string>();
 		for (const s of sessions) {
 			const key = s.userId;

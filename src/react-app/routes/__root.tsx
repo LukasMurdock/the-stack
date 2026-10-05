@@ -65,8 +65,8 @@ function RootComponent() {
 									Impersonating
 								</span>{" "}
 								<span className="text-amber-900/80">
-									Admin session:{" "}
-									{(impersonatedBy as string).slice(0, 8)}…
+									Admin session: {impersonatedBy?.slice(0, 8)}
+									…
 								</span>
 							</div>
 							<div className="flex items-center gap-2">
