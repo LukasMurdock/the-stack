@@ -46,7 +46,7 @@ API-first, type-safe template for building fast, interactive apps on Cloudflare 
 - [Node.js test runner](https://nodejs.org/api/test.html) + [tsx](https://tsx.is/) for tests
 - [Playwright](https://playwright.dev/) for end-to-end tests
 - [Oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) for formatting (`pnpm run format`, `pnpm run format:check`)
-- [ESLint](https://eslint.org/) for linting
+- [Oxlint](https://oxc.rs/docs/guide/usage/linter) for linting (`pnpm run lint`)
 - [opencode](https://opencode.ai/) for AI coding agent
     - [Cloudflare Skill](https://github.com/dmmulroy/cloudflare-skill) for Cloudflare platform reference docs
 
@@ -57,9 +57,15 @@ counters. Atomic SQL updates and token consumption replace the previous Workers 
 adapter. See [auth storage migration](docs/auth-storage-migration.md) for transferring
 existing KV records before deployment. `CORE_KV` remains for admin bootstrap markers.
 
-TypeScript stays on 6.0 because the current `typescript-eslint` peer range excludes
-6.1 and later. Node types match the Node 22 runtime in CI. Better Auth and
-`better-sqlite3` use their latest stable releases.
+The TypeScript 7 compiler is installed as `@typescript/native` and provides `tsc`.
+The `typescript` package aliases Microsoft's TypeScript 6 compatibility package
+for Astro, Drizzle, and ESLint-compatible plugin APIs. Oxlint runs native TypeScript
+and React rules plus the existing TanStack, Drizzle, and Fast Refresh plugins;
+ESLint remains only to satisfy those plugins' peer dependencies. Node types match
+the Node 22 runtime in CI.
+
+`pnpm run lint` and both CI check recipes reject lint errors. The rules are
+syntax-based; `tsc -b` provides type checking.
 
 Production builds select the Cloudflare environment before bundling:
 `CLOUDFLARE_ENV=production pnpm run build`. Deploy the generated configuration

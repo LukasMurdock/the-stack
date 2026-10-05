@@ -1,6 +1,7 @@
+import { useDraftValue } from "@/react-app/hooks/useDraftValue";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { authClient } from "../../../lib/authClient";
 import { requireCoreAdmin } from "../../../lib/requireCoreAdmin";
@@ -93,9 +94,10 @@ function TsAdminUserDetailPage() {
 		queryFn: async (): Promise<AdminUser> => {
 			const { data, error } = await authClient.admin.getUser({
 				query: { id: userId },
-			} as any);
+			});
 			if (error) throw new Error(error.message ?? "Failed to load user");
-			return (data ?? null) as unknown as AdminUser;
+			if (!data) throw new Error("User not found");
+			return data;
 		},
 	});
 
@@ -105,39 +107,44 @@ function TsAdminUserDetailPage() {
 		queryFn: async (): Promise<{ sessions: AdminSession[] }> => {
 			const { data, error } = await authClient.admin.listUserSessions({
 				userId,
-			} as any);
+			});
 			if (error)
 				throw new Error(error.message ?? "Failed to list sessions");
-			return (data ?? { sessions: [] }) as unknown as {
-				sessions: AdminSession[];
-			};
+			return data ?? { sessions: [] };
 		},
 	});
 
-	const [name, setName] = useState("");
-	const [email, setEmail] = useState("");
-	const [role, setRole] = useState<"admin" | "user">("user");
+	const {
+		value: name,
+		setValue: setName,
+		reset: resetName,
+	} = useDraftValue(userQuery.data?.name ?? "", userId);
+	const {
+		value: email,
+		setValue: setEmail,
+		reset: resetEmail,
+	} = useDraftValue(userQuery.data?.email ?? "", userId);
+	const {
+		value: role,
+		setValue: setRole,
+		reset: resetRole,
+	} = useDraftValue<"admin" | "user">(
+		normalizeRole(userQuery.data?.role) === "admin" ? "admin" : "user",
+		userId
+	);
 	const [newPassword, setNewPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
 
-	useEffect(() => {
-		const u = userQuery.data;
-		if (!u) return;
-		setName(u.name ?? "");
-		setEmail(u.email ?? "");
-		setRole(normalizeRole(u.role) === "admin" ? "admin" : "user");
-	}, [userQuery.data?.id]);
-
 	const updateUserMutation = useMutation({
 		mutationFn: async () => {
-			const payload: Record<string, any> = {};
+			const payload: { name?: string; email?: string } = {};
 			if (name.trim()) payload.name = name.trim();
 			if (email.trim()) payload.email = email.trim().toLowerCase();
 
 			const { error } = await authClient.admin.updateUser({
 				userId,
 				data: payload,
-			} as any);
+			});
 			if (error)
 				throw new Error(error.message ?? "Failed to update user");
 		},
@@ -148,6 +155,8 @@ function TsAdminUserDetailPage() {
 			await queryClient.invalidateQueries({
 				queryKey: ["ts_admin", "users"],
 			});
+			resetName();
+			resetEmail();
 		},
 	});
 
@@ -156,7 +165,7 @@ function TsAdminUserDetailPage() {
 			const { error } = await authClient.admin.setRole({
 				userId,
 				role,
-			} as any);
+			});
 			if (error) throw new Error(error.message ?? "Failed to set role");
 		},
 		onSuccess: async () => {
@@ -166,6 +175,7 @@ function TsAdminUserDetailPage() {
 			await queryClient.invalidateQueries({
 				queryKey: ["ts_admin", "users"],
 			});
+			resetRole();
 		},
 	});
 
@@ -178,7 +188,7 @@ function TsAdminUserDetailPage() {
 			const { error } = await authClient.admin.setUserPassword({
 				userId,
 				newPassword,
-			} as any);
+			});
 			if (error)
 				throw new Error(error.message ?? "Failed to set password");
 		},
@@ -192,7 +202,7 @@ function TsAdminUserDetailPage() {
 		mutationFn: async (args: { sessionToken: string }) => {
 			const { error } = await authClient.admin.revokeUserSession({
 				sessionToken: args.sessionToken,
-			} as any);
+			});
 			if (error)
 				throw new Error(error.message ?? "Failed to revoke session");
 		},
@@ -207,7 +217,7 @@ function TsAdminUserDetailPage() {
 		mutationFn: async () => {
 			const { error } = await authClient.admin.revokeUserSessions({
 				userId,
-			} as any);
+			});
 			if (error)
 				throw new Error(error.message ?? "Failed to revoke sessions");
 		},
@@ -222,7 +232,7 @@ function TsAdminUserDetailPage() {
 		mutationFn: async () => {
 			const { error } = await authClient.admin.impersonateUser({
 				userId,
-			} as any);
+			});
 			if (error)
 				throw new Error(error.message ?? "Failed to impersonate user");
 		},
@@ -304,6 +314,9 @@ function TsAdminUserDetailPage() {
 											Name
 										</div>
 										<Input
+											disabled={
+												updateUserMutation.isPending
+											}
 											value={name}
 											onChange={(e) =>
 												setName(e.target.value)
@@ -315,6 +328,9 @@ function TsAdminUserDetailPage() {
 											Email
 										</div>
 										<Input
+											disabled={
+												updateUserMutation.isPending
+											}
 											value={email}
 											onChange={(e) =>
 												setEmail(e.target.value)
@@ -364,9 +380,14 @@ function TsAdminUserDetailPage() {
 											Role
 										</div>
 										<Select
+											disabled={setRoleMutation.isPending}
 											value={role}
 											onValueChange={(v) =>
-												setRole(v as any)
+												setRole(
+													v === "admin"
+														? "admin"
+														: "user"
+												)
 											}
 										>
 											<SelectTrigger className="w-full">

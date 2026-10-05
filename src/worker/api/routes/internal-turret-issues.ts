@@ -287,7 +287,7 @@ internalTurretIssuesApp.openapi(listIssues, async (c) => {
 	const res = await env.TURRET_DB.prepare(sqlText)
 		.bind(...binds)
 		.all();
-	const rows = (res.results ?? []) as any[];
+	const rows = res.results;
 
 	const issues = rows.map((r) => {
 		return {
@@ -389,9 +389,9 @@ internalTurretIssuesApp.openapi(getIssue, async (c) => {
 		GROUP BY e.fingerprint;
 	`;
 
-	const row = (await env.TURRET_DB.prepare(stmt)
+	const row = await env.TURRET_DB.prepare(stmt)
 		.bind(fingerprint)
-		.first()) as any | null;
+		.first<Record<string, unknown>>();
 	if (!row) return c.json({ error: "Not Found" }, 404);
 
 	const issue = {
@@ -488,7 +488,7 @@ internalTurretIssuesApp.openapi(getIssueTrend, async (c) => {
 	const res = await env.TURRET_DB.prepare(stmt)
 		.bind(bucketMs, bucketMs, fingerprint, fromMs, toMs)
 		.all();
-	const rows = (res.results ?? []) as any[];
+	const rows = res.results;
 
 	const counts = new Map<number, number>();
 	for (const r of rows) {
@@ -573,7 +573,7 @@ internalTurretIssuesApp.openapi(getIssueEvents, async (c) => {
 	const res = await env.TURRET_DB.prepare(stmt)
 		.bind(fingerprint, limit, offset)
 		.all();
-	const rows = (res.results ?? []) as any[];
+	const rows = res.results;
 	const events = rows.map((r) => ({
 		id: String(r.id),
 		sessionId: r.sessionId != null ? String(r.sessionId) : null,
@@ -638,15 +638,13 @@ internalTurretIssuesApp.openapi(patchIssue, async (c) => {
 
 	const now = Date.now();
 	// Load current state (if any)
-	const current = (await env.TURRET_DB.prepare(
+	const current = await env.TURRET_DB.prepare(
 		"SELECT fingerprint, status, title FROM turret_issue_state WHERE fingerprint = ?"
 	)
 		.bind(fingerprint)
-		.first()) as any | null;
+		.first<Record<string, unknown>>();
 
-	const nextStatus = (body.status ??
-		(current?.status as any) ??
-		"open") as string;
+	const nextStatus = (body.status ?? current?.status ?? "open") as string;
 	const nextTitle = body.title !== undefined ? body.title : current?.title;
 
 	await env.TURRET_DB.prepare(
@@ -706,9 +704,10 @@ internalTurretIssuesApp.openapi(patchIssue, async (c) => {
 		WHERE e.fingerprint = ?
 		GROUP BY e.fingerprint;
 	`;
-	const row = (await env.TURRET_DB.prepare(stmt)
+	const row = await env.TURRET_DB.prepare(stmt)
 		.bind(fingerprint)
-		.first()) as any;
+		.first<Record<string, unknown>>();
+	if (!row) return c.json({ error: "Not Found" }, 404);
 	const issue = {
 		fingerprint: String(row.fingerprint),
 		status: (row.status ?? "open") as z.infer<typeof IssueStatusSchema>,

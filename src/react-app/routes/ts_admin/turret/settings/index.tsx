@@ -1,6 +1,7 @@
+import { useDraftValue } from "@/react-app/hooks/useDraftValue";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,30 +46,28 @@ function TurretSettingsPage() {
 	});
 
 	const policy = complianceQuery.data?.policy;
-	const [draft, setDraft] = useState<
+	const {
+		value: draft,
+		setValue: setDraft,
+		reset: resetDraft,
+	} = useDraftValue<
 		Pick<TurretCompliancePolicy, "retentionDays" | "rrweb" | "console">
-	>({
-		retentionDays: 14,
-		rrweb: { maskAllInputs: true },
-		console: { enabled: true },
-	});
+	>(
+		policy ?? {
+			retentionDays: 14,
+			rrweb: { maskAllInputs: true },
+			console: { enabled: true },
+		},
+		policy?.version ?? "loading"
+	);
 	const [savedAt, setSavedAt] = useState<number | null>(null);
-
-	useEffect(() => {
-		if (!policy) return;
-		setDraft({
-			retentionDays: policy.retentionDays,
-			rrweb: { ...policy.rrweb },
-			console: { ...policy.console },
-		});
-	}, [policy]);
 
 	const isDirty = useMemo(() => {
 		if (!policy) return false;
-		const maskCurrent = Boolean((policy.rrweb as any)?.maskAllInputs);
-		const maskDraft = Boolean((draft.rrweb as any)?.maskAllInputs);
-		const consoleCurrent = Boolean((policy.console as any)?.enabled);
-		const consoleDraft = Boolean((draft.console as any)?.enabled);
+		const maskCurrent = Boolean(policy.rrweb?.maskAllInputs);
+		const maskDraft = Boolean(draft.rrweb?.maskAllInputs);
+		const consoleCurrent = Boolean(policy.console?.enabled);
+		const consoleDraft = Boolean(draft.console?.enabled);
 		return (
 			policy.retentionDays !== draft.retentionDays ||
 			maskCurrent !== maskDraft ||
@@ -81,10 +80,11 @@ function TurretSettingsPage() {
 		await complianceMutation.mutateAsync({
 			retentionDays: draft.retentionDays,
 			rrweb: {
-				maskAllInputs: Boolean((draft.rrweb as any)?.maskAllInputs),
+				maskAllInputs: Boolean(draft.rrweb?.maskAllInputs),
 			},
-			console: { enabled: Boolean((draft.console as any)?.enabled) },
+			console: { enabled: Boolean(draft.console?.enabled) },
 		});
+		resetDraft();
 		setSavedAt(Date.now());
 	}
 
@@ -244,13 +244,13 @@ function TurretSettingsPage() {
 										id="maskAllInputs"
 										disabled={complianceMutation.isPending}
 										checked={Boolean(
-											(draft.rrweb as any)?.maskAllInputs
+											draft.rrweb?.maskAllInputs
 										)}
 										onCheckedChange={(checked) =>
 											setDraft((d) => ({
 												...d,
 												rrweb: {
-													...(d.rrweb as any),
+													...d.rrweb,
 													maskAllInputs: checked,
 												},
 											}))
@@ -272,13 +272,13 @@ function TurretSettingsPage() {
 										id="consoleEnabled"
 										disabled={complianceMutation.isPending}
 										checked={Boolean(
-											(draft.console as any)?.enabled
+											draft.console?.enabled
 										)}
 										onCheckedChange={(checked) =>
 											setDraft((d) => ({
 												...d,
 												console: {
-													...(d.console as any),
+													...d.console,
 													enabled: checked,
 												},
 											}))

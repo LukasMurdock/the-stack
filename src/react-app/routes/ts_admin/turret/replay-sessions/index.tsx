@@ -1,6 +1,7 @@
+import { useDraftValue } from "@/react-app/hooks/useDraftValue";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
 	Empty,
@@ -124,7 +125,7 @@ function GroupedReplaySessions(props: {
 	onOpenSession: (id: string) => void;
 }) {
 	const groups = useMemo(() => {
-		const map = new Map<string, any[]>();
+		const map = new Map<string, ReplaySessionRow[]>();
 		for (const s of props.sessions) {
 			const key = s.userId;
 			const list = map.get(key) ?? [];
@@ -295,7 +296,7 @@ function TurretReplaySessionsPage() {
 			return { from: search.from, to: search.to };
 		}
 		return presetToRange(search.preset, now);
-	}, [search.from, search.preset, search.to]);
+	}, [now, search.from, search.preset, search.to]);
 
 	const sessionsQuery = useQuery(
 		turretReplaySessionsQueryOptions({
@@ -308,11 +309,10 @@ function TurretReplaySessionsPage() {
 		})
 	);
 
-	const [qInput, setQInput] = useState(search.q);
-
-	useEffect(() => {
-		setQInput(search.q);
-	}, [search.q]);
+	const { value: qInput, setValue: setQInput } = useDraftValue(
+		search.q,
+		search.q
+	);
 
 	function applyFilters() {
 		navigate({

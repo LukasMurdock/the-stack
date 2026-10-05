@@ -63,6 +63,13 @@ just check-fast
 pnpm run format:check
 ```
 
+Linting uses `.oxlintrc.json`. `pnpm run lint` runs Oxlint directly and rejects
+lint errors. Fix violations rather than adding exceptions for existing code.
+
+TypeScript 7 provides `tsc` through `@typescript/native`. The `typescript` alias
+retains Microsoft's TypeScript 6 API for framework tools and JS lint plugins;
+`tsc6` is available for diagnosing compatibility differences. Keep both packages.
+
 For full local verification:
 
 ```bash

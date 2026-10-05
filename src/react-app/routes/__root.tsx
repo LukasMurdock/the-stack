@@ -51,8 +51,7 @@ function RootComponent() {
 		}
 	}, [sessionQuery.data?.user]);
 
-	const impersonatedBy =
-		(sessionQuery.data as any)?.session?.impersonatedBy ?? null;
+	const impersonatedBy = sessionQuery.data?.session?.impersonatedBy ?? null;
 	const isImpersonating = Boolean(impersonatedBy);
 
 	return (
@@ -76,7 +75,7 @@ function RootComponent() {
 									onClick={async () => {
 										try {
 											await authClient.admin.stopImpersonating(
-												{} as any
+												{}
 											);
 											await sessionQuery.refetch();
 											router.invalidate();

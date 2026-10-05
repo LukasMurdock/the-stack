@@ -115,11 +115,9 @@ internalTurretComplianceApp.openapi(putCompliance, async (c) => {
 		...(body.retentionDays !== undefined
 			? { retentionDays: body.retentionDays }
 			: {}),
-		...(body.rrweb
-			? { rrweb: { ...(current.rrweb as any), ...body.rrweb } }
-			: {}),
+		...(body.rrweb ? { rrweb: { ...current.rrweb, ...body.rrweb } } : {}),
 		...(body.console
-			? { console: { ...(current.console as any), ...body.console } }
+			? { console: { ...current.console, ...body.console } }
 			: {}),
 	};
 	// Re-parse to ensure we always store a normalized object.

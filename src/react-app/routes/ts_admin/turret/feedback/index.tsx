@@ -132,7 +132,14 @@ function TurretFeedbackPage() {
 						<Select
 							value={kind}
 							onValueChange={(v) => {
-								setKind(v as any);
+								if (
+									v === "all" ||
+									v === "bug" ||
+									v === "idea" ||
+									v === "praise" ||
+									v === "other"
+								)
+									setKind(v);
 								setOffset(0);
 							}}
 						>

@@ -1,3 +1,7 @@
+import type { TypedResponse } from "hono";
+import type { JSONValue } from "hono/utils/types";
+import { and, eq, or, like, gte, lte, type SQL } from "drizzle-orm";
+import { turretSessions } from "../../../bindings/d1/turret/schema";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { makeTurretDb } from "../../../bindings/d1/turret/db";
 import {
@@ -459,55 +463,24 @@ internalTurretApp.openapi(getReplaySessions, async (c) => {
 
 	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
 
-	type Ops = {
-		eq(a: unknown, b: unknown): unknown;
-		or(...args: unknown[]): unknown;
-		like(a: unknown, b: string): unknown;
-		gte(a: unknown, b: unknown): unknown;
-		lte(a: unknown, b: unknown): unknown;
-	};
-
-	type TurretReplaySessionRow = {
-		hasError: unknown;
-		journeyId: unknown;
-		initialUrl: unknown;
-		lastUrl: unknown;
-		startedAt: unknown;
-	};
-
-	const filters: Array<(t: TurretReplaySessionRow, ops: Ops) => unknown> = [];
-
-	if (hasError === "1") filters.push((t, ops) => ops.eq(t.hasError, true));
-	if (journeyId) filters.push((t, ops) => ops.eq(t.journeyId, journeyId));
+	const filters: (SQL | undefined)[] = [];
+	const table = turretSessions;
+	if (hasError === "1") filters.push(eq(table.hasError, true));
+	if (journeyId) filters.push(eq(table.journeyId, journeyId));
 	if (q) {
-		const qEsc = escapeLike(q.trim());
-		filters.push((t, ops) =>
-			ops.or(
-				ops.like(t.initialUrl, `%${qEsc}%`),
-				ops.like(t.lastUrl, `%${qEsc}%`)
-			)
+		const pattern = `%${escapeLike(q.trim())}%`;
+		filters.push(
+			or(like(table.initialUrl, pattern), like(table.lastUrl, pattern))
 		);
 	}
-	if (from) {
-		const fromMs = Number(from);
-		if (!Number.isNaN(fromMs))
-			filters.push((t, ops) => ops.gte(t.startedAt, new Date(fromMs)));
-	}
-	if (to) {
-		const toMs = Number(to);
-		if (!Number.isNaN(toMs))
-			filters.push((t, ops) => ops.lte(t.startedAt, new Date(toMs)));
-	}
+	if (from && !Number.isNaN(Number(from)))
+		filters.push(gte(table.startedAt, new Date(Number(from))));
+	if (to && !Number.isNaN(Number(to)))
+		filters.push(lte(table.startedAt, new Date(Number(to))));
 
 	const rows = await db.query.turretSessions.findMany({
-		where: filters.length
-			? (((t: any, ops: any) => {
-					return ops.and(...filters.map((fn) => fn(t, ops)));
-				}) as unknown as never)
-			: undefined,
-		orderBy: ((t: any, ops: any) => [
-			ops.desc(t.startedAt),
-		]) as unknown as never,
+		where: and(...filters),
+		orderBy: (t, ops) => [ops.desc(t.startedAt)],
 		limit,
 		offset,
 	});
@@ -541,14 +514,14 @@ internalTurretApp.openapi(getDashboard, async (c) => {
 	const prevFrom = nowMs - 2 * DAY_MS;
 	const activeUsersStmt =
 		"SELECT COUNT(DISTINCT user_id) AS c FROM turret_sessions WHERE started_at >= ? AND started_at < ?";
-	const [activeRes, prevActiveRes] = await env.TURRET_DB.batch([
-		env.TURRET_DB.prepare(activeUsersStmt).bind(activeFrom, nowMs),
-		env.TURRET_DB.prepare(activeUsersStmt).bind(prevFrom, activeFrom),
-	]);
-	const activeUsers24h = Number((activeRes.results?.[0] as any)?.c ?? 0);
-	const activeUsersPrev24h = Number(
-		(prevActiveRes.results?.[0] as any)?.c ?? 0
+	const [activeRes, prevActiveRes] = await env.TURRET_DB.batch<{ c: number }>(
+		[
+			env.TURRET_DB.prepare(activeUsersStmt).bind(activeFrom, nowMs),
+			env.TURRET_DB.prepare(activeUsersStmt).bind(prevFrom, activeFrom),
+		]
 	);
+	const activeUsers24h = Number(activeRes.results?.[0]?.c ?? 0);
+	const activeUsersPrev24h = Number(prevActiveRes.results?.[0]?.c ?? 0);
 	const activeUsersDeltaPct = pctDelta(activeUsers24h, activeUsersPrev24h);
 
 	// 8 completed weeks ending at currentWeekStart (start of this week).
@@ -556,13 +529,13 @@ internalTurretApp.openapi(getDashboard, async (c) => {
 	for (let i = 8; i >= 0; i--) weekEnds.push(currentWeekStart - i * WEEK_MS);
 	const totalsBeforeEndStmt =
 		"SELECT COUNT(*) AS c FROM auth_user WHERE created_at < ?";
-	const totalsBeforeResults = await env.CORE_DB.batch(
+	const totalsBeforeResults = await env.CORE_DB.batch<{ c: number }>(
 		weekEnds.map((end) =>
 			env.CORE_DB.prepare(totalsBeforeEndStmt).bind(end)
 		)
 	);
-	const totalsBefore = totalsBeforeResults.map((r: any) =>
-		Number((r.results?.[0] as any)?.c ?? 0)
+	const totalsBefore = totalsBeforeResults.map((r) =>
+		Number(r.results?.[0]?.c ?? 0)
 	);
 	const totalUsersPrevWeek = totalsBefore[totalsBefore.length - 1] ?? 0;
 	const totalUsersDeltaPct = pctDelta(totalUsersNow, totalUsersPrevWeek);
@@ -591,27 +564,23 @@ internalTurretApp.openapi(getDashboard, async (c) => {
 	for (let i = 9; i >= 2; i--)
 		cohortStarts.push(currentWeekStart - i * WEEK_MS);
 
-	const cohortCounts = await env.CORE_DB.batch(
+	const cohortCounts = await env.CORE_DB.batch<{ c: number }>(
 		cohortStarts.map((start) =>
 			env.CORE_DB.prepare(
 				"SELECT COUNT(*) AS c FROM auth_user WHERE created_at >= ? AND created_at < ?"
 			).bind(start, start + WEEK_MS)
 		)
 	);
-	const cohortSizes = cohortCounts.map((r: any) =>
-		Number((r.results?.[0] as any)?.c ?? 0)
-	);
+	const cohortSizes = cohortCounts.map((r) => Number(r.results?.[0]?.c ?? 0));
 
-	const retainedCounts = await env.TURRET_DB.batch(
+	const retainedCounts = await env.TURRET_DB.batch<{ c: number }>(
 		cohortStarts.map((start) =>
 			env.TURRET_DB.prepare(
 				"SELECT COUNT(DISTINCT p.user_id) AS c FROM turret_user_profile p JOIN turret_user_activity_weekly a ON a.user_id = p.user_id AND a.week_start_ms = ? WHERE p.signed_up_week_start_ms = ?"
 			).bind(start + WEEK_MS, start)
 		)
 	);
-	const retained = retainedCounts.map((r: any) =>
-		Number((r.results?.[0] as any)?.c ?? 0)
-	);
+	const retained = retainedCounts.map((r) => Number(r.results?.[0]?.c ?? 0));
 
 	const seriesNewUserRetentionWeeklyPct = cohortStarts.map((start, idx) => {
 		const denom = cohortSizes[idx] ?? 0;
@@ -655,8 +624,7 @@ internalTurretApp.openapi(getReplaySessionMeta, async (c) => {
 	const { id: sessionId } = c.req.valid("param");
 	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
 	const row = await db.query.turretSessions.findFirst({
-		where: ((t: any, ops: any) =>
-			ops.eq(t.sessionId, sessionId)) as unknown as never,
+		where: (t, ops) => ops.eq(t.sessionId, sessionId),
 	});
 	if (!row) return c.json({ error: "Not Found" }, 404);
 	return c.json({ session: row }, 200);
@@ -666,8 +634,7 @@ internalTurretApp.openapi(getChunks, async (c) => {
 	const { id: sessionId } = c.req.valid("param");
 	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
 	const rows = await db.query.turretSessionChunks.findMany({
-		where: ((t: any, ops: any) =>
-			ops.eq(t.sessionId, sessionId)) as unknown as never,
+		where: (t, ops) => ops.eq(t.sessionId, sessionId),
 	});
 	return c.json({ chunks: rows }, 200);
 });
@@ -676,9 +643,8 @@ internalTurretApp.openapi(getReplaySessionErrors, async (c) => {
 	const { id: sessionId } = c.req.valid("param");
 	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
 	const rows = await db.query.turretSessionErrors.findMany({
-		where: ((t: any, ops: any) =>
-			ops.eq(t.sessionId, sessionId)) as unknown as never,
-		orderBy: ((t: any, ops: any) => [ops.asc(t.ts)]) as unknown as never,
+		where: (t, ops) => ops.eq(t.sessionId, sessionId),
+		orderBy: (t, ops) => [ops.asc(t.ts)],
 	});
 	return c.json({ errors: rows }, 200);
 });
@@ -690,9 +656,8 @@ internalTurretApp.openapi(getReplaySessionBreadcrumbs, async (c) => {
 	const offset = Number(offsetRaw ?? "0");
 	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
 	const rows = await db.query.turretRequestBreadcrumbs.findMany({
-		where: ((t: any, ops: any) =>
-			ops.eq(t.sessionId, sessionId)) as unknown as never,
-		orderBy: ((t: any, ops: any) => [ops.asc(t.ts)]) as unknown as never,
+		where: (t, ops) => ops.eq(t.sessionId, sessionId),
+		orderBy: (t, ops) => [ops.asc(t.ts)],
 		limit,
 		offset,
 	});
@@ -732,27 +697,20 @@ internalTurretApp.openapi(getRequestSpans, async (c) => {
 	const { requestId } = c.req.valid("param");
 	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
 	const rows = await db.query.turretRequestSpans.findMany({
-		where: ((t: any, ops: any) =>
-			ops.eq(t.requestId, requestId)) as unknown as never,
-		orderBy: ((t: any, ops: any) => [
-			ops.asc(t.createdAt),
-		]) as unknown as never,
+		where: (t, ops) => ops.eq(t.requestId, requestId),
+		orderBy: (t, ops) => [ops.asc(t.createdAt)],
 	});
 	return c.json({ spans: rows }, 200);
 });
 
-internalTurretApp.openapi(getChunk, (async (c: unknown) => {
-	const ctx = c as any;
+internalTurretApp.openapi(getChunk, async (ctx) => {
 	const { id: sessionId, seq: seqRaw } = ctx.req.valid("param");
 	const seq = Number(seqRaw);
 	const db = makeTurretDb((ctx.env as { TURRET_DB: D1Database }).TURRET_DB);
 
 	const chunk = await db.query.turretSessionChunks.findFirst({
-		where: ((t: any, ops: any) =>
-			ops.and(
-				ops.eq(t.sessionId, sessionId),
-				ops.eq(t.seq, seq)
-			)) as unknown as never,
+		where: (t, ops) =>
+			ops.and(ops.eq(t.sessionId, sessionId), ops.eq(t.seq, seq)),
 	});
 	if (!chunk) return ctx.json({ error: "Not Found" }, 404);
 
@@ -767,14 +725,15 @@ internalTurretApp.openapi(getChunk, (async (c: unknown) => {
 	).TURRET_REPLAY_BUCKET.get((chunk as unknown as { r2Key: string }).r2Key);
 	if (!obj) return ctx.json({ error: "Not Found" }, 404);
 
+	// R2 stores the JSON uploaded by this Worker; keep the body streaming.
 	return new Response(obj.body, {
 		status: 200,
 		headers: {
 			"Content-Type": "application/json",
 			"Cache-Control": "no-store",
 		},
-	});
-}) as unknown as never);
+	}) as Response & TypedResponse<JSONValue, 200, "json">;
+});
 
 export { internalTurretApp };
 export const routes = internalTurretApp;

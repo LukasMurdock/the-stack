@@ -1,6 +1,7 @@
+import { useDraftValue } from "@/react-app/hooks/useDraftValue";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
 	Empty,
@@ -110,10 +111,10 @@ function TurretIssuesPage() {
 		})
 	);
 
-	const [qInput, setQInput] = useState(search.q);
-	useEffect(() => {
-		setQInput(search.q);
-	}, [search.q]);
+	const { value: qInput, setValue: setQInput } = useDraftValue(
+		search.q,
+		search.q
+	);
 
 	function setStatus(status: TurretIssueStatus) {
 		navigate({

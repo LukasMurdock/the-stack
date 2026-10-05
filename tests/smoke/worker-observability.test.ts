@@ -325,7 +325,10 @@ test("Worker exceptions keep their stack, fingerprint and correlation without a 
 	const event = wideEvents(logs).find(
 		(event) => event.action === "api.request"
 	);
-	assert.equal((event?.error as Record<string, unknown>).kind, "exception");
+	assert.equal(
+		(event?.error as Record<string, unknown> | undefined)?.kind,
+		"exception"
+	);
 	assert.equal(f.spans[0].attributes["request.id"], "request-1");
 	assert.equal(f.spans[0].errors.length, 1);
 	assert.equal(f.env.CORE_DB, f.db);
@@ -400,7 +403,10 @@ test("D1 replay spans are bounded, inserted within D1 limits, and exclude teleme
 	const event = wideEvents(logs).find(
 		(event) => event.action === "api.request"
 	);
-	assert.equal((event?.d1 as Record<string, unknown>).droppedSpans, 5);
+	assert.equal(
+		(event?.d1 as Record<string, unknown> | undefined)?.droppedSpans,
+		5
+	);
 	assert.equal(f.env.CORE_DB, f.db);
 });
 

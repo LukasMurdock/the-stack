@@ -119,19 +119,20 @@ function TurretReplaySessionPage() {
 		if (replayLibStatus.state !== "ready") return [];
 		const items: ConsoleItem[] = [];
 		for (const ev of replayEvents) {
-			const anyEv = ev as any;
-			let logData: any | null = null;
-
-			// Prefer the plugin event format so we don't depend on rrweb enums.
-			// When rrweb is blocked (ad blockers), this file should still load.
+			// Inspect plugin payloads structurally without loading rrweb at runtime.
+			const data: unknown = "data" in ev ? ev.data : undefined;
 			if (
-				anyEv.data?.plugin === "rrweb/console@1" &&
-				anyEv.data?.payload
-			) {
-				logData = anyEv.data.payload;
-			}
+				!data ||
+				typeof data !== "object" ||
+				!("plugin" in data) ||
+				data.plugin !== "rrweb/console@1" ||
+				!("payload" in data)
+			)
+				continue;
+			const candidate: unknown = data.payload;
+			if (!candidate || typeof candidate !== "object") continue;
+			const logData = candidate as Record<string, unknown>;
 
-			if (!logData) continue;
 			const ts = typeof ev.timestamp === "number" ? ev.timestamp : NaN;
 			if (!Number.isFinite(ts)) continue;
 
@@ -174,7 +175,7 @@ function TurretReplaySessionPage() {
 			if (sortedSeqs.length === 0) {
 				setReplayLibStatus({ state: "idle" });
 				setReplayStatus({ state: "idle" });
-				(playerRef.current as any)?.$destroy?.();
+				playerRef.current?.$destroy?.();
 				playerRef.current = null;
 				playerHostRef.current.innerHTML = "";
 				setReplayEvents([]);
@@ -183,11 +184,11 @@ function TurretReplaySessionPage() {
 
 			// Load rrweb libraries lazily so the route can still render if a content
 			// blocker blocks rrweb requests.
-			let rrwebPlayerCtor: any;
+			let rrwebPlayerCtor: typeof import("rrweb-player").default;
 			try {
 				await import("rrweb-player/dist/style.css");
 				const mod = await import("rrweb-player");
-				rrwebPlayerCtor = (mod as any).default;
+				rrwebPlayerCtor = mod.default;
 				if (!active || controller.signal.aborted) return;
 				setReplayLibStatus({ state: "ready" });
 			} catch (err) {
@@ -204,7 +205,7 @@ function TurretReplaySessionPage() {
 					state: "error",
 					message: "Replay blocked (ad blocker or privacy extension)",
 				});
-				(playerRef.current as any)?.$destroy?.();
+				playerRef.current?.$destroy?.();
 				playerRef.current = null;
 				playerHostRef.current.innerHTML = "";
 				setReplayEvents([]);
@@ -244,7 +245,7 @@ function TurretReplaySessionPage() {
 
 			if (!active || controller.signal.aborted) return;
 
-			(playerRef.current as any)?.$destroy?.();
+			playerRef.current?.$destroy?.();
 			playerRef.current = null;
 			playerHostRef.current.innerHTML = "";
 
@@ -267,7 +268,7 @@ function TurretReplaySessionPage() {
 		return () => {
 			active = false;
 			controller.abort();
-			(playerRef.current as any)?.$destroy?.();
+			playerRef.current?.$destroy?.();
 			playerRef.current = null;
 		};
 	}, [sessionId, sortedSeqs]);

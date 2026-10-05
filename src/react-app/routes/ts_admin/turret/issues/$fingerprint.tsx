@@ -1,6 +1,7 @@
+import { useDraftValue } from "@/react-app/hooks/useDraftValue";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
 	Empty,
@@ -90,7 +91,7 @@ const Route = createFileRoute("/ts_admin/turret/issues/$fingerprint")({
 				: "7d";
 		const bucket: "hour" | "day" =
 			s.bucket === "hour" || s.bucket === "day"
-				? (s.bucket as any)
+				? s.bucket
 				: preset === "24h"
 					? "hour"
 					: "day";
@@ -139,18 +140,18 @@ function TurretIssueDetailPage() {
 
 	const issue = issueQuery.data?.issue;
 
-	const [titleDraft, setTitleDraft] = useState<string>("");
-	useEffect(() => {
-		if (!issue) return;
-		setTitleDraft(issue.title ?? issue.sample.message ?? "");
-	}, [issue?.fingerprint, issue?.title, issue?.sample.message]);
+	const {
+		value: titleDraft,
+		setValue: setTitleDraft,
+		reset: resetTitleDraft,
+	} = useDraftValue(issue?.title ?? issue?.sample.message ?? "", fingerprint);
 
 	const updateMutation = useMutation({
 		mutationFn: (input: {
 			fingerprint: string;
 			update: { status?: TurretIssueStatus; title?: string | null };
 		}) => patchIssue(input.fingerprint, input.update),
-		onSuccess: async () => {
+		onSuccess: async (_result, input) => {
 			await qc.invalidateQueries({ queryKey: ["turret", "issues"] });
 			await qc.invalidateQueries({
 				queryKey: ["turret", "issue", fingerprint],
@@ -161,6 +162,7 @@ function TurretIssueDetailPage() {
 			await qc.invalidateQueries({
 				queryKey: ["turret", "issue", fingerprint, "events"],
 			});
+			if (input.update.title !== undefined) resetTitleDraft();
 		},
 	});
 
@@ -332,6 +334,7 @@ function TurretIssueDetailPage() {
 									</div>
 									<div className="flex flex-wrap items-center gap-2">
 										<Input
+											disabled={updateMutation.isPending}
 											value={titleDraft}
 											onChange={(e) =>
 												setTitleDraft(e.target.value)
@@ -517,7 +520,7 @@ function TurretIssueDetailPage() {
 							className="aspect-auto h-56 w-full"
 						>
 							<AreaChart
-								data={chartData as any}
+								data={chartData}
 								margin={{
 									left: 0,
 									right: 0,
@@ -540,11 +543,11 @@ function TurretIssueDetailPage() {
 								/>
 								<YAxis allowDecimals={false} width={32} />
 								<Tooltip
-									formatter={(value: any) => [
+									formatter={(value) => [
 										String(value),
 										"count",
 									]}
-									labelFormatter={(label: any) =>
+									labelFormatter={(label) =>
 										new Date(Number(label)).toLocaleString()
 									}
 								/>

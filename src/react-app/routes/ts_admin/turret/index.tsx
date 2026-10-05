@@ -43,6 +43,106 @@ const Route = createFileRoute("/ts_admin/turret/")({
 	component: TurretDashboardPage,
 });
 
+function formatCompact(n: number): string {
+	try {
+		return new Intl.NumberFormat(undefined, {
+			notation: "compact",
+		}).format(n);
+	} catch {
+		return String(n);
+	}
+}
+
+function formatPct(pct: number): string {
+	const sign = pct > 0 ? "+" : "";
+	return `${sign}${pct.toFixed(0)}%`;
+}
+
+function DeltaLine(props: { pct: number | null | undefined; label: string }) {
+	if (props.pct == null || !Number.isFinite(props.pct)) {
+		return (
+			<div className="text-xs text-muted-foreground">
+				{props.label}: n/a
+			</div>
+		);
+	}
+	const positive = props.pct >= 0;
+	return (
+		<div
+			className={
+				"text-xs " +
+				(positive
+					? "text-emerald-700 dark:text-emerald-300"
+					: "text-rose-700 dark:text-rose-300")
+			}
+		>
+			{formatPct(props.pct)} {props.label}
+		</div>
+	);
+}
+
+function formatUserDevice(uaRaw: string | null): string {
+	const ua = uaRaw ?? "";
+	if (!ua) return "-";
+	const isIOS = /iPhone|iPad|iPod/i.test(ua);
+	const isAndroid = /Android/i.test(ua);
+	const isMac = /Macintosh/i.test(ua);
+	const isWindows = /Windows/i.test(ua);
+	const isLinux = /Linux/i.test(ua) && !isAndroid;
+
+	let os: string;
+	if (isIOS) os = "iOS";
+	else if (isAndroid) os = "Android";
+	else if (isMac) os = "Mac";
+	else if (isWindows) os = "Windows";
+	else if (isLinux) os = "Linux";
+	else os = "Other";
+
+	let browser: string;
+	if (/Edg\//.test(ua)) browser = "Edge";
+	else if (/Firefox\//.test(ua)) browser = "Firefox";
+	else if (/Chrome\//.test(ua) && !/Chromium\//.test(ua)) browser = "Chrome";
+	else if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) browser = "Safari";
+	else browser = "Browser";
+
+	return `${browser} · ${os}`;
+}
+
+type Point = { weekStartMs: number; value: number };
+type PointNullable = { weekStartMs: number; value: number | null };
+
+function SparkArea(props: {
+	data: Array<Point | PointNullable>;
+	valueKey: string;
+}) {
+	return (
+		<ChartContainer
+			config={{
+				v: { label: "value", color: "var(--color-chart-2)" },
+			}}
+			className="aspect-auto h-24 w-full"
+		>
+			<AreaChart
+				data={props.data}
+				margin={{ left: 0, right: 0, top: 4, bottom: 0 }}
+			>
+				<XAxis dataKey="weekStartMs" hide />
+				<YAxis hide />
+				<Tooltip wrapperStyle={{ display: "none" }} />
+				<Area
+					type="monotone"
+					dataKey={props.valueKey}
+					stroke="var(--color-chart-2)"
+					fill="var(--color-chart-2)"
+					fillOpacity={0.15}
+					strokeWidth={2}
+					connectNulls
+				/>
+			</AreaChart>
+		</ChartContainer>
+	);
+}
+
 function TurretDashboardPage() {
 	const navigate = useNavigate();
 	const defaultSessionsSearch = {
@@ -114,111 +214,6 @@ function TurretDashboardPage() {
 		}
 		return out;
 	}, [recentUsersQuery.data?.sessions]);
-
-	function formatCompact(n: number): string {
-		try {
-			return new Intl.NumberFormat(undefined, {
-				notation: "compact",
-			}).format(n);
-		} catch {
-			return String(n);
-		}
-	}
-
-	function formatPct(pct: number): string {
-		const sign = pct > 0 ? "+" : "";
-		return `${sign}${pct.toFixed(0)}%`;
-	}
-
-	function DeltaLine(props: {
-		pct: number | null | undefined;
-		label: string;
-	}) {
-		if (props.pct == null || !Number.isFinite(props.pct)) {
-			return (
-				<div className="text-xs text-muted-foreground">
-					{props.label}: n/a
-				</div>
-			);
-		}
-		const positive = props.pct >= 0;
-		return (
-			<div
-				className={
-					"text-xs " +
-					(positive
-						? "text-emerald-700 dark:text-emerald-300"
-						: "text-rose-700 dark:text-rose-300")
-				}
-			>
-				{formatPct(props.pct)} {props.label}
-			</div>
-		);
-	}
-
-	function formatUserDevice(uaRaw: string | null): string {
-		const ua = uaRaw ?? "";
-		if (!ua) return "-";
-		const isIOS = /iPhone|iPad|iPod/i.test(ua);
-		const isAndroid = /Android/i.test(ua);
-		const isMac = /Macintosh/i.test(ua);
-		const isWindows = /Windows/i.test(ua);
-		const isLinux = /Linux/i.test(ua) && !isAndroid;
-
-		let os: string;
-		if (isIOS) os = "iOS";
-		else if (isAndroid) os = "Android";
-		else if (isMac) os = "Mac";
-		else if (isWindows) os = "Windows";
-		else if (isLinux) os = "Linux";
-		else os = "Other";
-
-		let browser: string;
-		if (/Edg\//.test(ua)) browser = "Edge";
-		else if (/Firefox\//.test(ua)) browser = "Firefox";
-		else if (/Chrome\//.test(ua) && !/Chromium\//.test(ua))
-			browser = "Chrome";
-		else if (/Safari\//.test(ua) && !/Chrome\//.test(ua))
-			browser = "Safari";
-		else browser = "Browser";
-
-		return `${browser} · ${os}`;
-	}
-
-	type Point = { weekStartMs: number; value: number };
-	type PointNullable = { weekStartMs: number; value: number | null };
-
-	function SparkArea(props: {
-		data: Array<Point | PointNullable>;
-		valueKey: string;
-	}) {
-		return (
-			<ChartContainer
-				config={{
-					v: { label: "value", color: "var(--color-chart-2)" },
-				}}
-				className="aspect-auto h-24 w-full"
-			>
-				<AreaChart
-					data={props.data as any}
-					margin={{ left: 0, right: 0, top: 4, bottom: 0 }}
-				>
-					<XAxis dataKey="weekStartMs" hide />
-					<YAxis hide />
-					<Tooltip wrapperStyle={{ display: "none" }} />
-					<Area
-						type="monotone"
-						dataKey={props.valueKey}
-						stroke="var(--color-chart-2)"
-						fill="var(--color-chart-2)"
-						fillOpacity={0.15}
-						strokeWidth={2}
-						connectNulls
-					/>
-				</AreaChart>
-			</ChartContainer>
-		);
-	}
 
 	return (
 		<section className="space-y-4">
@@ -364,14 +359,12 @@ function TurretDashboardPage() {
 								</div>
 								{dashboard ? (
 									<SparkArea
-										data={
-											dashboard.seriesTotalUsersWeekly.map(
-												(p) => ({
-													...p,
-													v: p.value,
-												})
-											) as any
-										}
+										data={dashboard.seriesTotalUsersWeekly.map(
+											(p) => ({
+												...p,
+												v: p.value,
+											})
+										)}
 										valueKey="v"
 									/>
 								) : (
@@ -406,14 +399,12 @@ function TurretDashboardPage() {
 								</div>
 								{dashboard ? (
 									<SparkArea
-										data={
-											dashboard.seriesNewUsersWeekly.map(
-												(p) => ({
-													...p,
-													v: p.value,
-												})
-											) as any
-										}
+										data={dashboard.seriesNewUsersWeekly.map(
+											(p) => ({
+												...p,
+												v: p.value,
+											})
+										)}
 										valueKey="v"
 									/>
 								) : (
@@ -452,14 +443,12 @@ function TurretDashboardPage() {
 								</div>
 								{dashboard ? (
 									<SparkArea
-										data={
-											dashboard.seriesNewUserRetentionWeeklyPct.map(
-												(p) => ({
-													...p,
-													v: p.value,
-												})
-											) as any
-										}
+										data={dashboard.seriesNewUserRetentionWeeklyPct.map(
+											(p) => ({
+												...p,
+												v: p.value,
+											})
+										)}
 										valueKey="v"
 									/>
 								) : (

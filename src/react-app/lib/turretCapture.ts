@@ -134,14 +134,14 @@ function createTurretCapture(
 		try {
 			const rrweb = await import("@/lib/replay");
 
-			const plugins: any[] = [];
+			const plugins: ReturnType<typeof rrweb.getRecordConsolePlugin>[] =
+				[];
 			if (initRes.console?.enabled) {
 				plugins.push(
 					rrweb.getRecordConsolePlugin({
-						level: initRes.console.level as any,
+						level: initRes.console.level,
 						lengthThreshold: initRes.console.lengthThreshold,
-						stringifyOptions: initRes.console
-							.stringifyOptions as any,
+						stringifyOptions: initRes.console.stringifyOptions,
 						logger: "console",
 					})
 				);

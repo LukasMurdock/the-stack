@@ -5,7 +5,7 @@ export type TurretInitResponse = {
 	rrweb: Record<string, unknown>;
 	console: {
 		enabled: boolean;
-		level: string[];
+		level: ("log" | "info" | "warn" | "error")[];
 		lengthThreshold: number;
 		stringifyOptions: {
 			stringLengthLimit?: number;
@@ -64,8 +64,8 @@ async function turretInitReplaySession(input: {
 			typeof payload === "object" &&
 			payload &&
 			"error" in payload &&
-			typeof (payload as any).error === "string"
-				? (payload as any).error
+			typeof payload.error === "string"
+				? payload.error
 				: `Turret init failed: ${res.status}`;
 		throw new Error(msg);
 	}

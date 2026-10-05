@@ -757,11 +757,10 @@ turretApp.openapi(postReplaySessionError, async (c) => {
 	let expiresAt = now + 24 * 60 * 60 * 1000;
 	try {
 		const session = await db.query.turretSessions.findFirst({
-			where: ((t: any, ops: any) =>
-				ops.eq(t.sessionId, sessionId)) as unknown as never,
+			where: (t, ops) => ops.eq(t.sessionId, sessionId),
 			columns: { retentionExpiresAt: true },
 		});
-		const ret = (session as any)?.retentionExpiresAt;
+		const ret = session?.retentionExpiresAt;
 		if (ret instanceof Date) expiresAt = ret.getTime();
 	} catch {
 		// keep default
@@ -945,17 +944,16 @@ turretApp.openapi(postReplaySessionFeedback, async (c) => {
 	let expiresAt = now + 24 * 60 * 60 * 1000;
 	try {
 		const session = await db.query.turretSessions.findFirst({
-			where: ((t: any, ops: any) =>
-				ops.eq(t.sessionId, sessionId)) as unknown as never,
+			where: (t, ops) => ops.eq(t.sessionId, sessionId),
 			columns: {
 				userId: true,
 				userEmail: true,
 				retentionExpiresAt: true,
 			},
 		});
-		userId = (session as any)?.userId ?? "";
-		userEmail = (session as any)?.userEmail ?? null;
-		const ret = (session as any)?.retentionExpiresAt;
+		userId = session?.userId ?? "";
+		userEmail = session?.userEmail ?? null;
+		const ret = session?.retentionExpiresAt;
 		if (ret instanceof Date) expiresAt = ret.getTime();
 	} catch {
 		// ignore; keep defaults

@@ -93,7 +93,7 @@ function TsAdminUsersPage() {
 		retry: false,
 		queryFn: async (): Promise<ListUsersResponse> => {
 			const { data, error } = await authClient.admin.listUsers({
-				query: listInput as any,
+				query: listInput,
 			});
 			if (error) throw new Error(error.message ?? "Failed to list users");
 			return (data ?? { users: [] }) as unknown as ListUsersResponse;

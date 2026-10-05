@@ -72,7 +72,7 @@ test("auth storage preserves values, replaces TTLs, and excludes expired records
 		sqlite.prepare("SELECT expires_at FROM auth_storage").get().expires_at,
 		null
 	);
-	// eslint-disable-next-line drizzle/enforce-delete-with-where -- This is the key-value adapter, not a Drizzle table deletion.
+	// oxlint-disable-next-line drizzle/enforce-delete-with-where -- This is the key-value adapter, not a Drizzle table deletion.
 	await storage.delete("session");
 	assert.equal(await storage.get("session"), null);
 	await storage.set("expired", "secret", 60);

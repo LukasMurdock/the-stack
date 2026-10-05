@@ -1,16 +1,16 @@
 import handler from "@astrojs/cloudflare/entrypoints/server";
 
-import apiWorker from "./worker/index";
+import apiWorker, { type Bindings } from "./worker/index";
 import { observePageRequest } from "./worker/observability/page";
 
 export default {
-	async fetch(request: any, env: any, ctx: any) {
+	async fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
 		const url = new URL(request.url);
 		const p = url.pathname;
 
 		// Route all API traffic through the existing Hono worker.
 		if (p === "/api" || p.startsWith("/api/")) {
-			return apiWorker.fetch(request, env as any, ctx);
+			return apiWorker.fetch(request, env, ctx);
 		}
 
 		return observePageRequest(request, env, ctx, () =>
@@ -18,10 +18,14 @@ export default {
 		);
 	},
 
-	async scheduled(controller: any, env: any, ctx: any) {
+	async scheduled(
+		controller: ScheduledController,
+		env: Bindings,
+		ctx: ExecutionContext
+	) {
 		// Keep the existing cleanup job exactly as-is.
 		if (apiWorker.scheduled) {
-			return apiWorker.scheduled(controller, env as any, ctx);
+			return apiWorker.scheduled(controller, env, ctx);
 		}
 	},
 };
