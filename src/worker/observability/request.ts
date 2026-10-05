@@ -1,3 +1,4 @@
+import { recordOperation, requestCategory } from "./metrics";
 import { createMiddleware } from "hono/factory";
 import type { Bindings } from "../index";
 import { wrapD1Database, type D1Span } from "./d1Proxy";
@@ -123,6 +124,9 @@ export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 				},
 				async (span) => {
 					await next();
+					span?.setAttributes({
+						"http.response.status_code": c.res.status,
+					});
 					// Hono converts route exceptions into responses before next() returns.
 					if (c.error) span?.recordException(c.error);
 				}
@@ -196,6 +200,17 @@ export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 			requestLog.set({ durationMs, d1 });
 
 			requestLog.emit({ status });
+			recordOperation({
+				env: originalEnv,
+				requestId,
+				surface: "api",
+				method: request.method,
+				route: pathTemplate,
+				category: requestCategory(path),
+				colo,
+				status,
+				durationMs,
+			});
 
 			if (shouldCaptureBreadcrumb) {
 				c.executionCtx.waitUntil(

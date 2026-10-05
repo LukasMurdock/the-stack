@@ -12,6 +12,7 @@ import {
 	setFeatures,
 	turretHealth,
 	getDashboardUsers,
+	getTurretSummary,
 	listIssues,
 	getIssue,
 	getIssueTrend,
@@ -105,6 +106,16 @@ const turretDashboardUsersQueryOptions = (input?: { to?: number }) =>
 		retry: false,
 	});
 
+// The server owns the window (last hour, minute-aligned), so the key has
+// no time inputs; polling advances it.
+const turretSummaryQueryOptions = queryOptions({
+	queryKey: ["turret", "summary"],
+	queryFn: getTurretSummary,
+	retry: false,
+	staleTime: 30_000,
+	refetchInterval: 60_000,
+});
+
 const turretIssuesQueryOptions = (input: {
 	status?: TurretIssueStatus;
 	q?: string;
@@ -191,6 +202,7 @@ export {
 	turretComplianceQueryOptions,
 	turretComplianceMutation,
 	turretDashboardUsersQueryOptions,
+	turretSummaryQueryOptions,
 	turretIssuesQueryOptions,
 	turretIssueQueryOptions,
 	turretIssueTrendQueryOptions,

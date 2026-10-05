@@ -38,10 +38,10 @@ admin-create:
     pnpm exec wrangler d1 migrations apply CORE_DB --local && node scripts/create-admin-local.mjs
 
 check-fast:
-    pnpm exec tsx --test "tests/**/*.test.ts"
+    pnpm test
 
 check-full:
-    pnpm exec tsx --test "tests/**/*.test.ts" && pnpm exec astro build && pnpm exec tsc -b
+    pnpm test && pnpm exec astro build && pnpm exec tsc -b
 
 format:
     pnpm exec oxfmt --write .

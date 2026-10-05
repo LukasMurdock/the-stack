@@ -4,14 +4,18 @@ import { sql } from "drizzle-orm";
 import { makeTurretDb } from "../bindings/d1/turret/db";
 import * as turretSchema from "../bindings/d1/turret/schema";
 import { observeRequest } from "./observability/request";
+import type { OperationEnvironment } from "./observability/metrics";
+import type { AnalyticsSqlBinding } from "./observability/summary";
 import { traceOperation } from "./observability/tracing";
 import { createRequestLogger } from "evlog";
 import { api, apiRoutes } from "./api";
 import { createAuth, type AuthEnv } from "./auth";
 
-export type Bindings = AuthEnv & {
-	CF_VERSION_METADATA?: WorkerVersionMetadata;
-};
+export type Bindings = AuthEnv &
+	OperationEnvironment & {
+		ANALYTICS_SQL?: AnalyticsSqlBinding;
+		CF_VERSION_METADATA?: WorkerVersionMetadata;
+	};
 
 const app = new Hono<{ Bindings: Bindings }>({
 	strict: true,

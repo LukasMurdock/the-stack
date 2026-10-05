@@ -1,6 +1,7 @@
 import handler from "@astrojs/cloudflare/entrypoints/server";
 
 import apiWorker from "./worker/index";
+import { observePageRequest } from "./worker/observability/page";
 
 export default {
 	async fetch(request: any, env: any, ctx: any) {
@@ -12,7 +13,9 @@ export default {
 			return apiWorker.fetch(request, env as any, ctx);
 		}
 
-		return handler.fetch(request, env, ctx);
+		return observePageRequest(request, env, ctx, () =>
+			handler.fetch(request, env, ctx)
+		);
 	},
 
 	async scheduled(controller: any, env: any, ctx: any) {

@@ -14,7 +14,7 @@ Production has one Worker:
 
 - Node.js + pnpm
 - Cloudflare account + Wrangler auth
-- Production IDs/secrets configured in both Wrangler configs
+- Production IDs/secrets configured in `wrangler.json`
 
 Before first deploy, replace placeholders in `wrangler.json`:
 
@@ -66,6 +66,8 @@ Tail logs as needed:
 ```bash
 pnpm exec wrangler tail --env production
 ```
+
+For a new project, complete the [observability acceptance checklist](observability-operations.md#per-project-acceptance-checklist). Verify deployed metrics and the admin backend health view, then configure the dashboards, alerts, domain tracing, and exports your project needs.
 
 ## Rollback
 

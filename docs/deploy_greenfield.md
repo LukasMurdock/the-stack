@@ -140,3 +140,7 @@ just deploy-production
 curl -i "https://<your-domain>/api/health"
 curl -i "https://<your-domain>/api/scalar"
 ```
+
+### 6) Configure Observability
+
+Follow [observability setup and operations](observability-operations.md). The template includes Worker logs/traces and metrics bindings; verify the deployed SQL schema and admin backend health view, then configure account dashboards, alert destinations, domain tracing, and optional exports for your project.

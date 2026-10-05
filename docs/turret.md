@@ -2,14 +2,16 @@
 
 Turret is The Stack's built-in observability platform.
 
-It starts with session replay (rrweb) and grows into a unified view of errors, logs, traces, and aggregated metrics.
+It combines session replay (rrweb), error monitoring, structured logs, native tracing, and operational metrics.
 
 ## What Turret Does
 
 - Session replay (rrweb)
 - Error monitoring (client + worker)
 - Structured request logs (Evlog wide events)
-- Aggregated metrics (Analytics Engine)
+- Native Workers traces and Issues
+- Operational metrics and admin backend health (Analytics Engine + Analytics SQL)
+- Complete hourly replay totals (D1)
 
 ## Vocabulary
 
@@ -27,6 +29,8 @@ Turret uses explicit terms so replay debugging and product analytics do not blur
 - Event: a structured log or product/operational fact. Evlog is the current substrate for wide events.
 
 Naming rule: use "replay session" in UI and docs when referring to rows in `turret_sessions`. Reserve "visit" for a future 30-minute inactivity analytics session.
+
+See [operational metrics and rollout](observability-operations.md) for the backend health summary, full hourly replay totals, alert recipes, domain tracing, and the read-only SQL helper. Complete its per-project acceptance checklist when deploying a new application.
 
 ## Structured Logs
 
@@ -83,6 +87,8 @@ Cloudflare provides backend diagnostics; Turret connects browser errors and repl
 
 Named native spans cover `api.request`, `auth.request`, `turret.ingest`, `turret.admin`, `email.send`, and `turret.cleanup`. Request spans carry `request.id`, `turret.session_id`, `http.route`, `app.env`, and `app.version`. Local/test contexts without `ctx.tracing` run normally. An inbound `traceparent` logged by evlog is not proof that external trace context propagates; Cloudflare currently documents external propagation limitations.
 
+The Astro Worker boundary also emits `page.request` logs and spans, echoes request IDs, and records operational metrics using the bounded route label `/astro/*`. Static assets served without invoking the Worker do not pass this boundary.
+
 Native tracing captures D1, KV, R2, and outbound fetch operations. Traces are sampled at 5%; keep replay breadcrumbs for unsampled requests. Turret's D1 capture handles prepared statements, chained binds, and batches on eligible application routes. Auth, ingestion, and admin routes rely on native database traces; their wide events have `d1.captured = false` rather than claiming a complete query count.
 
 Detailed replay spans are capped at 100 per request, while summary counters include all captured operations. `d1.droppedSpans` reports truncation. Span timestamps represent query start time. Batch spans share the batch's elapsed wall time; summing them is not exclusive database time. `first` and `raw` results have no D1 row metadata. Spans are inserted in groups of seven to stay within D1's 100-parameter limit.
@@ -112,7 +118,7 @@ Keep logs at 100% initially so low-volume failures remain discoverable. Traces a
 
 Prefer [native OpenTelemetry export](https://developers.cloudflare.com/workers/observability/opentelemetry-export/) for a future external logs/traces destination. Configure an actual destination in Cloudflare, then reference its name in Wrangler. Use `persist: false` only when the external destination should replace Cloudflare storage. Workers metrics cannot be exported through this facility. No external destination or in-process evlog drain is configured.
 
-As of October 5, 2026, Workers Logs retains three days on Free and seven on Paid. [Observability pricing](https://developers.cloudflare.com/observability/pricing/) changes December 1, 2026 to shared ingestion/storage allowances; recheck costs and retention when deploying. Native tracing and Issues remain beta. Consider durable export when actual retention requirements exceed native storage.
+Check current [observability pricing and retention](https://developers.cloudflare.com/observability/pricing/) for your plan when deploying. Choose an export destination when your application's retention requirements exceed native storage. See the [operations guide](observability-operations.md#retention-export-and-cost) for sampling and cost considerations.
 
 References: [Workers Logs](https://developers.cloudflare.com/workers/observability/logs/workers-logs/), [Issues](https://developers.cloudflare.com/workers/observability/issues/), [Custom spans](https://developers.cloudflare.com/workers/observability/traces/custom-spans/), [D1 span attributes](https://developers.cloudflare.com/workers/observability/traces/spans-and-attributes/#d1), [Trace limitations](https://developers.cloudflare.com/workers/observability/traces/known-limitations/).
 
@@ -143,7 +149,9 @@ Ingestion endpoint error codes:
     - `turret_session_chunks`
     - `turret_session_errors`
 - Compliance bundle + config: KV `TURRET_CFG`
-- Aggregates: Analytics Engine `TURRET_ANALYTICS`
+- Replay/error aggregates: Analytics Engine `TURRET_ANALYTICS`
+- Operational request metrics: Analytics Engine `TURRET_METRICS`
+- Backend health queries: production `ANALYTICS_SQL` binding
 
 ## Security Model
 

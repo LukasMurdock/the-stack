@@ -2,7 +2,13 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -22,7 +28,13 @@ import {
 	turretReplaySessionsQueryOptions,
 	turretDashboardUsersQueryOptions,
 	turretIssuesQueryOptions,
+	turretSummaryQueryOptions,
 } from "../../../queries/turretQueries";
+import { BackendHealthSection } from "../../../features/turret/dashboard/BackendHealthSection";
+import {
+	LastHourReplayCard,
+	ReplayTotalValue,
+} from "../../../features/turret/dashboard/ReplayTotals";
 
 import { requireTurretAdmin } from "../../../lib/requireTurretAdmin";
 
@@ -57,6 +69,8 @@ function TurretDashboardPage() {
 	const dashboardUsersQuery = useQuery(
 		turretDashboardUsersQueryOptions({ to: now })
 	);
+	const summaryQuery = useQuery(turretSummaryQueryOptions);
+	// Preview only feeds the recent list; counts come from the summary.
 	const sessionsPreviewQuery = useQuery(
 		turretReplaySessionsQueryOptions({
 			from: now - 60 * 60 * 1000,
@@ -75,8 +89,6 @@ function TurretDashboardPage() {
 	);
 
 	const sessions = sessionsPreviewQuery.data?.sessions ?? [];
-	const errorCount = sessions.filter((s) => s.hasError).length;
-	const captureBlockedCount = sessions.filter((s) => s.captureBlocked).length;
 	const openIssuesCount = openIssuesQuery.data?.issues.length;
 	const openIssuesLabel = openIssuesQuery.isLoading
 		? "…"
@@ -219,7 +231,7 @@ function TurretDashboardPage() {
 						Internal observability dashboard.
 					</p>
 				</div>
-				<div className="flex items-center gap-2">
+				<div className="flex flex-wrap items-center gap-2">
 					<Button
 						type="button"
 						variant="outline"
@@ -551,41 +563,7 @@ function TurretDashboardPage() {
 					</CardContent>
 				</Card>
 
-				<Card>
-					<CardHeader>
-						<CardTitle>Last hour</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-1 text-sm">
-						<div className="flex items-center justify-between gap-3">
-							<div className="text-muted-foreground">
-								Replay sessions
-							</div>
-							<div className="font-medium">
-								{sessionsPreviewQuery.isLoading
-									? "…"
-									: sessions.length}
-							</div>
-						</div>
-						<div className="flex items-center justify-between gap-3">
-							<div className="text-muted-foreground">Errors</div>
-							<div className="font-medium">
-								{sessionsPreviewQuery.isLoading
-									? "…"
-									: errorCount}
-							</div>
-						</div>
-						<div className="flex items-center justify-between gap-3">
-							<div className="text-muted-foreground">
-								Capture blocked
-							</div>
-							<div className="font-medium">
-								{sessionsPreviewQuery.isLoading
-									? "…"
-									: captureBlockedCount}
-							</div>
-						</div>
-					</CardContent>
-				</Card>
+				<LastHourReplayCard query={summaryQuery} />
 
 				<Card>
 					<CardHeader>
@@ -605,10 +583,11 @@ function TurretDashboardPage() {
 							<div className="text-muted-foreground">
 								Error replay sessions (1h)
 							</div>
-							<div className="font-medium">
-								{sessionsPreviewQuery.isLoading
-									? "…"
-									: errorCount}
+							<div className="font-medium tabular-nums">
+								<ReplayTotalValue
+									query={summaryQuery}
+									field="errorReplaySessions"
+								/>
 							</div>
 						</div>
 						<div className="flex flex-wrap gap-2 pt-1">
@@ -653,9 +632,15 @@ function TurretDashboardPage() {
 				</Card>
 			</div>
 
+			<BackendHealthSection query={summaryQuery} />
+
 			<Card>
 				<CardHeader>
 					<CardTitle>Recent replay sessions</CardTitle>
+					<CardDescription>
+						A preview of up to 10 sessions from the last hour.
+						Totals are in the Last hour card.
+					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-2 text-sm">
 					{sessionsPreviewQuery.isLoading ? (

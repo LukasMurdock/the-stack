@@ -16,7 +16,7 @@
 		"dev": "astro dev",
 		"lint": "eslint .",
 		"prepare": "husky",
-		"test": "tsx --test \"tests/**/*.test.ts\"",
+		"test": "tsx --tsconfig tsconfig.app.json --test \"tests/**/*.test.ts\"",
 		"preview": "pnpm run build && astro preview",
 		"db:core:generate": "drizzle-kit generate --config src/bindings/d1/core/drizzle.config.ts",
 		"db:turret:generate": "drizzle-kit generate --config src/bindings/d1/turret/drizzle.config.ts",

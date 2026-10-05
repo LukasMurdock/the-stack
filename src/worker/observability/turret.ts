@@ -274,17 +274,6 @@ export async function recordBreadcrumb(
 				);
 			}
 		}
-
-		env.TURRET_ANALYTICS?.writeDataPoint({
-			blobs: [
-				"api_request",
-				request.method,
-				pathTemplate,
-				String(Math.floor(status / 100) * 100),
-				sessionId ? "has_session" : "no_session",
-			],
-			doubles: [durationMs, 1],
-		});
 	} catch (error) {
 		console.error({ action: "turret.breadcrumb_failed", requestId }, error);
 	}

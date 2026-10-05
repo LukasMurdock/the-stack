@@ -8,7 +8,9 @@ export default defineConfig({
 	// Preserve spacing between inline elements when upgrading from Astro 6.
 	compressHTML: true,
 	integrations: [react()],
-	adapter: cloudflare(),
+	// Builds and local development must not open remote binding sessions.
+	// Analytics SQL is available only in the deployed production Worker.
+	adapter: cloudflare({ remoteBindings: false }),
 	// Marketing pages are prerendered by default.
 	// Pages or islands can opt into SSR with `export const prerender = false`.
 	output: "static",

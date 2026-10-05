@@ -102,6 +102,7 @@
 		}
 	],
 	"analytics_engine_datasets": [
+		{ "binding": "TURRET_METRICS", "dataset": "turret_operations_local" },
 		{
 			"binding": "TURRET_ANALYTICS",
 			"dataset": "turret_analytics"
@@ -141,7 +142,9 @@
 					"bucket_name": "turret-replay-production"
 				}
 			],
+			"analytics": { "binding": "ANALYTICS_SQL" },
 			"analytics_engine_datasets": [
+				{ "binding": "TURRET_METRICS", "dataset": "turret_operations" },
 				{
 					"binding": "TURRET_ANALYTICS",
 					"dataset": "turret_analytics"

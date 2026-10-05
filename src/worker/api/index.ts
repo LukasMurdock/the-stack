@@ -3,6 +3,7 @@ import { Scalar } from "@scalar/hono-api-reference";
 import { createAuth, type AuthEnv } from "../auth";
 import { routes as rootRoutes } from "./routes/root";
 import { routes as bootstrapRoutes } from "./routes/bootstrap";
+import { routes as internalTurretSummaryRoutes } from "./routes/internal-turret-summary";
 import { routes as internalTurretRoutes } from "./routes/internal-turret";
 import { routes as internalTurretFeaturesRoutes } from "./routes/internal-turret-features";
 import { routes as internalTurretComplianceRoutes } from "./routes/internal-turret-compliance";
@@ -18,6 +19,7 @@ const apiRoutes = api
 	.route("/", rootRoutes)
 	.route("/", bootstrapRoutes)
 	.route("/", turretRoutes)
+	.route("/", internalTurretSummaryRoutes)
 	.route("/", internalTurretRoutes)
 	.route("/", internalTurretFeaturesRoutes)
 	.route("/", internalTurretComplianceRoutes)

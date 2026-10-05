@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import worker, { type Bindings } from "../../src/worker/index";
 import { observeRequest } from "../../src/worker/observability/request";
 import type { TraceSpan } from "../../src/worker/observability/tracing";
+import { observePageRequest } from "../../src/worker/observability/page";
 
 function fixture() {
 	const sqlite = new Database(":memory:");
@@ -147,6 +148,128 @@ function wideEvents(logs: unknown[][]): Record<string, unknown>[] {
 				typeof value === "object" && value !== null && "action" in value
 		);
 }
+
+test("operational metrics survive broken replay storage and cover excluded routes once", async (t) => {
+	captureLogs(t);
+	const f = fixture();
+	t.after(() => f.sqlite.close());
+	const points: { blobs: string[]; doubles: number[]; indexes: string[] }[] =
+		[];
+	f.env.TURRET_METRICS = {
+		writeDataPoint(point) {
+			points.push(point);
+		},
+	} as never;
+	f.sqlite.exec("DROP TABLE turret_request_breadcrumbs");
+	for (const path of [
+		"/api/missing",
+		"/api/turret/missing",
+		"/api/internal/missing",
+		"/api/health",
+	]) {
+		const response = await worker.fetch(
+			new Request(`http://localhost:4321${path}?token=secret`),
+			f.env,
+			f.ctx as never
+		);
+		assert.notEqual(response.status, 500);
+	}
+	// Use middleware directly to isolate auth-category capture from auth's database setup.
+	const app = new Hono<{ Bindings: Bindings }>();
+	app.use("*", observeRequest);
+	app.get("/api/auth/example", (c) => c.json({ ok: true }));
+	await app.fetch(
+		new Request("http://localhost:4321/api/auth/example"),
+		{ ...f.env },
+		f.ctx as never
+	);
+	await f.flush();
+	assert.equal(points.length, 5);
+	assert.deepEqual(
+		points.map((point) => point.blobs[6]),
+		["application", "ingest", "admin", "health", "auth"]
+	);
+	assert.ok(
+		points.every(
+			(point) => point.blobs[0] === "v1" && point.doubles[4] === 1
+		)
+	);
+	assert.ok(!JSON.stringify(points).includes("secret"));
+});
+
+test("a failing metrics binding leaves the response and request correlation intact", async (t) => {
+	const logs = captureLogs(t);
+	const f = fixture();
+	t.after(() => f.sqlite.close());
+	f.env.TURRET_METRICS = {
+		writeDataPoint() {
+			throw new Error("metrics unavailable");
+		},
+	} as never;
+	const response = await worker.fetch(
+		new Request("http://localhost:4321/api/health"),
+		f.env,
+		f.ctx as never
+	);
+	assert.equal(response.status, 200);
+	assert.ok(response.headers.get("x-request-id"));
+	assert.equal(
+		wideEvents(logs).filter(
+			(event) => event.action === "observability.metrics_failed"
+		).length,
+		1
+	);
+});
+
+test("Astro boundary preserves response streams and logs thrown errors with safe correlation", async (t) => {
+	const logs = captureLogs(t);
+	const f = fixture();
+	t.after(() => f.sqlite.close());
+	const points: { blobs: string[]; doubles: number[] }[] = [];
+	f.env.TURRET_METRICS = {
+		writeDataPoint(point) {
+			points.push(point);
+		},
+	} as never;
+	const request = new Request(
+		"http://localhost:4321/private/customer-email?token=secret",
+		{
+			headers: { "x-request-id": "page-1", "cf-ray": "ray-1" },
+		}
+	);
+	const response = await observePageRequest(
+		request,
+		f.env,
+		f.ctx,
+		async () =>
+			new Response("page body", {
+				status: 201,
+				headers: { "content-type": "text/plain" },
+			})
+	);
+	assert.equal(response.status, 201);
+	assert.equal(response.headers.get("x-request-id"), "page-1");
+	assert.equal(await response.text(), "page body");
+	assert.equal(response.headers.get("content-type"), "text/plain");
+	const error = new Error("render failed");
+	await assert.rejects(
+		observePageRequest(request, f.env, f.ctx, async () => {
+			throw error;
+		}),
+		(actual) => actual === error
+	);
+	const events = wideEvents(logs).filter(
+		(event) => event.action === "page.request"
+	);
+	assert.equal(events.length, 2);
+	assert.equal(events[0].requestId, "page-1");
+	assert.equal(events[1].status, 500);
+	assert.equal(f.spans[1].errors[0], error);
+	assert.equal(points.length, 2);
+	assert.equal(points[1].doubles[2], 1);
+	assert.ok(!JSON.stringify(events).includes("customer-email"));
+	assert.ok(!JSON.stringify(events).includes("token=secret"));
+});
 
 test("Worker exceptions keep their stack, fingerprint and correlation without a duplicate 5xx", async (t) => {
 	const logs = captureLogs(t);

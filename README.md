@@ -11,14 +11,13 @@ API-first, type-safe template for building fast, interactive apps on Cloudflare 
 - 🔐 **Authenticate:** Sessions, email/password, OAuth, and verification flows ready to ship.
 - 📬 **Notify:** Send emails with React templates and reliable delivery.
 - 🧪 **Isolate:** Keep configs, secrets, and data separate across local/dev/staging/prod.
-- 👀 **Observe:** Turret (session replay first, errors next), plus logs, traces, and metrics to find and fix issues fast.
+- 👀 **Observe:** Turret replay and errors, correlated logs and traces, and an admin backend health dashboard.
 
-## Roadmap
+## Project guides
 
-- See `docs/ROADMAP.md` for priorities and execution phases.
-- See `CONTRIBUTING.md` for local workflow and PR expectations.
-- See `SECURITY.md` for vulnerability reporting.
-- See `LICENSE` for usage terms.
+- [Contributing](CONTRIBUTING.md): local workflow and PR expectations
+- [Security](SECURITY.md): vulnerability reporting
+- [License](LICENSE): usage terms
 
 ## Built with
 
@@ -99,6 +98,8 @@ flowchart TB
     TR2[(Cloudflare R2<br/>TURRET_REPLAY_BUCKET)]
     TKV[(Cloudflare KV<br/>TURRET_CFG)]
     TAE[(Analytics Engine<br/>TURRET_ANALYTICS)]
+    TMET[(Operational Metrics<br/>TURRET_METRICS)]
+    ASQL[Analytics SQL<br/>ANALYTICS_SQL]
     RESEND[(Resend<br/>Email Delivery)]
   end
 
@@ -121,6 +122,9 @@ flowchart TB
   TUR -->|"write aggregates"| TAE
   TINT -->|"read index"| TDB
   TINT -->|"read chunks"| TR2
+  TINT -->|"backend health queries"| ASQL
+  ASQL -->|"read sampled metrics"| TMET
+  W -->|"API/page metrics"| TMET
 
   W -->|"record /api/* errors"| TDB
   AUTH -->|"send verification email"| RESEND
@@ -128,17 +132,18 @@ flowchart TB
 
 ## Turret (Built-in Observability)
 
-Turret is The Stack's built-in observability platform (session replay + errors).
+Turret combines session replay, error monitoring, correlated request logs, native Workers traces, and operational metrics. The admin dashboard shows complete hourly replay totals plus sampled request volume, server errors, latency, and route/deployment context.
 
-See `docs/turret.md`.
+- [Turret architecture and behavior](docs/turret.md)
+- [Observability setup and operations](docs/observability-operations.md): included defaults, account setup, SQL recipes, alerts, domain tracing, and retention
+
+Local replay totals use local D1. Backend health queries require the deployed production Analytics SQL binding and display unavailable locally. Configure dashboards, alert destinations, domain tracing, and exports for each project using the operations checklist.
 
 ## Getting started
 
 ### 10-minute quickstart (golden path)
 
 Use this exact flow for a first local run.
-
-For current priorities and planned phases, see `docs/ROADMAP.md`.
 
 Prerequisites:
 
@@ -402,6 +407,8 @@ Verify deployment:
 curl -i "https://<your-domain>/api/health"
 curl -i "https://<your-domain>/api/scalar"
 ```
+
+Complete the [per-project observability checks](docs/observability-operations.md#per-project-acceptance-checklist) to verify telemetry, backend health, and any account alerts or exports.
 
 After the first deploy, bootstrap the initial admin user (sends a password reset email to `ADMIN_EMAIL`):
 

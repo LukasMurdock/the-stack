@@ -6,6 +6,7 @@ import type {
 	TurretRequestSpan as ContractTurretRequestSpan,
 	TurretReplaySessionSpansGroupedResponse as ContractTurretReplaySessionSpansGroupedResponse,
 } from "../../contracts/turret";
+import type { TurretSummary } from "../../contracts/observability";
 
 async function internalTurretFetch(
 	path: string,
@@ -426,6 +427,13 @@ async function getDashboardUsers(opts?: {
 	return jsonOrThrow<TurretDashboardUsersResponse>(res);
 }
 
+export type { TurretSummary };
+
+async function getTurretSummary(): Promise<TurretSummary> {
+	const res = await internalTurretFetch("/summary");
+	return jsonOrThrow<TurretSummary>(res);
+}
+
 async function listIssues(input: {
 	status?: TurretIssueStatus;
 	q?: string;
@@ -569,6 +577,7 @@ export {
 	getCompliance,
 	setCompliance,
 	getDashboardUsers,
+	getTurretSummary,
 	listIssues,
 	getIssue,
 	getIssueTrend,
