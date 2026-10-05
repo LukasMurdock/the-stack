@@ -19,7 +19,7 @@ import {
 import { Area, AreaChart, Tooltip, XAxis, YAxis } from "recharts";
 
 import {
-	turretSessionsQueryOptions,
+	turretReplaySessionsQueryOptions,
 	turretDashboardUsersQueryOptions,
 	turretIssuesQueryOptions,
 } from "../../../queries/turretQueries";
@@ -58,7 +58,7 @@ function TurretDashboardPage() {
 		turretDashboardUsersQueryOptions({ to: now })
 	);
 	const sessionsPreviewQuery = useQuery(
-		turretSessionsQueryOptions({
+		turretReplaySessionsQueryOptions({
 			from: now - 60 * 60 * 1000,
 			to: now,
 			limit: 10,
@@ -66,7 +66,7 @@ function TurretDashboardPage() {
 		})
 	);
 	const recentUsersQuery = useQuery(
-		turretSessionsQueryOptions({
+		turretReplaySessionsQueryOptions({
 			from: now - 24 * 60 * 60 * 1000,
 			to: now,
 			limit: 200,
@@ -263,12 +263,12 @@ function TurretDashboardPage() {
 						variant="outline"
 						onClick={() =>
 							navigate({
-								to: "/ts_admin/turret/sessions",
+								to: "/ts_admin/turret/replay-sessions",
 								search: defaultSessionsSearch,
 							})
 						}
 					>
-						View sessions
+						View replay sessions
 					</Button>
 				</div>
 			</div>
@@ -315,156 +315,147 @@ function TurretDashboardPage() {
 				</Card>
 
 				<Card>
-					<CardHeader className="space-y-2">
-						<div className="flex flex-wrap items-center justify-between gap-2">
-							<CardTitle>Users</CardTitle>
-							<Tabs defaultValue="total" className="w-auto">
-								<TabsList>
-									<TabsTrigger value="total">
-										Total users
-									</TabsTrigger>
-									<TabsTrigger value="new">
-										New users
-									</TabsTrigger>
-									<TabsTrigger value="retention">
-										Retention
-									</TabsTrigger>
-								</TabsList>
-								<TabsContent value="total" className="mt-3">
-									<div className="text-xs text-muted-foreground">
-										Total Users (Last 8 weeks)
-									</div>
-									<div className="mt-1 flex items-baseline justify-between gap-3">
-										<div className="text-3xl font-semibold tabular-nums">
-											{dashboardUsersQuery.isLoading
-												? "…"
-												: dashboard
-													? formatCompact(
-															dashboard.totalUsersNow
-														)
-													: "-"}
-										</div>
-										{dashboard ? (
-											<DeltaLine
-												pct={
-													dashboard.totalUsersDeltaPct
-												}
-												label="from previous week"
-											/>
-										) : null}
-									</div>
-									{dashboard ? (
-										<SparkArea
-											data={
-												dashboard.seriesTotalUsersWeekly.map(
-													(p) => ({
-														...p,
-														v: p.value,
-													})
-												) as any
-											}
-											valueKey="v"
-										/>
-									) : (
-										<div className="h-24" />
-									)}
-								</TabsContent>
-								<TabsContent value="new" className="mt-3">
-									<div className="text-xs text-muted-foreground">
-										New Users (Last 8 weeks)
-									</div>
-									<div className="mt-1 flex items-baseline justify-between gap-3">
-										<div className="text-3xl font-semibold tabular-nums">
-											{dashboardUsersQuery.isLoading
-												? "…"
-												: dashboard
-													? formatCompact(
-															dashboard
-																.seriesNewUsersWeekly[
-																dashboard
-																	.seriesNewUsersWeekly
-																	.length - 1
-															]?.value ?? 0
-														)
-													: "-"}
-										</div>
-										{dashboard ? (
-											<DeltaLine
-												pct={
-													dashboard.newUsersDeltaPctWoW
-												}
-												label="from previous week"
-											/>
-										) : null}
-									</div>
-									{dashboard ? (
-										<SparkArea
-											data={
-												dashboard.seriesNewUsersWeekly.map(
-													(p) => ({
-														...p,
-														v: p.value,
-													})
-												) as any
-											}
-											valueKey="v"
-										/>
-									) : (
-										<div className="h-24" />
-									)}
-								</TabsContent>
-								<TabsContent value="retention" className="mt-3">
-									<div className="text-xs text-muted-foreground">
-										New-user retention (week +1)
-									</div>
-									<div className="mt-1 flex items-baseline justify-between gap-3">
-										<div className="text-3xl font-semibold tabular-nums">
-											{dashboardUsersQuery.isLoading
-												? "…"
-												: dashboard
-													? (() => {
-															const v =
-																dashboard
-																	.seriesNewUserRetentionWeeklyPct[
-																	dashboard
-																		.seriesNewUserRetentionWeeklyPct
-																		.length -
-																		1
-																]?.value;
-															return v == null
-																? "-"
-																: `${v.toFixed(1)}%`;
-														})()
-													: "-"}
-										</div>
-										{dashboard ? (
-											<DeltaLine
-												pct={
-													dashboard.retentionDeltaPctWoW
-												}
-												label="from previous week"
-											/>
-										) : null}
-									</div>
-									{dashboard ? (
-										<SparkArea
-											data={
-												dashboard.seriesNewUserRetentionWeeklyPct.map(
-													(p) => ({
-														...p,
-														v: p.value,
-													})
-												) as any
-											}
-											valueKey="v"
-										/>
-									) : (
-										<div className="h-24" />
-									)}
-								</TabsContent>
-							</Tabs>
-						</div>
+					<CardHeader>
+						<CardTitle>Users</CardTitle>
 					</CardHeader>
+					<CardContent>
+						<Tabs defaultValue="total" className="w-full flex-col">
+							<TabsList>
+								<TabsTrigger value="total">
+									Total users
+								</TabsTrigger>
+								<TabsTrigger value="new">New users</TabsTrigger>
+								<TabsTrigger value="retention">
+									Retention
+								</TabsTrigger>
+							</TabsList>
+							<TabsContent value="total" className="mt-3">
+								<div className="text-xs text-muted-foreground">
+									Total Users (Last 8 weeks)
+								</div>
+								<div className="mt-1 flex items-baseline justify-between gap-3">
+									<div className="text-3xl font-semibold tabular-nums">
+										{dashboardUsersQuery.isLoading
+											? "…"
+											: dashboard
+												? formatCompact(
+														dashboard.totalUsersNow
+													)
+												: "-"}
+									</div>
+									{dashboard ? (
+										<DeltaLine
+											pct={dashboard.totalUsersDeltaPct}
+											label="from previous week"
+										/>
+									) : null}
+								</div>
+								{dashboard ? (
+									<SparkArea
+										data={
+											dashboard.seriesTotalUsersWeekly.map(
+												(p) => ({
+													...p,
+													v: p.value,
+												})
+											) as any
+										}
+										valueKey="v"
+									/>
+								) : (
+									<div className="h-24" />
+								)}
+							</TabsContent>
+							<TabsContent value="new" className="mt-3">
+								<div className="text-xs text-muted-foreground">
+									New Users (Last 8 weeks)
+								</div>
+								<div className="mt-1 flex items-baseline justify-between gap-3">
+									<div className="text-3xl font-semibold tabular-nums">
+										{dashboardUsersQuery.isLoading
+											? "…"
+											: dashboard
+												? formatCompact(
+														dashboard
+															.seriesNewUsersWeekly[
+															dashboard
+																.seriesNewUsersWeekly
+																.length - 1
+														]?.value ?? 0
+													)
+												: "-"}
+									</div>
+									{dashboard ? (
+										<DeltaLine
+											pct={dashboard.newUsersDeltaPctWoW}
+											label="from previous week"
+										/>
+									) : null}
+								</div>
+								{dashboard ? (
+									<SparkArea
+										data={
+											dashboard.seriesNewUsersWeekly.map(
+												(p) => ({
+													...p,
+													v: p.value,
+												})
+											) as any
+										}
+										valueKey="v"
+									/>
+								) : (
+									<div className="h-24" />
+								)}
+							</TabsContent>
+							<TabsContent value="retention" className="mt-3">
+								<div className="text-xs text-muted-foreground">
+									New-user retention (week +1)
+								</div>
+								<div className="mt-1 flex items-baseline justify-between gap-3">
+									<div className="text-3xl font-semibold tabular-nums">
+										{dashboardUsersQuery.isLoading
+											? "…"
+											: dashboard
+												? (() => {
+														const v =
+															dashboard
+																.seriesNewUserRetentionWeeklyPct[
+																dashboard
+																	.seriesNewUserRetentionWeeklyPct
+																	.length - 1
+															]?.value;
+														return v == null
+															? "-"
+															: `${v.toFixed(1)}%`;
+													})()
+												: "-"}
+									</div>
+									{dashboard ? (
+										<DeltaLine
+											pct={dashboard.retentionDeltaPctWoW}
+											label="from previous week"
+										/>
+									) : null}
+								</div>
+								{dashboard ? (
+									<SparkArea
+										data={
+											dashboard.seriesNewUserRetentionWeeklyPct.map(
+												(p) => ({
+													...p,
+													v: p.value,
+												})
+											) as any
+										}
+										valueKey="v"
+									/>
+								) : (
+									<div className="h-24" />
+								)}
+							</TabsContent>
+						</Tabs>
+					</CardContent>
 				</Card>
 
 				<Card>
@@ -520,7 +511,7 @@ function TurretDashboardPage() {
 												className="cursor-pointer"
 												onClick={() =>
 													navigate({
-														to: "/ts_admin/turret/sessions/$sessionId",
+														to: "/ts_admin/turret/replay-sessions/$sessionId",
 														params: {
 															sessionId:
 																s.sessionId,
@@ -567,7 +558,7 @@ function TurretDashboardPage() {
 					<CardContent className="space-y-1 text-sm">
 						<div className="flex items-center justify-between gap-3">
 							<div className="text-muted-foreground">
-								Sessions
+								Replay sessions
 							</div>
 							<div className="font-medium">
 								{sessionsPreviewQuery.isLoading
@@ -612,7 +603,7 @@ function TurretDashboardPage() {
 						<Separator />
 						<div className="flex items-center justify-between gap-3">
 							<div className="text-muted-foreground">
-								Error sessions (1h)
+								Error replay sessions (1h)
 							</div>
 							<div className="font-medium">
 								{sessionsPreviewQuery.isLoading
@@ -646,7 +637,7 @@ function TurretDashboardPage() {
 								variant="outline"
 								onClick={() =>
 									navigate({
-										to: "/ts_admin/turret/sessions",
+										to: "/ts_admin/turret/replay-sessions",
 										search: {
 											...defaultSessionsSearch,
 											hasError: true,
@@ -655,7 +646,7 @@ function TurretDashboardPage() {
 									})
 								}
 							>
-								View error sessions
+								View error replay sessions
 							</Button>
 						</div>
 					</CardContent>
@@ -664,18 +655,18 @@ function TurretDashboardPage() {
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Recent sessions</CardTitle>
+					<CardTitle>Recent replay sessions</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-2 text-sm">
 					{sessionsPreviewQuery.isLoading ? (
 						<div className="text-muted-foreground">Loading…</div>
 					) : sessionsPreviewQuery.isError ? (
 						<div className="text-muted-foreground">
-							Failed to load sessions.
+							Failed to load replay sessions.
 						</div>
 					) : sessions.length === 0 ? (
 						<div className="text-muted-foreground">
-							No sessions in the last hour.
+							No replay sessions in the last hour.
 						</div>
 					) : (
 						<div className="divide-y rounded-md border">
@@ -686,7 +677,7 @@ function TurretDashboardPage() {
 									className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/20"
 									onClick={() =>
 										navigate({
-											to: "/ts_admin/turret/sessions/$sessionId",
+											to: "/ts_admin/turret/replay-sessions/$sessionId",
 											params: { sessionId: s.sessionId },
 										})
 									}

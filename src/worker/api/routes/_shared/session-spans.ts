@@ -4,9 +4,9 @@ import { turretRequestSpanSchema } from "../../../../contracts/turret";
 
 type D1Database = globalThis.D1Database;
 
-const MAX_SESSION_SPANS_LIMIT = 5000;
+const MAX_REPLAY_SESSION_SPANS_LIMIT = 5000;
 
-const SESSION_SPANS_SQL = `
+const REPLAY_SESSION_SPANS_SQL = `
 	SELECT
 		s.id AS id,
 		s.request_id AS requestId,
@@ -46,20 +46,23 @@ function toIsoString(value: unknown): string {
 
 type TurretRequestSpan = z.infer<typeof turretRequestSpanSchema>;
 
-export function normalizeSessionSpansPagination(input: {
+export function normalizeReplaySessionSpansPagination(input: {
 	limitRaw?: string;
 	offsetRaw?: string;
 }): { limit: number; offset: number } {
 	const { limitRaw, offsetRaw } = input;
 	const limit = Math.max(
 		1,
-		Math.min(MAX_SESSION_SPANS_LIMIT, Number(limitRaw ?? "5000") || 5000)
+		Math.min(
+			MAX_REPLAY_SESSION_SPANS_LIMIT,
+			Number(limitRaw ?? "5000") || 5000
+		)
 	);
 	const offset = Math.max(0, Number(offsetRaw ?? "0") || 0);
 	return { limit, offset };
 }
 
-export async function loadSessionSpansGrouped(input: {
+export async function loadReplaySessionSpansGrouped(input: {
 	db: D1Database;
 	sessionId: string;
 	limit: number;
@@ -74,7 +77,7 @@ export async function loadSessionSpansGrouped(input: {
 > {
 	const { db, sessionId, limit, offset } = input;
 	const res = await db
-		.prepare(SESSION_SPANS_SQL)
+		.prepare(REPLAY_SESSION_SPANS_SQL)
 		.bind(sessionId, limit + 1, offset)
 		.all();
 

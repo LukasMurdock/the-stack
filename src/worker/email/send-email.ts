@@ -1,6 +1,13 @@
 import { Resend } from "resend";
+import { recordEmailLogOnlyEvent } from "../observability/evlog";
+import {
+	traceOperation,
+	type ObservabilityContext,
+} from "../observability/tracing";
 
 type SendEmailOptions = {
+	ctx?: ObservabilityContext;
+	type?: "reset-password" | "verify-email" | "generic";
 	resendApiKey: string | undefined;
 	from: string;
 	to: string;
@@ -11,6 +18,8 @@ type SendEmailOptions = {
 };
 
 export async function sendEmail({
+	ctx,
+	type = "generic",
 	resendApiKey,
 	from,
 	to,
@@ -23,17 +32,29 @@ export async function sendEmail({
 
 	if (shouldLogOnly) {
 		// Intentionally avoid rendering full HTML here; local dev should be log-only.
-		console.log("[email:log-only]", { to, from, subject });
+		recordEmailLogOnlyEvent({ type, to, from, subject });
 		return;
 	}
 
-	const resend = new Resend(resendApiKey);
-
-	await resend.emails.send({
-		from,
-		to,
-		subject,
-		html,
-		text,
-	});
+	await traceOperation(
+		ctx,
+		"email.send",
+		{ "email.type": type },
+		async () => {
+			const resend = new Resend(resendApiKey);
+			const result = await resend.emails.send({
+				from,
+				to,
+				subject,
+				html,
+				text,
+			});
+			// Resend reports provider failures as data rather than rejected promises.
+			if (result.error) {
+				const error = new Error(result.error.message);
+				error.name = result.error.name;
+				throw error;
+			}
+		}
+	);
 }

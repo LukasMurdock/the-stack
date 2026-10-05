@@ -2,12 +2,12 @@ import { queryOptions } from "@tanstack/react-query";
 import {
 	getFeatures,
 	getCompliance,
-	getSessionBreadcrumbs,
-	getSessionChunks,
-	getSessionErrors,
-	getSessionSpans,
-	getSessionMeta,
-	listSessions,
+	getReplaySessionBreadcrumbs,
+	getReplaySessionChunks,
+	getReplaySessionErrors,
+	getReplaySessionSpans,
+	getReplaySessionMeta,
+	listReplaySessions,
 	setCompliance,
 	setFeatures,
 	turretHealth,
@@ -17,11 +17,11 @@ import {
 	getIssueTrend,
 	getIssueEvents,
 	listFeedback,
-	listSessionFeedback,
+	listReplaySessionFeedback,
 	patchFeedbackStatus,
 	type TurretFeatures,
 	type TurretCompliancePolicy,
-	type TurretSessionsQuery,
+	type TurretReplaySessionsQuery,
 	type TurretIssueStatus,
 	type TurretFeedbackKind,
 	type TurretFeedbackStatus,
@@ -33,51 +33,51 @@ const turretHealthQueryOptions = queryOptions({
 	retry: false,
 });
 
-const turretSessionsQueryOptions = (input: TurretSessionsQuery) =>
+const turretReplaySessionsQueryOptions = (input: TurretReplaySessionsQuery) =>
 	queryOptions({
 		queryKey: ["turret", "sessions", input],
-		queryFn: () => listSessions(input),
+		queryFn: () => listReplaySessions(input),
 		retry: false,
 	});
 
-const turretSessionMetaQueryOptions = (sessionId: string) =>
+const turretReplaySessionMetaQueryOptions = (sessionId: string) =>
 	queryOptions({
 		queryKey: ["turret", "session", sessionId, "meta"],
-		queryFn: () => getSessionMeta(sessionId),
+		queryFn: () => getReplaySessionMeta(sessionId),
 		retry: false,
 	});
 
-const turretSessionChunksQueryOptions = (sessionId: string) =>
+const turretReplaySessionChunksQueryOptions = (sessionId: string) =>
 	queryOptions({
 		queryKey: ["turret", "session", sessionId, "chunks"],
-		queryFn: () => getSessionChunks(sessionId),
+		queryFn: () => getReplaySessionChunks(sessionId),
 		retry: false,
 	});
 
-const turretSessionErrorsQueryOptions = (sessionId: string) =>
+const turretReplaySessionErrorsQueryOptions = (sessionId: string) =>
 	queryOptions({
 		queryKey: ["turret", "session", sessionId, "errors"],
-		queryFn: () => getSessionErrors(sessionId),
+		queryFn: () => getReplaySessionErrors(sessionId),
 		retry: false,
 	});
 
-const turretSessionBreadcrumbsQueryOptions = (
+const turretReplaySessionBreadcrumbsQueryOptions = (
 	sessionId: string,
 	input?: { limit?: number; offset?: number }
 ) =>
 	queryOptions({
 		queryKey: ["turret", "session", sessionId, "breadcrumbs", input],
-		queryFn: () => getSessionBreadcrumbs(sessionId, input),
+		queryFn: () => getReplaySessionBreadcrumbs(sessionId, input),
 		retry: false,
 	});
 
-const turretSessionSpansQueryOptions = (
+const turretReplaySessionSpansQueryOptions = (
 	sessionId: string,
 	input?: { limit?: number; offset?: number }
 ) =>
 	queryOptions({
 		queryKey: ["turret", "session", sessionId, "spans", input],
-		queryFn: () => getSessionSpans(sessionId, input),
+		queryFn: () => getReplaySessionSpans(sessionId, input),
 		retry: false,
 	});
 
@@ -163,13 +163,13 @@ const turretFeedbackQueryOptions = (input: {
 		retry: false,
 	});
 
-const turretSessionFeedbackQueryOptions = (
+const turretReplaySessionFeedbackQueryOptions = (
 	sessionId: string,
 	input?: { limit?: number; offset?: number }
 ) =>
 	queryOptions({
 		queryKey: ["turret", "session", sessionId, "feedback", input],
-		queryFn: () => listSessionFeedback(sessionId, input),
+		queryFn: () => listReplaySessionFeedback(sessionId, input),
 		retry: false,
 	});
 
@@ -180,12 +180,12 @@ const turretFeedbackStatusMutation = (input: {
 
 export {
 	turretHealthQueryOptions,
-	turretSessionsQueryOptions,
-	turretSessionMetaQueryOptions,
-	turretSessionChunksQueryOptions,
-	turretSessionErrorsQueryOptions,
-	turretSessionBreadcrumbsQueryOptions,
-	turretSessionSpansQueryOptions,
+	turretReplaySessionsQueryOptions,
+	turretReplaySessionMetaQueryOptions,
+	turretReplaySessionChunksQueryOptions,
+	turretReplaySessionErrorsQueryOptions,
+	turretReplaySessionBreadcrumbsQueryOptions,
+	turretReplaySessionSpansQueryOptions,
 	turretFeaturesQueryOptions,
 	turretFeaturesMutation,
 	turretComplianceQueryOptions,
@@ -196,6 +196,6 @@ export {
 	turretIssueTrendQueryOptions,
 	turretIssueEventsQueryOptions,
 	turretFeedbackQueryOptions,
-	turretSessionFeedbackQueryOptions,
+	turretReplaySessionFeedbackQueryOptions,
 	turretFeedbackStatusMutation,
 };

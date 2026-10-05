@@ -20,7 +20,7 @@ type ErrorResponse = {
 
 test("turret init returns 503 in off mode", async () => {
 	const res = await turretApp.fetch(
-		new Request("http://local.test/turret/session/init", {
+		new Request("http://local.test/turret/replay-session/init", {
 			method: "POST",
 			headers: {
 				Origin: "http://localhost:4321",
@@ -40,7 +40,7 @@ test("turret init returns 503 in off mode", async () => {
 
 test("turret init degrades full mode without signing key", async () => {
 	const res = await turretApp.fetch(
-		new Request("http://local.test/turret/session/init", {
+		new Request("http://local.test/turret/replay-session/init", {
 			method: "POST",
 			headers: {
 				Origin: "http://localhost:4321",

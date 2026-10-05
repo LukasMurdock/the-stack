@@ -93,8 +93,8 @@ function HomePage() {
 					</div>
 					<div className="text-sm text-muted-foreground">
 						{turretActive
-							? "Events should appear in the session"
-							: "Log in to start a session"}
+							? "Events should appear in the replay session"
+							: "Log in to start a replay session"}
 					</div>
 				</div>
 
@@ -103,7 +103,7 @@ function HomePage() {
 						type="button"
 						disabled={!turretActive}
 						onClick={() => {
-							// Sends via turretReportSessionError if capture is active.
+							// Sends via turretReportReplaySessionError if capture is active.
 							reportError(
 								new Error("Intentional UI test error"),
 								{

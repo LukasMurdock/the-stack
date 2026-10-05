@@ -1,5 +1,6 @@
 # Local development secrets for `wrangler dev` / Cloudflare Vite plugin.
 # Copy to `.dev.vars` and fill in real values.
+# Non-sensitive local defaults like APP_URL and ADMIN_EMAIL live in wrangler.json vars.
 
 # Better Auth
 # Generate a secret with:
@@ -8,13 +9,6 @@ BETTER_AUTH_SECRET="replace-me"
 
 # Used by the one-time bootstrap admin endpoint.
 BOOTSTRAP_SECRET="replace-me"
-
-# App
-# Used for email links (password reset / email verification) and the admin bootstrap flow.
-APP_URL="http://localhost:4321"
-
-# Where the bootstrap endpoint sends the reset email.
-ADMIN_EMAIL="admin@example.com"
 
 # Auth policy
 # invite_only (default): only admin-provisioned accounts can sign in.

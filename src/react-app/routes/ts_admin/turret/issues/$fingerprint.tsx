@@ -239,7 +239,7 @@ function TurretIssueDetailPage() {
 						variant="outline"
 						onClick={() =>
 							navigate({
-								to: "/ts_admin/turret/sessions",
+								to: "/ts_admin/turret/replay-sessions",
 								search: {
 									q: "",
 									hasError: false,
@@ -253,7 +253,7 @@ function TurretIssueDetailPage() {
 							})
 						}
 					>
-						Sessions
+						Replay sessions
 					</Button>
 				</div>
 			</div>
@@ -384,7 +384,7 @@ function TurretIssueDetailPage() {
 										</div>
 										<div>
 											<span className="text-muted-foreground">
-												Sessions:
+												Replay sessions:
 											</span>{" "}
 											{issue.sessionsAffectedTotal.toLocaleString()}
 										</div>
@@ -393,9 +393,10 @@ function TurretIssueDetailPage() {
 							</div>
 
 							<div className="text-xs text-muted-foreground">
-								Counts reflect retained events. Session-bound
-								events expire with session retention;
-								non-session worker events expire after 24h.
+								Counts reflect retained events.
+								Replay-session-bound events expire with replay
+								session retention; non-replay-session worker
+								events expire after 24h.
 							</div>
 						</>
 					)}
@@ -628,7 +629,7 @@ function TurretIssueDetailPage() {
 															type="button"
 															onClick={() =>
 																navigate({
-																	to: "/ts_admin/turret/sessions/$sessionId",
+																	to: "/ts_admin/turret/replay-sessions/$sessionId",
 																	params: {
 																		sessionId:
 																			e.sessionId as string,

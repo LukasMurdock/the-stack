@@ -24,6 +24,8 @@ import { Route as Ts_adminUsersUserIdRouteImport } from "./routes/ts_admin/users
 import { Route as Ts_adminTurretFeedbackIndexRouteImport } from "./routes/ts_admin/turret/feedback/index"
 import { Route as Ts_adminTurretIssuesIndexRouteImport } from "./routes/ts_admin/turret/issues/index"
 import { Route as Ts_adminTurretIssuesFingerprintRouteImport } from "./routes/ts_admin/turret/issues/$fingerprint"
+import { Route as Ts_adminTurretReplaySessionsIndexRouteImport } from "./routes/ts_admin/turret/replay-sessions/index"
+import { Route as Ts_adminTurretReplaySessionsSessionIdRouteImport } from "./routes/ts_admin/turret/replay-sessions/$sessionId"
 import { Route as Ts_adminTurretSessionsIndexRouteImport } from "./routes/ts_admin/turret/sessions/index"
 import { Route as Ts_adminTurretSessionsSessionIdRouteImport } from "./routes/ts_admin/turret/sessions/$sessionId"
 import { Route as Ts_adminTurretSettingsIndexRouteImport } from "./routes/ts_admin/turret/settings/index"
@@ -106,6 +108,18 @@ const Ts_adminTurretIssuesFingerprintRoute =
     path: "/turret/issues/$fingerprint",
     getParentRoute: () => Ts_adminRoute,
   } as any)
+const Ts_adminTurretReplaySessionsIndexRoute =
+  Ts_adminTurretReplaySessionsIndexRouteImport.update({
+    id: "/turret/replay-sessions/",
+    path: "/turret/replay-sessions/",
+    getParentRoute: () => Ts_adminRoute,
+  } as any)
+const Ts_adminTurretReplaySessionsSessionIdRoute =
+  Ts_adminTurretReplaySessionsSessionIdRouteImport.update({
+    id: "/turret/replay-sessions/$sessionId",
+    path: "/turret/replay-sessions/$sessionId",
+    getParentRoute: () => Ts_adminRoute,
+  } as any)
 const Ts_adminTurretSessionsIndexRoute =
   Ts_adminTurretSessionsIndexRouteImport.update({
     id: "/turret/sessions/",
@@ -138,9 +152,11 @@ export interface FileRoutesByFullPath {
   "/ts_admin/turret/": typeof Ts_adminTurretIndexRoute
   "/ts_admin/users/": typeof Ts_adminUsersIndexRoute
   "/ts_admin/turret/issues/$fingerprint": typeof Ts_adminTurretIssuesFingerprintRoute
+  "/ts_admin/turret/replay-sessions/$sessionId": typeof Ts_adminTurretReplaySessionsSessionIdRoute
   "/ts_admin/turret/sessions/$sessionId": typeof Ts_adminTurretSessionsSessionIdRoute
   "/ts_admin/turret/feedback/": typeof Ts_adminTurretFeedbackIndexRoute
   "/ts_admin/turret/issues/": typeof Ts_adminTurretIssuesIndexRoute
+  "/ts_admin/turret/replay-sessions/": typeof Ts_adminTurretReplaySessionsIndexRoute
   "/ts_admin/turret/sessions/": typeof Ts_adminTurretSessionsIndexRoute
   "/ts_admin/turret/settings/": typeof Ts_adminTurretSettingsIndexRoute
 }
@@ -155,9 +171,11 @@ export interface FileRoutesByTo {
   "/ts_admin/turret": typeof Ts_adminTurretIndexRoute
   "/ts_admin/users": typeof Ts_adminUsersIndexRoute
   "/ts_admin/turret/issues/$fingerprint": typeof Ts_adminTurretIssuesFingerprintRoute
+  "/ts_admin/turret/replay-sessions/$sessionId": typeof Ts_adminTurretReplaySessionsSessionIdRoute
   "/ts_admin/turret/sessions/$sessionId": typeof Ts_adminTurretSessionsSessionIdRoute
   "/ts_admin/turret/feedback": typeof Ts_adminTurretFeedbackIndexRoute
   "/ts_admin/turret/issues": typeof Ts_adminTurretIssuesIndexRoute
+  "/ts_admin/turret/replay-sessions": typeof Ts_adminTurretReplaySessionsIndexRoute
   "/ts_admin/turret/sessions": typeof Ts_adminTurretSessionsIndexRoute
   "/ts_admin/turret/settings": typeof Ts_adminTurretSettingsIndexRoute
 }
@@ -176,9 +194,11 @@ export interface FileRoutesById {
   "/ts_admin/turret/": typeof Ts_adminTurretIndexRoute
   "/ts_admin/users/": typeof Ts_adminUsersIndexRoute
   "/ts_admin/turret/issues/$fingerprint": typeof Ts_adminTurretIssuesFingerprintRoute
+  "/ts_admin/turret/replay-sessions/$sessionId": typeof Ts_adminTurretReplaySessionsSessionIdRoute
   "/ts_admin/turret/sessions/$sessionId": typeof Ts_adminTurretSessionsSessionIdRoute
   "/ts_admin/turret/feedback/": typeof Ts_adminTurretFeedbackIndexRoute
   "/ts_admin/turret/issues/": typeof Ts_adminTurretIssuesIndexRoute
+  "/ts_admin/turret/replay-sessions/": typeof Ts_adminTurretReplaySessionsIndexRoute
   "/ts_admin/turret/sessions/": typeof Ts_adminTurretSessionsIndexRoute
   "/ts_admin/turret/settings/": typeof Ts_adminTurretSettingsIndexRoute
 }
@@ -197,9 +217,11 @@ export interface FileRouteTypes {
     | "/ts_admin/turret/"
     | "/ts_admin/users/"
     | "/ts_admin/turret/issues/$fingerprint"
+    | "/ts_admin/turret/replay-sessions/$sessionId"
     | "/ts_admin/turret/sessions/$sessionId"
     | "/ts_admin/turret/feedback/"
     | "/ts_admin/turret/issues/"
+    | "/ts_admin/turret/replay-sessions/"
     | "/ts_admin/turret/sessions/"
     | "/ts_admin/turret/settings/"
   fileRoutesByTo: FileRoutesByTo
@@ -214,9 +236,11 @@ export interface FileRouteTypes {
     | "/ts_admin/turret"
     | "/ts_admin/users"
     | "/ts_admin/turret/issues/$fingerprint"
+    | "/ts_admin/turret/replay-sessions/$sessionId"
     | "/ts_admin/turret/sessions/$sessionId"
     | "/ts_admin/turret/feedback"
     | "/ts_admin/turret/issues"
+    | "/ts_admin/turret/replay-sessions"
     | "/ts_admin/turret/sessions"
     | "/ts_admin/turret/settings"
   id:
@@ -234,9 +258,11 @@ export interface FileRouteTypes {
     | "/ts_admin/turret/"
     | "/ts_admin/users/"
     | "/ts_admin/turret/issues/$fingerprint"
+    | "/ts_admin/turret/replay-sessions/$sessionId"
     | "/ts_admin/turret/sessions/$sessionId"
     | "/ts_admin/turret/feedback/"
     | "/ts_admin/turret/issues/"
+    | "/ts_admin/turret/replay-sessions/"
     | "/ts_admin/turret/sessions/"
     | "/ts_admin/turret/settings/"
   fileRoutesById: FileRoutesById
@@ -353,6 +379,20 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof Ts_adminTurretIssuesFingerprintRouteImport
       parentRoute: typeof Ts_adminRoute
     }
+    "/ts_admin/turret/replay-sessions/": {
+      id: "/ts_admin/turret/replay-sessions/"
+      path: "/turret/replay-sessions"
+      fullPath: "/ts_admin/turret/replay-sessions/"
+      preLoaderRoute: typeof Ts_adminTurretReplaySessionsIndexRouteImport
+      parentRoute: typeof Ts_adminRoute
+    }
+    "/ts_admin/turret/replay-sessions/$sessionId": {
+      id: "/ts_admin/turret/replay-sessions/$sessionId"
+      path: "/turret/replay-sessions/$sessionId"
+      fullPath: "/ts_admin/turret/replay-sessions/$sessionId"
+      preLoaderRoute: typeof Ts_adminTurretReplaySessionsSessionIdRouteImport
+      parentRoute: typeof Ts_adminRoute
+    }
     "/ts_admin/turret/sessions/": {
       id: "/ts_admin/turret/sessions/"
       path: "/turret/sessions"
@@ -424,9 +464,11 @@ interface Ts_adminRouteChildren {
   Ts_adminIndexRoute: typeof Ts_adminIndexRoute
   Ts_adminTurretIndexRoute: typeof Ts_adminTurretIndexRoute
   Ts_adminTurretIssuesFingerprintRoute: typeof Ts_adminTurretIssuesFingerprintRoute
+  Ts_adminTurretReplaySessionsSessionIdRoute: typeof Ts_adminTurretReplaySessionsSessionIdRoute
   Ts_adminTurretSessionsSessionIdRoute: typeof Ts_adminTurretSessionsSessionIdRoute
   Ts_adminTurretFeedbackIndexRoute: typeof Ts_adminTurretFeedbackIndexRoute
   Ts_adminTurretIssuesIndexRoute: typeof Ts_adminTurretIssuesIndexRoute
+  Ts_adminTurretReplaySessionsIndexRoute: typeof Ts_adminTurretReplaySessionsIndexRoute
   Ts_adminTurretSessionsIndexRoute: typeof Ts_adminTurretSessionsIndexRoute
   Ts_adminTurretSettingsIndexRoute: typeof Ts_adminTurretSettingsIndexRoute
 }
@@ -436,9 +478,13 @@ const Ts_adminRouteChildren: Ts_adminRouteChildren = {
   Ts_adminIndexRoute: Ts_adminIndexRoute,
   Ts_adminTurretIndexRoute: Ts_adminTurretIndexRoute,
   Ts_adminTurretIssuesFingerprintRoute: Ts_adminTurretIssuesFingerprintRoute,
+  Ts_adminTurretReplaySessionsSessionIdRoute:
+    Ts_adminTurretReplaySessionsSessionIdRoute,
   Ts_adminTurretSessionsSessionIdRoute: Ts_adminTurretSessionsSessionIdRoute,
   Ts_adminTurretFeedbackIndexRoute: Ts_adminTurretFeedbackIndexRoute,
   Ts_adminTurretIssuesIndexRoute: Ts_adminTurretIssuesIndexRoute,
+  Ts_adminTurretReplaySessionsIndexRoute:
+    Ts_adminTurretReplaySessionsIndexRoute,
   Ts_adminTurretSessionsIndexRoute: Ts_adminTurretSessionsIndexRoute,
   Ts_adminTurretSettingsIndexRoute: Ts_adminTurretSettingsIndexRoute,
 }

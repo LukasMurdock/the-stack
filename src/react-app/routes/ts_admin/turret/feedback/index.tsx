@@ -224,7 +224,7 @@ function TurretFeedbackPage() {
 													variant="outline"
 													onClick={() =>
 														navigate({
-															to: "/ts_admin/turret/sessions/$sessionId",
+															to: "/ts_admin/turret/replay-sessions/$sessionId",
 															params: {
 																sessionId:
 																	r.sessionId,
@@ -232,7 +232,7 @@ function TurretFeedbackPage() {
 														})
 													}
 												>
-													Open session
+													Open replay session
 												</Button>
 												<Button
 													type="button"

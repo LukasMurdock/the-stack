@@ -1,6 +1,6 @@
 import type { eventWithTime, listenerHandler } from "@rrweb/types";
 import {
-	turretInitSession,
+	turretInitReplaySession,
 	turretMarkCaptureBlocked,
 	turretUploadChunk,
 } from "./turretIngestApi";
@@ -120,7 +120,7 @@ function createTurretCapture(
 
 	async function init() {
 		const journeyId = getOrCreateJourneyId();
-		const initRes = await turretInitSession({
+		const initRes = await turretInitReplaySession({
 			journeyId,
 			initialUrl: window.location.href,
 		});

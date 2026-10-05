@@ -79,9 +79,9 @@ const TurretBlockedBodySchema = z
 	})
 	.openapi("TurretBlockedBody");
 
-const postSessionBlocked = createRoute({
+const postReplaySessionBlocked = createRoute({
 	method: "post",
-	path: "/turret/session/{id}/blocked",
+	path: "/turret/replay-session/{id}/blocked",
 	request: {
 		params: z.object({
 			id: z.string().openapi({
@@ -104,7 +104,7 @@ const postSessionBlocked = createRoute({
 	},
 	responses: {
 		200: {
-			description: "Mark capture blocked for session",
+			description: "Mark capture blocked for replay session",
 			content: {
 				"application/json": {
 					schema: OkResponseSchema,
@@ -172,9 +172,9 @@ const TurretFeedbackBodySchema = z
 	})
 	.openapi("TurretFeedbackBody");
 
-const postSessionError = createRoute({
+const postReplaySessionError = createRoute({
 	method: "post",
-	path: "/turret/session/{id}/error",
+	path: "/turret/replay-session/{id}/error",
 	request: {
 		params: z.object({
 			id: z.string().openapi({ example: "<session-id>" }),
@@ -189,7 +189,7 @@ const postSessionError = createRoute({
 	},
 	responses: {
 		200: {
-			description: "Report a client error for a session",
+			description: "Report a client error for a replay session",
 			content: { "application/json": { schema: OkResponseSchema } },
 		},
 		401: {
@@ -207,9 +207,9 @@ const postSessionError = createRoute({
 	},
 });
 
-const postSessionChunk = createRoute({
+const postReplaySessionChunk = createRoute({
 	method: "post",
-	path: "/turret/session/{id}/chunk",
+	path: "/turret/replay-session/{id}/chunk",
 	request: {
 		params: z.object({
 			id: z.string().openapi({
@@ -283,9 +283,9 @@ const postSessionChunk = createRoute({
 	},
 });
 
-const postSessionFeedback = createRoute({
+const postReplaySessionFeedback = createRoute({
 	method: "post",
-	path: "/turret/session/{id}/feedback",
+	path: "/turret/replay-session/{id}/feedback",
 	request: {
 		params: z.object({
 			id: z.string().openapi({ example: "<session-id>" }),
@@ -304,7 +304,7 @@ const postSessionFeedback = createRoute({
 	},
 	responses: {
 		200: {
-			description: "Submit user feedback for a session",
+			description: "Submit user feedback for a replay session",
 			content: { "application/json": { schema: OkResponseSchema } },
 		},
 		401: {
@@ -328,7 +328,7 @@ turretApp.use("/turret/*", async (c, next) => {
 		c.req.raw
 	);
 	if (reason) {
-		return c.json({ error: "Forbidden" }, 403, {
+		return c.json({ error: "Forbidden", code: reason }, 403, {
 			"Cache-Control": "no-store",
 		});
 	}
@@ -398,9 +398,9 @@ function disabledIngestResponse(mode: TurretModeStatus): {
 	};
 }
 
-const postSessionInit = createRoute({
+const postReplaySessionInit = createRoute({
 	method: "post",
-	path: "/turret/session/init",
+	path: "/turret/replay-session/init",
 	request: {
 		body: {
 			content: {
@@ -413,7 +413,7 @@ const postSessionInit = createRoute({
 	},
 	responses: {
 		200: {
-			description: "Initialize a Turret session",
+			description: "Initialize a Turret replay session",
 			content: {
 				"application/json": {
 					schema: InitResponseSchema,
@@ -447,7 +447,23 @@ const postSessionInit = createRoute({
 	},
 });
 
-turretApp.openapi(postSessionInit, async (c) => {
+turretApp.post("/turret/session/init", (c) =>
+	c.redirect("/api/turret/replay-session/init", 307)
+);
+turretApp.post("/turret/session/:id/blocked", (c) =>
+	c.redirect(`/api/turret/replay-session/${c.req.param("id")}/blocked`, 307)
+);
+turretApp.post("/turret/session/:id/error", (c) =>
+	c.redirect(`/api/turret/replay-session/${c.req.param("id")}/error`, 307)
+);
+turretApp.post("/turret/session/:id/chunk", (c) =>
+	c.redirect(`/api/turret/replay-session/${c.req.param("id")}/chunk`, 307)
+);
+turretApp.post("/turret/session/:id/feedback", (c) =>
+	c.redirect(`/api/turret/replay-session/${c.req.param("id")}/feedback`, 307)
+);
+
+turretApp.openapi(postReplaySessionInit, async (c) => {
 	const now = Date.now();
 	const env = c.env as unknown as AuthEnv & {
 		APP_URL?: string;
@@ -633,7 +649,7 @@ turretApp.openapi(postSessionInit, async (c) => {
 	);
 });
 
-turretApp.openapi(postSessionBlocked, async (c) => {
+turretApp.openapi(postReplaySessionBlocked, async (c) => {
 	const env = c.env as unknown as {
 		TURRET_DB: D1Database;
 		TURRET_SIGNING_KEY?: string;
@@ -687,7 +703,7 @@ turretApp.openapi(postSessionBlocked, async (c) => {
 	return c.json({ ok: true as const }, 200);
 });
 
-turretApp.openapi(postSessionError, async (c) => {
+turretApp.openapi(postReplaySessionError, async (c) => {
 	const env = c.env as unknown as {
 		TURRET_DB: D1Database;
 		TURRET_SIGNING_KEY?: string;
@@ -781,7 +797,7 @@ turretApp.openapi(postSessionError, async (c) => {
 	return c.json({ ok: true as const }, 200);
 });
 
-turretApp.openapi(postSessionChunk, async (c) => {
+turretApp.openapi(postReplaySessionChunk, async (c) => {
 	const env = c.env as unknown as {
 		TURRET_DB: D1Database;
 		TURRET_SIGNING_KEY?: string;
@@ -889,7 +905,7 @@ turretApp.openapi(postSessionChunk, async (c) => {
 	return c.json({ ok: true as const }, 200);
 });
 
-turretApp.openapi(postSessionFeedback, async (c) => {
+turretApp.openapi(postReplaySessionFeedback, async (c) => {
 	const env = c.env as unknown as {
 		TURRET_DB: D1Database;
 		TURRET_SIGNING_KEY?: string;

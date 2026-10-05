@@ -20,7 +20,7 @@ const turretRequestSpanSchema = z.object({
 	createdAt: z.string(),
 });
 
-const turretSessionSpansGroupedResponseSchema = z.object({
+const turretReplaySessionSpansGroupedResponseSchema = z.object({
 	spansByRequestId: z.record(z.string(), z.array(turretRequestSpanSchema)),
 	limit: z.number().optional(),
 	offset: z.number().optional(),
@@ -31,8 +31,8 @@ type TurretIssueStatus = z.infer<typeof turretIssueStatusSchema>;
 type TurretFeedbackKind = z.infer<typeof turretFeedbackKindSchema>;
 type TurretFeedbackStatus = z.infer<typeof turretFeedbackStatusSchema>;
 type TurretRequestSpan = z.infer<typeof turretRequestSpanSchema>;
-type TurretSessionSpansGroupedResponse = z.infer<
-	typeof turretSessionSpansGroupedResponseSchema
+type TurretReplaySessionSpansGroupedResponse = z.infer<
+	typeof turretReplaySessionSpansGroupedResponseSchema
 >;
 
 export {
@@ -40,7 +40,7 @@ export {
 	turretFeedbackKindSchema,
 	turretFeedbackStatusSchema,
 	turretRequestSpanSchema,
-	turretSessionSpansGroupedResponseSchema,
+	turretReplaySessionSpansGroupedResponseSchema,
 };
 
 export type {
@@ -48,5 +48,5 @@ export type {
 	TurretFeedbackKind,
 	TurretFeedbackStatus,
 	TurretRequestSpan,
-	TurretSessionSpansGroupedResponse,
+	TurretReplaySessionSpansGroupedResponse,
 };

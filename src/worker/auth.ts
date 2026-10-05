@@ -8,6 +8,8 @@ import { VerifyEmail } from "./emails/verify-email";
 import { sendEmail } from "./email/send-email";
 import { renderEmail } from "./emails/render";
 import { isSelfSignUpEnabled } from "./auth-signup-mode";
+import { recordEmailSendFailure } from "./observability/evlog";
+import type { ObservabilityContext } from "./observability/tracing";
 
 type AuthEnv = Env & {
 	BETTER_AUTH_SECRET: string;
@@ -19,7 +21,7 @@ type AuthEnv = Env & {
 	AUTH_SIGNUP_MODE?: string;
 };
 
-type ExecutionContextLike = { waitUntil(promise: Promise<unknown>): void };
+type ExecutionContextLike = ObservabilityContext;
 
 /**
  * await waitUntilOrAwait(ctx, sendEmail(result).catch((e) => errorReporter.capture(e));
@@ -77,7 +79,10 @@ function createAuth(env: AuthEnv, ctx?: ExecutionContextLike) {
 			enabled: true,
 			disableSignUp: !selfSignUpEnabled,
 			sendResetPassword: async ({ user, url }) => {
-				if (!env.RESEND_API_KEY) {
+				if (
+					!env.RESEND_API_KEY &&
+					["local", "dev", "development"].includes(env.APP_ENV)
+				) {
 					console.log("[email:log-only:url]", {
 						type: "reset-password",
 						to: user.email,
@@ -88,6 +93,8 @@ function createAuth(env: AuthEnv, ctx?: ExecutionContextLike) {
 				await waitUntilOrAwait(
 					ctx,
 					sendEmail({
+						ctx,
+						type: "reset-password",
 						resendApiKey: env.RESEND_API_KEY,
 						from: env.EMAIL_FROM,
 						to: user.email,
@@ -98,9 +105,12 @@ function createAuth(env: AuthEnv, ctx?: ExecutionContextLike) {
 								url,
 							})
 						)),
-					}).catch((e) =>
-						console.error("Error sending verification email", e)
-					)
+					}).catch((e) => {
+						recordEmailSendFailure({
+							type: "reset-password",
+							error: e,
+						});
+					})
 				);
 			},
 		},
@@ -126,7 +136,10 @@ function createAuth(env: AuthEnv, ctx?: ExecutionContextLike) {
 		],
 		emailVerification: {
 			sendVerificationEmail: async ({ user, url }) => {
-				if (!env.RESEND_API_KEY) {
+				if (
+					!env.RESEND_API_KEY &&
+					["local", "dev", "development"].includes(env.APP_ENV)
+				) {
 					console.log("[email:log-only:url]", {
 						type: "verify-email",
 						to: user.email,
@@ -137,6 +150,8 @@ function createAuth(env: AuthEnv, ctx?: ExecutionContextLike) {
 				await waitUntilOrAwait(
 					ctx,
 					sendEmail({
+						ctx,
+						type: "verify-email",
 						resendApiKey: env.RESEND_API_KEY,
 						from: env.EMAIL_FROM,
 						to: user.email,
@@ -147,9 +162,12 @@ function createAuth(env: AuthEnv, ctx?: ExecutionContextLike) {
 								url,
 							})
 						)),
-					}).catch((e) =>
-						console.error("Error sending verification email", e)
-					)
+					}).catch((e) => {
+						recordEmailSendFailure({
+							type: "verify-email",
+							error: e,
+						});
+					})
 				);
 			},
 		},

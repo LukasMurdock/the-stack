@@ -2,12 +2,12 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { makeTurretDb } from "../../../bindings/d1/turret/db";
 import {
 	turretRequestSpanSchema,
-	turretSessionSpansGroupedResponseSchema,
+	turretReplaySessionSpansGroupedResponseSchema,
 } from "../../../contracts/turret";
 import { requireInternalTurretAdmin } from "./_shared/admin-auth";
 import {
-	loadSessionSpansGrouped,
-	normalizeSessionSpansPagination,
+	loadReplaySessionSpansGrouped,
+	normalizeReplaySessionSpansPagination,
 } from "./_shared/session-spans";
 import { startOfUtcWeekMs } from "./_shared/time";
 
@@ -41,13 +41,13 @@ const HealthResponseSchema = z
 	})
 	.openapi("HealthResponse");
 
-const SessionsResponseSchema = z
+const ReplaySessionsResponseSchema = z
 	.object({
 		sessions: z.array(z.unknown()),
 		limit: z.number(),
 		offset: z.number(),
 	})
-	.openapi("TurretSessionsResponse");
+	.openapi("TurretReplaySessionsResponse");
 
 const WeeklyPointSchema = z.object({
 	weekStartMs: z.number(),
@@ -75,11 +75,11 @@ const DashboardResponseSchema = z
 	})
 	.openapi("TurretDashboardResponse");
 
-const SessionMetaResponseSchema = z
+const ReplaySessionMetaResponseSchema = z
 	.object({
 		session: z.unknown(),
 	})
-	.openapi("TurretSessionMetaResponse");
+	.openapi("TurretReplaySessionMetaResponse");
 
 const ChunksResponseSchema = z
 	.object({
@@ -107,12 +107,12 @@ const SpansResponseSchema = z
 	})
 	.openapi("TurretSpansResponse");
 
-const SessionSpansGroupedResponseSchema =
-	turretSessionSpansGroupedResponseSchema;
+const ReplaySessionSpansGroupedResponseSchema =
+	turretReplaySessionSpansGroupedResponseSchema;
 
-const getSessionBreadcrumbs = createRoute({
+const getReplaySessionBreadcrumbs = createRoute({
 	method: "get",
-	path: "/internal/turret/session/{id}/breadcrumbs",
+	path: "/internal/turret/replay-session/{id}/breadcrumbs",
 	request: {
 		params: z.object({
 			id: z.string().openapi({ example: "<session-id>" }),
@@ -124,7 +124,7 @@ const getSessionBreadcrumbs = createRoute({
 	},
 	responses: {
 		200: {
-			description: "List request breadcrumbs for a turret session",
+			description: "List request breadcrumbs for a replay session",
 			content: {
 				"application/json": { schema: BreadcrumbsResponseSchema },
 			},
@@ -164,9 +164,9 @@ const getRequestSpans = createRoute({
 	},
 });
 
-const getSessionSpans = createRoute({
+const getReplaySessionSpans = createRoute({
 	method: "get",
-	path: "/internal/turret/session/{id}/spans",
+	path: "/internal/turret/replay-session/{id}/spans",
 	request: {
 		params: z.object({
 			id: z.string().openapi({ example: "<session-id>" }),
@@ -178,10 +178,10 @@ const getSessionSpans = createRoute({
 	},
 	responses: {
 		200: {
-			description: "List spans for all requests in a session",
+			description: "List spans for all requests in a replay session",
 			content: {
 				"application/json": {
-					schema: SessionSpansGroupedResponseSchema,
+					schema: ReplaySessionSpansGroupedResponseSchema,
 				},
 			},
 		},
@@ -200,9 +200,9 @@ const getSessionSpans = createRoute({
 	},
 });
 
-const getSessionErrors = createRoute({
+const getReplaySessionErrors = createRoute({
 	method: "get",
-	path: "/internal/turret/session/{id}/errors",
+	path: "/internal/turret/replay-session/{id}/errors",
 	request: {
 		params: z.object({
 			id: z.string().openapi({ example: "<session-id>" }),
@@ -210,7 +210,7 @@ const getSessionErrors = createRoute({
 	},
 	responses: {
 		200: {
-			description: "List errors for a turret session",
+			description: "List errors for a replay session",
 			content: { "application/json": { schema: ErrorsResponseSchema } },
 		},
 		401: {
@@ -247,9 +247,9 @@ const getHealth = createRoute({
 	},
 });
 
-const getSessions = createRoute({
+const getReplaySessions = createRoute({
 	method: "get",
-	path: "/internal/turret/sessions",
+	path: "/internal/turret/replay-sessions",
 	request: {
 		query: z
 			.object({
@@ -261,12 +261,14 @@ const getSessions = createRoute({
 				limit: z.string().optional(),
 				offset: z.string().optional(),
 			})
-			.openapi("TurretSessionsQuery"),
+			.openapi("TurretReplaySessionsQuery"),
 	},
 	responses: {
 		200: {
-			description: "List turret sessions",
-			content: { "application/json": { schema: SessionsResponseSchema } },
+			description: "List Turret replay sessions",
+			content: {
+				"application/json": { schema: ReplaySessionsResponseSchema },
+			},
 		},
 		401: {
 			description: "Unauthorized",
@@ -303,9 +305,9 @@ const getDashboard = createRoute({
 	},
 });
 
-const getSessionMeta = createRoute({
+const getReplaySessionMeta = createRoute({
 	method: "get",
-	path: "/internal/turret/session/{id}/meta",
+	path: "/internal/turret/replay-session/{id}/meta",
 	request: {
 		params: z.object({
 			id: z.string().openapi({ example: "<session-id>" }),
@@ -313,9 +315,9 @@ const getSessionMeta = createRoute({
 	},
 	responses: {
 		200: {
-			description: "Get turret session metadata",
+			description: "Get Turret replay session metadata",
 			content: {
-				"application/json": { schema: SessionMetaResponseSchema },
+				"application/json": { schema: ReplaySessionMetaResponseSchema },
 			},
 		},
 		401: {
@@ -335,7 +337,7 @@ const getSessionMeta = createRoute({
 
 const getChunks = createRoute({
 	method: "get",
-	path: "/internal/turret/session/{id}/chunks",
+	path: "/internal/turret/replay-session/{id}/chunks",
 	request: {
 		params: z.object({
 			id: z.string().openapi({ example: "<session-id>" }),
@@ -343,7 +345,7 @@ const getChunks = createRoute({
 	},
 	responses: {
 		200: {
-			description: "List turret chunks for a session",
+			description: "List replay chunks for a replay session",
 			content: { "application/json": { schema: ChunksResponseSchema } },
 		},
 		401: {
@@ -359,7 +361,7 @@ const getChunks = createRoute({
 
 const getChunk = createRoute({
 	method: "get",
-	path: "/internal/turret/session/{id}/chunk/{seq}",
+	path: "/internal/turret/replay-session/{id}/chunk/{seq}",
 	request: {
 		params: z.object({
 			id: z.string().openapi({ example: "<session-id>" }),
@@ -391,6 +393,49 @@ const getChunk = createRoute({
 
 internalTurretApp.use("/internal/turret/*", requireInternalTurretAdmin);
 
+internalTurretApp.get("/internal/turret/sessions", (c) => {
+	const query = new URL(c.req.url).search;
+	return c.redirect(`/api/internal/turret/replay-sessions${query}`, 308);
+});
+internalTurretApp.get("/internal/turret/session/:id/meta", (c) =>
+	c.redirect(
+		`/api/internal/turret/replay-session/${c.req.param("id")}/meta`,
+		308
+	)
+);
+internalTurretApp.get("/internal/turret/session/:id/chunks", (c) =>
+	c.redirect(
+		`/api/internal/turret/replay-session/${c.req.param("id")}/chunks`,
+		308
+	)
+);
+internalTurretApp.get("/internal/turret/session/:id/chunk/:seq", (c) =>
+	c.redirect(
+		`/api/internal/turret/replay-session/${c.req.param("id")}/chunk/${c.req.param("seq")}`,
+		308
+	)
+);
+internalTurretApp.get("/internal/turret/session/:id/errors", (c) =>
+	c.redirect(
+		`/api/internal/turret/replay-session/${c.req.param("id")}/errors`,
+		308
+	)
+);
+internalTurretApp.get("/internal/turret/session/:id/breadcrumbs", (c) => {
+	const query = new URL(c.req.url).search;
+	return c.redirect(
+		`/api/internal/turret/replay-session/${c.req.param("id")}/breadcrumbs${query}`,
+		308
+	);
+});
+internalTurretApp.get("/internal/turret/session/:id/spans", (c) => {
+	const query = new URL(c.req.url).search;
+	return c.redirect(
+		`/api/internal/turret/replay-session/${c.req.param("id")}/spans${query}`,
+		308
+	);
+});
+
 internalTurretApp.openapi(getHealth, async (c) => {
 	// Quick sanity check that the binding exists.
 	await (c.env as { TURRET_DB: D1Database }).TURRET_DB.prepare(
@@ -399,7 +444,7 @@ internalTurretApp.openapi(getHealth, async (c) => {
 	return c.json({ ok: true as const }, 200);
 });
 
-internalTurretApp.openapi(getSessions, async (c) => {
+internalTurretApp.openapi(getReplaySessions, async (c) => {
 	const {
 		hasError,
 		journeyId,
@@ -422,7 +467,7 @@ internalTurretApp.openapi(getSessions, async (c) => {
 		lte(a: unknown, b: unknown): unknown;
 	};
 
-	type TurretSessionRow = {
+	type TurretReplaySessionRow = {
 		hasError: unknown;
 		journeyId: unknown;
 		initialUrl: unknown;
@@ -430,7 +475,7 @@ internalTurretApp.openapi(getSessions, async (c) => {
 		startedAt: unknown;
 	};
 
-	const filters: Array<(t: TurretSessionRow, ops: Ops) => unknown> = [];
+	const filters: Array<(t: TurretReplaySessionRow, ops: Ops) => unknown> = [];
 
 	if (hasError === "1") filters.push((t, ops) => ops.eq(t.hasError, true));
 	if (journeyId) filters.push((t, ops) => ops.eq(t.journeyId, journeyId));
@@ -606,7 +651,7 @@ internalTurretApp.openapi(getDashboard, async (c) => {
 	);
 });
 
-internalTurretApp.openapi(getSessionMeta, async (c) => {
+internalTurretApp.openapi(getReplaySessionMeta, async (c) => {
 	const { id: sessionId } = c.req.valid("param");
 	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
 	const row = await db.query.turretSessions.findFirst({
@@ -627,7 +672,7 @@ internalTurretApp.openapi(getChunks, async (c) => {
 	return c.json({ chunks: rows }, 200);
 });
 
-internalTurretApp.openapi(getSessionErrors, async (c) => {
+internalTurretApp.openapi(getReplaySessionErrors, async (c) => {
 	const { id: sessionId } = c.req.valid("param");
 	const db = makeTurretDb((c.env as { TURRET_DB: D1Database }).TURRET_DB);
 	const rows = await db.query.turretSessionErrors.findMany({
@@ -638,7 +683,7 @@ internalTurretApp.openapi(getSessionErrors, async (c) => {
 	return c.json({ errors: rows }, 200);
 });
 
-internalTurretApp.openapi(getSessionBreadcrumbs, async (c) => {
+internalTurretApp.openapi(getReplaySessionBreadcrumbs, async (c) => {
 	const { id: sessionId } = c.req.valid("param");
 	const { limit: limitRaw, offset: offsetRaw } = c.req.valid("query");
 	const limit = Number(limitRaw ?? "200");
@@ -654,15 +699,15 @@ internalTurretApp.openapi(getSessionBreadcrumbs, async (c) => {
 	return c.json({ breadcrumbs: rows, limit, offset }, 200);
 });
 
-internalTurretApp.openapi(getSessionSpans, async (c) => {
+internalTurretApp.openapi(getReplaySessionSpans, async (c) => {
 	const env = c.env as unknown as { TURRET_DB: D1Database };
 	const { id: sessionId } = c.req.valid("param");
 	const { limit: limitRaw, offset: offsetRaw } = c.req.valid("query");
-	const { limit, offset } = normalizeSessionSpansPagination({
+	const { limit, offset } = normalizeReplaySessionSpansPagination({
 		limitRaw,
 		offsetRaw,
 	});
-	const spansResult = await loadSessionSpansGrouped({
+	const spansResult = await loadReplaySessionSpansGrouped({
 		db: env.TURRET_DB,
 		sessionId,
 		limit,

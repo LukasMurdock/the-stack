@@ -4,7 +4,7 @@ import type {
 	TurretFeedbackStatus as ContractTurretFeedbackStatus,
 	TurretIssueStatus as ContractTurretIssueStatus,
 	TurretRequestSpan as ContractTurretRequestSpan,
-	TurretSessionSpansGroupedResponse as ContractTurretSessionSpansGroupedResponse,
+	TurretReplaySessionSpansGroupedResponse as ContractTurretReplaySessionSpansGroupedResponse,
 } from "../../contracts/turret";
 
 async function internalTurretFetch(
@@ -17,7 +17,7 @@ async function internalTurretFetch(
 	});
 }
 
-export type TurretSessionsQuery = {
+export type TurretReplaySessionsQuery = {
 	hasError?: boolean;
 	journeyId?: string;
 	q?: string;
@@ -27,7 +27,7 @@ export type TurretSessionsQuery = {
 	offset?: number;
 };
 
-export type TurretSession = {
+export type TurretReplaySession = {
 	sessionId: string;
 	userId: string;
 	userEmail: string | null;
@@ -56,13 +56,13 @@ export type TurretSession = {
 	updatedAt: string;
 };
 
-export type TurretSessionsResponse = {
-	sessions: TurretSession[];
+export type TurretReplaySessionsResponse = {
+	sessions: TurretReplaySession[];
 	limit: number;
 	offset: number;
 };
 
-export type TurretSessionChunk = {
+export type TurretReplaySessionChunk = {
 	sessionId: string;
 	seq: number;
 	r2Key: string;
@@ -72,10 +72,10 @@ export type TurretSessionChunk = {
 };
 
 export type TurretChunksResponse = {
-	chunks: TurretSessionChunk[];
+	chunks: TurretReplaySessionChunk[];
 };
 
-export type TurretSessionError = {
+export type TurretReplaySessionError = {
 	id: string;
 	sessionId: string | null;
 	ts: string;
@@ -89,7 +89,7 @@ export type TurretSessionError = {
 };
 
 export type TurretErrorsResponse = {
-	errors: TurretSessionError[];
+	errors: TurretReplaySessionError[];
 };
 
 export type TurretRequestBreadcrumb = {
@@ -127,11 +127,11 @@ export type TurretSpansResponse = {
 	spans: TurretRequestSpan[];
 };
 
-export type TurretSessionSpansGroupedResponse =
-	ContractTurretSessionSpansGroupedResponse;
+export type TurretReplaySessionSpansGroupedResponse =
+	ContractTurretReplaySessionSpansGroupedResponse;
 
 export type TurretMetaResponse = {
-	session: TurretSession;
+	session: TurretReplaySession;
 };
 
 export type TurretFeatures = {
@@ -289,11 +289,11 @@ async function turretHealth(): Promise<{ ok: true }> {
 	return jsonOrThrow(res) as Promise<{ ok: true }>;
 }
 
-async function listSessions(
-	query: TurretSessionsQuery
-): Promise<TurretSessionsResponse> {
+async function listReplaySessions(
+	query: TurretReplaySessionsQuery
+): Promise<TurretReplaySessionsResponse> {
 	const url = new URL(
-		"/api/internal/turret/sessions",
+		"/api/internal/turret/replay-sessions",
 		window.location.origin
 	);
 	if (query.hasError) url.searchParams.set("hasError", "1");
@@ -305,40 +305,42 @@ async function listSessions(
 	url.searchParams.set("offset", String(query.offset ?? 0));
 
 	const res = await fetch(url.toString(), { credentials: "include" });
-	return jsonOrThrow<TurretSessionsResponse>(res);
+	return jsonOrThrow<TurretReplaySessionsResponse>(res);
 }
 
-async function getSessionMeta(sessionId: string): Promise<TurretMetaResponse> {
+async function getReplaySessionMeta(
+	sessionId: string
+): Promise<TurretMetaResponse> {
 	const res = await internalTurretFetch(
-		`/session/${encodeURIComponent(sessionId)}/meta`
+		`/replay-session/${encodeURIComponent(sessionId)}/meta`
 	);
 	return jsonOrThrow<TurretMetaResponse>(res);
 }
 
-async function getSessionChunks(
+async function getReplaySessionChunks(
 	sessionId: string
 ): Promise<TurretChunksResponse> {
 	const res = await internalTurretFetch(
-		`/session/${encodeURIComponent(sessionId)}/chunks`
+		`/replay-session/${encodeURIComponent(sessionId)}/chunks`
 	);
 	return jsonOrThrow<TurretChunksResponse>(res);
 }
 
-async function getSessionErrors(
+async function getReplaySessionErrors(
 	sessionId: string
 ): Promise<TurretErrorsResponse> {
 	const res = await internalTurretFetch(
-		`/session/${encodeURIComponent(sessionId)}/errors`
+		`/replay-session/${encodeURIComponent(sessionId)}/errors`
 	);
 	return jsonOrThrow<TurretErrorsResponse>(res);
 }
 
-async function getSessionBreadcrumbs(
+async function getReplaySessionBreadcrumbs(
 	sessionId: string,
 	opts?: { limit?: number; offset?: number }
 ): Promise<TurretBreadcrumbsResponse> {
 	const url = new URL(
-		`/api/internal/turret/session/${encodeURIComponent(sessionId)}/breadcrumbs`,
+		`/api/internal/turret/replay-session/${encodeURIComponent(sessionId)}/breadcrumbs`,
 		window.location.origin
 	);
 	url.searchParams.set("limit", String(opts?.limit ?? 200));
@@ -347,18 +349,18 @@ async function getSessionBreadcrumbs(
 	return jsonOrThrow<TurretBreadcrumbsResponse>(res);
 }
 
-async function getSessionSpans(
+async function getReplaySessionSpans(
 	sessionId: string,
 	opts?: { limit?: number; offset?: number }
-): Promise<TurretSessionSpansGroupedResponse> {
+): Promise<TurretReplaySessionSpansGroupedResponse> {
 	const url = new URL(
-		`/api/internal/turret/session/${encodeURIComponent(sessionId)}/spans`,
+		`/api/internal/turret/replay-session/${encodeURIComponent(sessionId)}/spans`,
 		window.location.origin
 	);
 	url.searchParams.set("limit", String(opts?.limit ?? 5000));
 	url.searchParams.set("offset", String(opts?.offset ?? 0));
 	const res = await fetch(url.toString(), { credentials: "include" });
-	return jsonOrThrow<TurretSessionSpansGroupedResponse>(res);
+	return jsonOrThrow<TurretReplaySessionSpansGroupedResponse>(res);
 }
 
 export type TurretReplayChunkPayload = {
@@ -368,13 +370,13 @@ export type TurretReplayChunkPayload = {
 	ts_end?: number;
 };
 
-async function getSessionChunk(
+async function getReplaySessionChunk(
 	sessionId: string,
 	seq: number,
 	options?: { signal?: AbortSignal }
 ): Promise<TurretReplayChunkPayload> {
 	const res = await internalTurretFetch(
-		`/session/${encodeURIComponent(sessionId)}/chunk/${encodeURIComponent(String(seq))}`,
+		`/replay-session/${encodeURIComponent(sessionId)}/chunk/${encodeURIComponent(String(seq))}`,
 		{ signal: options?.signal }
 	);
 	return jsonOrThrow<TurretReplayChunkPayload>(res);
@@ -471,12 +473,12 @@ async function listFeedback(input: {
 	return jsonOrThrow<TurretFeedbackListResponse>(res);
 }
 
-async function listSessionFeedback(
+async function listReplaySessionFeedback(
 	sessionId: string,
 	input?: { limit?: number; offset?: number }
 ): Promise<TurretFeedbackListResponse> {
 	const url = new URL(
-		`/api/internal/turret/session/${encodeURIComponent(sessionId)}/feedback`,
+		`/api/internal/turret/replay-session/${encodeURIComponent(sessionId)}/feedback`,
 		window.location.origin
 	);
 	url.searchParams.set("limit", String(input?.limit ?? 50));
@@ -555,13 +557,13 @@ async function patchIssue(
 
 export {
 	turretHealth,
-	listSessions,
-	getSessionMeta,
-	getSessionChunks,
-	getSessionChunk,
-	getSessionErrors,
-	getSessionBreadcrumbs,
-	getSessionSpans,
+	listReplaySessions,
+	getReplaySessionMeta,
+	getReplaySessionChunks,
+	getReplaySessionChunk,
+	getReplaySessionErrors,
+	getReplaySessionBreadcrumbs,
+	getReplaySessionSpans,
 	getFeatures,
 	setFeatures,
 	getCompliance,
@@ -573,6 +575,6 @@ export {
 	getIssueEvents,
 	patchIssue,
 	listFeedback,
-	listSessionFeedback,
+	listReplaySessionFeedback,
 	patchFeedbackStatus,
 };

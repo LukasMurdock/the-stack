@@ -1,6 +1,6 @@
 import type { eventWithTime } from "@rrweb/types";
 
-import { getSessionChunk } from "../../../lib/turretApi";
+import { getReplaySessionChunk } from "../../../lib/turretApi";
 
 export const REPLAY_CHUNK_CONCURRENCY = 6;
 
@@ -36,9 +36,13 @@ export async function loadReplayEvents(input: {
 					if (index >= total) return;
 
 					const seq = seqs[index];
-					const payload = await getSessionChunk(sessionId, seq, {
-						signal: loadController.signal,
-					});
+					const payload = await getReplaySessionChunk(
+						sessionId,
+						seq,
+						{
+							signal: loadController.signal,
+						}
+					);
 
 					if (signal.aborted || loadController.signal.aborted) return;
 

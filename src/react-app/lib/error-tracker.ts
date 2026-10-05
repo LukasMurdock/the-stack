@@ -1,5 +1,5 @@
 import { getTurretContext } from "./turretContext";
-import { turretReportSessionError } from "./turretIngestApi";
+import { turretReportReplaySessionError } from "./turretIngestApi";
 
 type ErrorReportSource = "react-query" | "router" | "window";
 
@@ -26,7 +26,7 @@ function reportError(error: unknown, options: ReportErrorOptions): void {
 	const { message, stack } = normalizeError(error);
 	const ts = turret.lastRrwebTsMs ?? Date.now();
 
-	void turretReportSessionError({
+	void turretReportReplaySessionError({
 		sessionId: turret.sessionId,
 		uploadToken: turret.uploadToken,
 		payload: {

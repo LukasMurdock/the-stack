@@ -19,7 +19,7 @@ export type TurretBlockedReason =
 	| "rrweb_import_failed"
 	| "rrweb_blocked_by_client";
 
-type TurretSessionErrorPayload = {
+type TurretReplaySessionErrorPayload = {
 	ts: number;
 	source?: string;
 	message?: string;
@@ -30,7 +30,7 @@ type TurretSessionErrorPayload = {
 
 export type TurretFeedbackKind = "bug" | "idea" | "praise" | "other";
 
-type TurretSessionFeedbackPayload = {
+type TurretReplaySessionFeedbackPayload = {
 	ts: number;
 	kind: TurretFeedbackKind;
 	message: string;
@@ -39,11 +39,11 @@ type TurretSessionFeedbackPayload = {
 	extra?: Record<string, unknown>;
 };
 
-async function turretInitSession(input: {
+async function turretInitReplaySession(input: {
 	journeyId: string;
 	initialUrl: string;
 }): Promise<TurretInitResponse> {
-	const res = await fetch("/api/turret/session/init", {
+	const res = await fetch("/api/turret/replay-session/init", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
@@ -83,7 +83,7 @@ async function turretUploadChunk(input: {
 	signal?: AbortSignal;
 }): Promise<void> {
 	const res = await fetch(
-		`/api/turret/session/${encodeURIComponent(input.sessionId)}/chunk`,
+		`/api/turret/replay-session/${encodeURIComponent(input.sessionId)}/chunk`,
 		{
 			method: "POST",
 			headers: {
@@ -112,7 +112,7 @@ async function turretMarkCaptureBlocked(input: {
 	message?: string;
 }): Promise<void> {
 	const res = await fetch(
-		`/api/turret/session/${encodeURIComponent(input.sessionId)}/blocked`,
+		`/api/turret/replay-session/${encodeURIComponent(input.sessionId)}/blocked`,
 		{
 			method: "POST",
 			headers: {
@@ -130,14 +130,14 @@ async function turretMarkCaptureBlocked(input: {
 	}
 }
 
-async function turretReportSessionError(input: {
+async function turretReportReplaySessionError(input: {
 	sessionId: string;
 	uploadToken: string;
-	payload: TurretSessionErrorPayload;
+	payload: TurretReplaySessionErrorPayload;
 	signal?: AbortSignal;
 }): Promise<void> {
 	const res = await fetch(
-		`/api/turret/session/${encodeURIComponent(input.sessionId)}/error`,
+		`/api/turret/replay-session/${encodeURIComponent(input.sessionId)}/error`,
 		{
 			method: "POST",
 			headers: {
@@ -156,11 +156,11 @@ async function turretReportSessionError(input: {
 async function turretSubmitFeedback(input: {
 	sessionId: string;
 	uploadToken: string;
-	payload: TurretSessionFeedbackPayload;
+	payload: TurretReplaySessionFeedbackPayload;
 	signal?: AbortSignal;
 }): Promise<void> {
 	const res = await fetch(
-		`/api/turret/session/${encodeURIComponent(input.sessionId)}/feedback`,
+		`/api/turret/replay-session/${encodeURIComponent(input.sessionId)}/feedback`,
 		{
 			method: "POST",
 			headers: {
@@ -177,9 +177,9 @@ async function turretSubmitFeedback(input: {
 }
 
 export {
-	turretInitSession,
+	turretInitReplaySession,
 	turretUploadChunk,
 	turretMarkCaptureBlocked,
-	turretReportSessionError,
+	turretReportReplaySessionError,
 	turretSubmitFeedback,
 };

@@ -2,11 +2,11 @@ function requiredSameOrigin(
 	appUrl: string | undefined,
 	req: Request
 ): string | null {
-	if (!appUrl) return "APP_URL not set";
+	if (!appUrl) return "missing_app_url";
 	const allowedOrigin = new URL(appUrl).origin;
 
 	const secFetchSite = req.headers.get("Sec-Fetch-Site");
-	if (secFetchSite === "cross-site") return "cross-site";
+	if (secFetchSite === "cross-site") return "cross_site";
 
 	const origin = req.headers.get("Origin");
 	if (origin && origin !== allowedOrigin) return "origin_mismatch";

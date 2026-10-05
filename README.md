@@ -163,8 +163,6 @@ cp .dev.vars.example .dev.vars
 
 # Set these values in .dev.vars before continuing:
 # BETTER_AUTH_SECRET="<paste output of: just secret-auth>"
-# APP_URL="http://localhost:4321"
-# ADMIN_EMAIL="you@example.com"
 
 just setup
 just dev
@@ -189,12 +187,12 @@ Expected results:
 
 Quick troubleshooting:
 
-| Symptom                                       | Likely cause                | Fix                                                               |
-| --------------------------------------------- | --------------------------- | ----------------------------------------------------------------- |
-| `Missing required values` during `just setup` | `.dev.vars` not filled      | Set `BETTER_AUTH_SECRET`, `APP_URL`, `ADMIN_EMAIL` in `.dev.vars` |
-| `Wrangler not available` in doctor output     | dependencies not installed  | Run `pnpm install` then `just doctor`                             |
-| `Could not find a local D1 sqlite file`       | migrations not applied yet  | Run `just migrate-core` and `just migrate-turret`                 |
-| Login works but no account exists             | invite-only mode is default | Run `just admin-create` or set `AUTH_SIGNUP_MODE=open`            |
+| Symptom                                       | Likely cause                | Fix                                                    |
+| --------------------------------------------- | --------------------------- | ------------------------------------------------------ |
+| `Missing required values` during `just setup` | `.dev.vars` not filled      | Set `BETTER_AUTH_SECRET` in `.dev.vars`                |
+| `Wrangler not available` in doctor output     | dependencies not installed  | Run `pnpm install` then `just doctor`                  |
+| `Could not find a local D1 sqlite file`       | migrations not applied yet  | Run `just migrate-core` and `just migrate-turret`      |
+| Login works but no account exists             | invite-only mode is default | Run `just admin-create` or set `AUTH_SIGNUP_MODE=open` |
 
 ### Detailed setup and commands
 
@@ -220,19 +218,17 @@ Generate a Better Auth secret:
 just secret-auth
 ```
 
-Set local secrets/vars:
+Set local secrets:
 
 ```bash
 cp .dev.vars.example .dev.vars
 ```
 
-Then set required values in `.dev.vars` before setup:
+Then set required secret values in `.dev.vars` before setup:
 
 - `BETTER_AUTH_SECRET`
-- `APP_URL` (used for email links)
-- `ADMIN_EMAIL` (used by the local admin bootstrap script)
 
-For local, set `APP_URL` to `http://localhost:4321`.
+Local non-sensitive defaults like `APP_URL` and `ADMIN_EMAIL` live in `wrangler.json` vars.
 
 Bootstrap local dev (install, migrations, admin bootstrap):
 

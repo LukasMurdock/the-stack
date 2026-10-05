@@ -10,6 +10,13 @@
 	"compatibility_flags": ["nodejs_compat"],
 	"observability": {
 		"enabled": true,
+		"redact_query_string": true,
+		"issues": { "enabled": true },
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1,
+			"invocation_logs": true
+		},
 		"traces": {
 			"enabled": true,
 			// In the future, Cloudflare plans to enable automatic tracing
@@ -54,16 +61,18 @@
 	"vars": {
 		"PRODUCT_NAME": "The Stack",
 		"EMAIL_FROM": "The Stack <[email protected]>",
-		"APP_ENV": "local"
+		"APP_ENV": "local",
+		"APP_URL": "http://localhost:4321",
+		"ADMIN_EMAIL": "admin@localhost.test"
 	},
-	"secrets": {
-		"required": ["BETTER_AUTH_SECRET"]
-	},
-	// Local secrets/vars are loaded from `.dev.vars`.
+	// Local secrets are loaded from `.dev.vars`.
+	// Do not use `secrets.required` here: Wrangler only loads listed keys
+	// from `.dev.vars`, which breaks optional local secrets like Turret.
 	// Production vars should be set in `env.production.vars` below.
 	// Secrets (set via `wrangler secret put`):
 	// - BETTER_AUTH_SECRET
 	// - BOOTSTRAP_SECRET
+	// - TURRET_SIGNING_KEY
 	"d1_databases": [
 		{
 			"binding": "CORE_DB",
@@ -148,12 +157,10 @@
 				"APP_URL": "https://your-app.example",
 				"ADMIN_EMAIL": "admin@your-app.example"
 			},
-			"secrets": {
-				"required": ["BETTER_AUTH_SECRET", "BOOTSTRAP_SECRET"]
-			},
 			// Secrets (set via `wrangler secret put --env production`):
 			// - BETTER_AUTH_SECRET
 			// - BOOTSTRAP_SECRET
+			// - TURRET_SIGNING_KEY
 			"version_metadata": {
 				"binding": "CF_VERSION_METADATA"
 			}

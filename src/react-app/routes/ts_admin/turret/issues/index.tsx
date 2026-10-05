@@ -185,7 +185,7 @@ function TurretIssuesPage() {
 						variant="outline"
 						onClick={() =>
 							navigate({
-								to: "/ts_admin/turret/sessions",
+								to: "/ts_admin/turret/replay-sessions",
 								search: {
 									q: "",
 									hasError: false,
@@ -199,7 +199,7 @@ function TurretIssuesPage() {
 							})
 						}
 					>
-						Sessions
+						Replay sessions
 					</Button>
 					<Button
 						type="button"
@@ -385,7 +385,7 @@ function TurretIssuesPage() {
 									<TableHead>Status</TableHead>
 									<TableHead>Last seen</TableHead>
 									<TableHead>Occurrences</TableHead>
-									<TableHead>Sessions</TableHead>
+									<TableHead>Replay sessions</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>

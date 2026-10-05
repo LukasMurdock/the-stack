@@ -112,7 +112,7 @@ function TurretSettingsPage() {
 						variant="outline"
 						onClick={() =>
 							navigate({
-								to: "/ts_admin/turret/sessions",
+								to: "/ts_admin/turret/replay-sessions",
 								search: {
 									q: "",
 									hasError: false,
@@ -126,7 +126,7 @@ function TurretSettingsPage() {
 							})
 						}
 					>
-						Sessions
+						Replay sessions
 					</Button>
 					<Button
 						type="button"
@@ -163,9 +163,9 @@ function TurretSettingsPage() {
 									Store user email
 								</Label>
 								<div className="text-xs text-muted-foreground">
-									If disabled, new sessions will not persist
-									emails. Existing stored emails are not
-									deleted.
+									If disabled, new replay sessions will not
+									persist emails. Existing stored emails are
+									not deleted.
 								</div>
 							</div>
 							<Switch
@@ -223,8 +223,8 @@ function TurretSettingsPage() {
 										}
 									/>
 									<div className="text-xs text-muted-foreground">
-										Controls how long Turret keeps session
-										data.
+										Controls how long Turret keeps replay
+										session data.
 									</div>
 								</div>
 
@@ -265,7 +265,7 @@ function TurretSettingsPage() {
 										</Label>
 										<div className="text-xs text-muted-foreground">
 											Capture client console logs for
-											sessions.
+											replay sessions.
 										</div>
 									</div>
 									<Switch

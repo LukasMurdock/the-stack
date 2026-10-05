@@ -44,6 +44,13 @@ const FeedbackListResponseSchema = z
 	.openapi("TurretFeedbackListResponse");
 
 internalTurretFeedbackApp.use("/internal/turret/*", requireInternalTurretAdmin);
+internalTurretFeedbackApp.get("/internal/turret/session/:id/feedback", (c) => {
+	const query = new URL(c.req.url).search;
+	return c.redirect(
+		`/api/internal/turret/replay-session/${c.req.param("id")}/feedback${query}`,
+		308
+	);
+});
 
 const SAFE_LIKE = /[%_\\]/g;
 function escapeLike(input: string): string {
@@ -169,9 +176,9 @@ internalTurretFeedbackApp.openapi(listFeedback, async (c) => {
 	);
 });
 
-const listSessionFeedback = createRoute({
+const listReplaySessionFeedback = createRoute({
 	method: "get",
-	path: "/internal/turret/session/{id}/feedback",
+	path: "/internal/turret/replay-session/{id}/feedback",
 	request: {
 		params: z.object({
 			id: z.string().openapi({ example: "<session-id>" }),
@@ -183,7 +190,7 @@ const listSessionFeedback = createRoute({
 	},
 	responses: {
 		200: {
-			description: "List feedback for a session",
+			description: "List feedback for a replay session",
 			content: {
 				"application/json": { schema: FeedbackListResponseSchema },
 			},
@@ -199,7 +206,7 @@ const listSessionFeedback = createRoute({
 	},
 });
 
-internalTurretFeedbackApp.openapi(listSessionFeedback, async (c) => {
+internalTurretFeedbackApp.openapi(listReplaySessionFeedback, async (c) => {
 	const env = c.env as unknown as { TURRET_DB: D1Database };
 	const { id: sessionId } = c.req.valid("param");
 	const { limit: limitRaw, offset: offsetRaw } = c.req.valid("query");
