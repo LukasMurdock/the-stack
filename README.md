@@ -50,6 +50,18 @@ API-first, type-safe template for building fast, interactive apps on Cloudflare 
 - [opencode](https://opencode.ai/) for AI coding agent
     - [Cloudflare Skill](https://github.com/dmmulroy/cloudflare-skill) for Cloudflare platform reference docs
 
+## Dependency compatibility
+
+Dependency upgrades keep TypeScript on 6.0 while `typescript-eslint` requires
+TypeScript below 6.1. Better Auth stays on 1.6 because its 1.7 secondary storage
+contract requires atomic operations that Workers KV cannot provide; upgrading
+it requires a storage migration. `better-sqlite3` stays on 12 to satisfy Better
+Auth's peer dependency. Node types target the Node 22 runtime used in CI.
+
+Production builds select the Cloudflare environment before bundling:
+`CLOUDFLARE_ENV=production pnpm run build`. Deploy the generated configuration
+at `dist/server/wrangler.json`; `just deploy-production` handles both steps.
+
 ## Content & docs
 
 This repo ships three user-facing surfaces from the same Cloudflare Worker deployment:
@@ -130,7 +142,7 @@ For current priorities and planned phases, see `docs/ROADMAP.md`.
 
 Prerequisites:
 
-- Node.js 22+
+- Node.js 22.22.1+ (required by the updated tooling)
 - npm
 - `just`
 

@@ -59,7 +59,7 @@ preflight:
     node scripts/deploy-preflight.mjs
 
 deploy-production:
-    pnpm exec tsc -b && pnpm exec astro build && pnpm exec wrangler deploy --config wrangler.json --env production
+    CLOUDFLARE_ENV=production pnpm run build && pnpm exec wrangler deploy --config dist/server/wrangler.json
 
 logs:
     pnpm exec wrangler tail --env production

@@ -112,7 +112,8 @@ Rules:
 Before a production deploy that includes migration changes:
 
 ```bash
-pnpm exec wrangler deploy --config wrangler.json --env production --dry-run
+CLOUDFLARE_ENV=production pnpm run build
+pnpm exec wrangler deploy --config dist/server/wrangler.json --dry-run
 ```
 
 ### 4) Set Production Secrets

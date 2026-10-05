@@ -153,7 +153,7 @@ function TurretDashboardPage() {
 		const isWindows = /Windows/i.test(ua);
 		const isLinux = /Linux/i.test(ua) && !isAndroid;
 
-		let os = "";
+		let os: string;
 		if (isIOS) os = "iOS";
 		else if (isAndroid) os = "Android";
 		else if (isMac) os = "Mac";
@@ -161,7 +161,7 @@ function TurretDashboardPage() {
 		else if (isLinux) os = "Linux";
 		else os = "Other";
 
-		let browser = "";
+		let browser: string;
 		if (/Edg\//.test(ua)) browser = "Edge";
 		else if (/Firefox\//.test(ua)) browser = "Firefox";
 		else if (/Chrome\//.test(ua) && !/Chromium\//.test(ua))

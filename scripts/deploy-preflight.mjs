@@ -72,7 +72,9 @@ try {
 
 if (!skipBuild) {
 	try {
-		run("pnpm", ["run", "build"]);
+		run("pnpm", ["run", "build"], {
+			env: { ...process.env, CLOUDFLARE_ENV: "production" },
+		});
 		ok("Build passed");
 	} catch {
 		fail("Build failed (pnpm run build)");
@@ -109,9 +111,7 @@ if (!skipDryRun) {
 				"wrangler",
 				"deploy",
 				"--config",
-				"wrangler.json",
-				"--env",
-				"production",
+				"dist/server/wrangler.json",
 				"--dry-run",
 			]);
 			ok("Wrangler production dry-run passed");

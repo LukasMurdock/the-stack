@@ -1,4 +1,4 @@
-import { render, toPlainText } from "@react-email/render";
+import { render, toPlainText } from "react-email";
 
 export async function renderEmail(component: React.ReactElement) {
 	const html = await render(component);

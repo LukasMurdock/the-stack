@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { getTurretContext } from "../lib/turretContext";
 import {
@@ -36,12 +36,13 @@ function TurretFeedbackWidget() {
 
 	const captureActive = useMemo(() => Boolean(getTurretContext()), [open]);
 
-	useEffect(() => {
-		if (!open) {
+	function handleOpenChange(nextOpen: boolean) {
+		setOpen(nextOpen);
+		if (!nextOpen) {
 			setError(null);
 			setSent(false);
 		}
-	}, [open]);
+	}
 
 	async function onSubmit() {
 		setError(null);
@@ -62,7 +63,7 @@ function TurretFeedbackWidget() {
 
 	return (
 		<div className="fixed right-4 bottom-4 z-40">
-			<Dialog open={open} onOpenChange={setOpen}>
+			<Dialog open={open} onOpenChange={handleOpenChange}>
 				<DialogTrigger
 					render={<Button type="button" variant="outline" />}
 				>
@@ -156,7 +157,7 @@ function TurretFeedbackWidget() {
 						<Button
 							type="button"
 							variant="outline"
-							onClick={() => setOpen(false)}
+							onClick={() => handleOpenChange(false)}
 							disabled={submitting}
 						>
 							Close

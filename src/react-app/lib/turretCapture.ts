@@ -132,7 +132,7 @@ function createTurretCapture(
 		// Important: rrweb import can be blocked by content blockers.
 		// In that case, capture should fail closed (no replay) without impacting the app.
 		try {
-			const rrweb = await import("../../lib/replay");
+			const rrweb = await import("@/lib/replay");
 
 			const plugins: any[] = [];
 			if (initRes.console?.enabled) {

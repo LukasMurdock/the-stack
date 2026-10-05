@@ -5,6 +5,8 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
+	// Preserve spacing between inline elements when upgrading from Astro 6.
+	compressHTML: true,
 	integrations: [react()],
 	adapter: cloudflare(),
 	// Marketing pages are prerendered by default.

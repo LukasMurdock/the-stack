@@ -5,7 +5,6 @@
 		"types": ["vite/client", "./worker-configuration.d.ts"],
 		"lib": ["ES2023"],
 		"jsx": "react-jsx",
-		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./src/*"]
 		}

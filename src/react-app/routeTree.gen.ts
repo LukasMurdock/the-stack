@@ -9,57 +9,37 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from "./routes/__root"
-import { Route as Ts_adminRouteImport } from "./routes/ts_admin"
 import { Route as PublicRouteImport } from "./routes/_public"
-import { Route as Ts_adminIndexRouteImport } from "./routes/ts_admin/index"
+import { Route as Ts_adminRouteImport } from "./routes/ts_admin"
 import { Route as PublicIndexRouteImport } from "./routes/_public/index"
-import { Route as Ts_adminUsersRouteImport } from "./routes/ts_admin/users"
-import { Route as PublicStatusRouteImport } from "./routes/_public/status"
-import { Route as PublicResetPasswordRouteImport } from "./routes/_public/reset-password"
 import { Route as PublicLoginRouteImport } from "./routes/_public/login"
-import { Route as Ts_adminUsersIndexRouteImport } from "./routes/ts_admin/users/index"
-import { Route as Ts_adminTurretIndexRouteImport } from "./routes/ts_admin/turret/index"
-import { Route as Ts_adminUsersUserIdRouteImport } from "./routes/ts_admin/users/$userId"
+import { Route as PublicResetPasswordRouteImport } from "./routes/_public/reset-password"
+import { Route as PublicStatusRouteImport } from "./routes/_public/status"
+import { Route as Ts_adminIndexRouteImport } from "./routes/ts_admin/index"
+import { Route as Ts_adminUsersRouteImport } from "./routes/ts_admin/users"
 import { Route as PublicResetPasswordTokenRouteImport } from "./routes/_public/reset-password/$token"
-import { Route as Ts_adminTurretSettingsIndexRouteImport } from "./routes/ts_admin/turret/settings/index"
-import { Route as Ts_adminTurretSessionsIndexRouteImport } from "./routes/ts_admin/turret/sessions/index"
-import { Route as Ts_adminTurretIssuesIndexRouteImport } from "./routes/ts_admin/turret/issues/index"
+import { Route as Ts_adminTurretIndexRouteImport } from "./routes/ts_admin/turret/index"
+import { Route as Ts_adminUsersIndexRouteImport } from "./routes/ts_admin/users/index"
+import { Route as Ts_adminUsersUserIdRouteImport } from "./routes/ts_admin/users/$userId"
 import { Route as Ts_adminTurretFeedbackIndexRouteImport } from "./routes/ts_admin/turret/feedback/index"
-import { Route as Ts_adminTurretSessionsSessionIdRouteImport } from "./routes/ts_admin/turret/sessions/$sessionId"
+import { Route as Ts_adminTurretIssuesIndexRouteImport } from "./routes/ts_admin/turret/issues/index"
 import { Route as Ts_adminTurretIssuesFingerprintRouteImport } from "./routes/ts_admin/turret/issues/$fingerprint"
+import { Route as Ts_adminTurretSessionsIndexRouteImport } from "./routes/ts_admin/turret/sessions/index"
+import { Route as Ts_adminTurretSessionsSessionIdRouteImport } from "./routes/ts_admin/turret/sessions/$sessionId"
+import { Route as Ts_adminTurretSettingsIndexRouteImport } from "./routes/ts_admin/turret/settings/index"
 
+const PublicRoute = PublicRouteImport.update({
+  id: "/_public",
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Ts_adminRoute = Ts_adminRouteImport.update({
   id: "/ts_admin",
   path: "/ts_admin",
   getParentRoute: () => rootRouteImport,
 } as any)
-const PublicRoute = PublicRouteImport.update({
-  id: "/_public",
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Ts_adminIndexRoute = Ts_adminIndexRouteImport.update({
-  id: "/",
-  path: "/",
-  getParentRoute: () => Ts_adminRoute,
-} as any)
 const PublicIndexRoute = PublicIndexRouteImport.update({
   id: "/",
   path: "/",
-  getParentRoute: () => PublicRoute,
-} as any)
-const Ts_adminUsersRoute = Ts_adminUsersRouteImport.update({
-  id: "/users",
-  path: "/users",
-  getParentRoute: () => Ts_adminRoute,
-} as any)
-const PublicStatusRoute = PublicStatusRouteImport.update({
-  id: "/status",
-  path: "/status",
-  getParentRoute: () => PublicRoute,
-} as any)
-const PublicResetPasswordRoute = PublicResetPasswordRouteImport.update({
-  id: "/reset-password",
-  path: "/reset-password",
   getParentRoute: () => PublicRoute,
 } as any)
 const PublicLoginRoute = PublicLoginRouteImport.update({
@@ -67,20 +47,25 @@ const PublicLoginRoute = PublicLoginRouteImport.update({
   path: "/login",
   getParentRoute: () => PublicRoute,
 } as any)
-const Ts_adminUsersIndexRoute = Ts_adminUsersIndexRouteImport.update({
+const PublicResetPasswordRoute = PublicResetPasswordRouteImport.update({
+  id: "/reset-password",
+  path: "/reset-password",
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicStatusRoute = PublicStatusRouteImport.update({
+  id: "/status",
+  path: "/status",
+  getParentRoute: () => PublicRoute,
+} as any)
+const Ts_adminIndexRoute = Ts_adminIndexRouteImport.update({
   id: "/",
   path: "/",
-  getParentRoute: () => Ts_adminUsersRoute,
-} as any)
-const Ts_adminTurretIndexRoute = Ts_adminTurretIndexRouteImport.update({
-  id: "/turret/",
-  path: "/turret/",
   getParentRoute: () => Ts_adminRoute,
 } as any)
-const Ts_adminUsersUserIdRoute = Ts_adminUsersUserIdRouteImport.update({
-  id: "/$userId",
-  path: "/$userId",
-  getParentRoute: () => Ts_adminUsersRoute,
+const Ts_adminUsersRoute = Ts_adminUsersRouteImport.update({
+  id: "/users",
+  path: "/users",
+  getParentRoute: () => Ts_adminRoute,
 } as any)
 const PublicResetPasswordTokenRoute =
   PublicResetPasswordTokenRouteImport.update({
@@ -88,16 +73,25 @@ const PublicResetPasswordTokenRoute =
     path: "/$token",
     getParentRoute: () => PublicResetPasswordRoute,
   } as any)
-const Ts_adminTurretSettingsIndexRoute =
-  Ts_adminTurretSettingsIndexRouteImport.update({
-    id: "/turret/settings/",
-    path: "/turret/settings/",
-    getParentRoute: () => Ts_adminRoute,
-  } as any)
-const Ts_adminTurretSessionsIndexRoute =
-  Ts_adminTurretSessionsIndexRouteImport.update({
-    id: "/turret/sessions/",
-    path: "/turret/sessions/",
+const Ts_adminTurretIndexRoute = Ts_adminTurretIndexRouteImport.update({
+  id: "/turret/",
+  path: "/turret/",
+  getParentRoute: () => Ts_adminRoute,
+} as any)
+const Ts_adminUsersIndexRoute = Ts_adminUsersIndexRouteImport.update({
+  id: "/",
+  path: "/",
+  getParentRoute: () => Ts_adminUsersRoute,
+} as any)
+const Ts_adminUsersUserIdRoute = Ts_adminUsersUserIdRouteImport.update({
+  id: "/$userId",
+  path: "/$userId",
+  getParentRoute: () => Ts_adminUsersRoute,
+} as any)
+const Ts_adminTurretFeedbackIndexRoute =
+  Ts_adminTurretFeedbackIndexRouteImport.update({
+    id: "/turret/feedback/",
+    path: "/turret/feedback/",
     getParentRoute: () => Ts_adminRoute,
   } as any)
 const Ts_adminTurretIssuesIndexRoute =
@@ -106,10 +100,16 @@ const Ts_adminTurretIssuesIndexRoute =
     path: "/turret/issues/",
     getParentRoute: () => Ts_adminRoute,
   } as any)
-const Ts_adminTurretFeedbackIndexRoute =
-  Ts_adminTurretFeedbackIndexRouteImport.update({
-    id: "/turret/feedback/",
-    path: "/turret/feedback/",
+const Ts_adminTurretIssuesFingerprintRoute =
+  Ts_adminTurretIssuesFingerprintRouteImport.update({
+    id: "/turret/issues/$fingerprint",
+    path: "/turret/issues/$fingerprint",
+    getParentRoute: () => Ts_adminRoute,
+  } as any)
+const Ts_adminTurretSessionsIndexRoute =
+  Ts_adminTurretSessionsIndexRouteImport.update({
+    id: "/turret/sessions/",
+    path: "/turret/sessions/",
     getParentRoute: () => Ts_adminRoute,
   } as any)
 const Ts_adminTurretSessionsSessionIdRoute =
@@ -118,10 +118,10 @@ const Ts_adminTurretSessionsSessionIdRoute =
     path: "/turret/sessions/$sessionId",
     getParentRoute: () => Ts_adminRoute,
   } as any)
-const Ts_adminTurretIssuesFingerprintRoute =
-  Ts_adminTurretIssuesFingerprintRouteImport.update({
-    id: "/turret/issues/$fingerprint",
-    path: "/turret/issues/$fingerprint",
+const Ts_adminTurretSettingsIndexRoute =
+  Ts_adminTurretSettingsIndexRouteImport.update({
+    id: "/turret/settings/",
+    path: "/turret/settings/",
     getParentRoute: () => Ts_adminRoute,
   } as any)
 
@@ -248,13 +248,6 @@ export interface RootRouteChildren {
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    "/ts_admin": {
-      id: "/ts_admin"
-      path: "/ts_admin"
-      fullPath: "/ts_admin"
-      preLoaderRoute: typeof Ts_adminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     "/_public": {
       id: "/_public"
       path: ""
@@ -262,39 +255,18 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof PublicRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/ts_admin/": {
-      id: "/ts_admin/"
-      path: "/"
-      fullPath: "/ts_admin/"
-      preLoaderRoute: typeof Ts_adminIndexRouteImport
-      parentRoute: typeof Ts_adminRoute
+    "/ts_admin": {
+      id: "/ts_admin"
+      path: "/ts_admin"
+      fullPath: "/ts_admin"
+      preLoaderRoute: typeof Ts_adminRouteImport
+      parentRoute: typeof rootRouteImport
     }
     "/_public/": {
       id: "/_public/"
       path: "/"
       fullPath: "/"
       preLoaderRoute: typeof PublicIndexRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    "/ts_admin/users": {
-      id: "/ts_admin/users"
-      path: "/users"
-      fullPath: "/ts_admin/users"
-      preLoaderRoute: typeof Ts_adminUsersRouteImport
-      parentRoute: typeof Ts_adminRoute
-    }
-    "/_public/status": {
-      id: "/_public/status"
-      path: "/status"
-      fullPath: "/status"
-      preLoaderRoute: typeof PublicStatusRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    "/_public/reset-password": {
-      id: "/_public/reset-password"
-      path: "/reset-password"
-      fullPath: "/reset-password"
-      preLoaderRoute: typeof PublicResetPasswordRouteImport
       parentRoute: typeof PublicRoute
     }
     "/_public/login": {
@@ -304,26 +276,33 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof PublicLoginRouteImport
       parentRoute: typeof PublicRoute
     }
-    "/ts_admin/users/": {
-      id: "/ts_admin/users/"
-      path: "/"
-      fullPath: "/ts_admin/users/"
-      preLoaderRoute: typeof Ts_adminUsersIndexRouteImport
-      parentRoute: typeof Ts_adminUsersRoute
+    "/_public/reset-password": {
+      id: "/_public/reset-password"
+      path: "/reset-password"
+      fullPath: "/reset-password"
+      preLoaderRoute: typeof PublicResetPasswordRouteImport
+      parentRoute: typeof PublicRoute
     }
-    "/ts_admin/turret/": {
-      id: "/ts_admin/turret/"
-      path: "/turret"
-      fullPath: "/ts_admin/turret/"
-      preLoaderRoute: typeof Ts_adminTurretIndexRouteImport
+    "/_public/status": {
+      id: "/_public/status"
+      path: "/status"
+      fullPath: "/status"
+      preLoaderRoute: typeof PublicStatusRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    "/ts_admin/": {
+      id: "/ts_admin/"
+      path: "/"
+      fullPath: "/ts_admin/"
+      preLoaderRoute: typeof Ts_adminIndexRouteImport
       parentRoute: typeof Ts_adminRoute
     }
-    "/ts_admin/users/$userId": {
-      id: "/ts_admin/users/$userId"
-      path: "/$userId"
-      fullPath: "/ts_admin/users/$userId"
-      preLoaderRoute: typeof Ts_adminUsersUserIdRouteImport
-      parentRoute: typeof Ts_adminUsersRoute
+    "/ts_admin/users": {
+      id: "/ts_admin/users"
+      path: "/users"
+      fullPath: "/ts_admin/users"
+      preLoaderRoute: typeof Ts_adminUsersRouteImport
+      parentRoute: typeof Ts_adminRoute
     }
     "/_public/reset-password/$token": {
       id: "/_public/reset-password/$token"
@@ -332,18 +311,32 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof PublicResetPasswordTokenRouteImport
       parentRoute: typeof PublicResetPasswordRoute
     }
-    "/ts_admin/turret/settings/": {
-      id: "/ts_admin/turret/settings/"
-      path: "/turret/settings"
-      fullPath: "/ts_admin/turret/settings/"
-      preLoaderRoute: typeof Ts_adminTurretSettingsIndexRouteImport
+    "/ts_admin/turret/": {
+      id: "/ts_admin/turret/"
+      path: "/turret"
+      fullPath: "/ts_admin/turret/"
+      preLoaderRoute: typeof Ts_adminTurretIndexRouteImport
       parentRoute: typeof Ts_adminRoute
     }
-    "/ts_admin/turret/sessions/": {
-      id: "/ts_admin/turret/sessions/"
-      path: "/turret/sessions"
-      fullPath: "/ts_admin/turret/sessions/"
-      preLoaderRoute: typeof Ts_adminTurretSessionsIndexRouteImport
+    "/ts_admin/users/": {
+      id: "/ts_admin/users/"
+      path: "/"
+      fullPath: "/ts_admin/users/"
+      preLoaderRoute: typeof Ts_adminUsersIndexRouteImport
+      parentRoute: typeof Ts_adminUsersRoute
+    }
+    "/ts_admin/users/$userId": {
+      id: "/ts_admin/users/$userId"
+      path: "/$userId"
+      fullPath: "/ts_admin/users/$userId"
+      preLoaderRoute: typeof Ts_adminUsersUserIdRouteImport
+      parentRoute: typeof Ts_adminUsersRoute
+    }
+    "/ts_admin/turret/feedback/": {
+      id: "/ts_admin/turret/feedback/"
+      path: "/turret/feedback"
+      fullPath: "/ts_admin/turret/feedback/"
+      preLoaderRoute: typeof Ts_adminTurretFeedbackIndexRouteImport
       parentRoute: typeof Ts_adminRoute
     }
     "/ts_admin/turret/issues/": {
@@ -353,11 +346,18 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof Ts_adminTurretIssuesIndexRouteImport
       parentRoute: typeof Ts_adminRoute
     }
-    "/ts_admin/turret/feedback/": {
-      id: "/ts_admin/turret/feedback/"
-      path: "/turret/feedback"
-      fullPath: "/ts_admin/turret/feedback/"
-      preLoaderRoute: typeof Ts_adminTurretFeedbackIndexRouteImport
+    "/ts_admin/turret/issues/$fingerprint": {
+      id: "/ts_admin/turret/issues/$fingerprint"
+      path: "/turret/issues/$fingerprint"
+      fullPath: "/ts_admin/turret/issues/$fingerprint"
+      preLoaderRoute: typeof Ts_adminTurretIssuesFingerprintRouteImport
+      parentRoute: typeof Ts_adminRoute
+    }
+    "/ts_admin/turret/sessions/": {
+      id: "/ts_admin/turret/sessions/"
+      path: "/turret/sessions"
+      fullPath: "/ts_admin/turret/sessions/"
+      preLoaderRoute: typeof Ts_adminTurretSessionsIndexRouteImport
       parentRoute: typeof Ts_adminRoute
     }
     "/ts_admin/turret/sessions/$sessionId": {
@@ -367,11 +367,11 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof Ts_adminTurretSessionsSessionIdRouteImport
       parentRoute: typeof Ts_adminRoute
     }
-    "/ts_admin/turret/issues/$fingerprint": {
-      id: "/ts_admin/turret/issues/$fingerprint"
-      path: "/turret/issues/$fingerprint"
-      fullPath: "/ts_admin/turret/issues/$fingerprint"
-      preLoaderRoute: typeof Ts_adminTurretIssuesFingerprintRouteImport
+    "/ts_admin/turret/settings/": {
+      id: "/ts_admin/turret/settings/"
+      path: "/turret/settings"
+      fullPath: "/ts_admin/turret/settings/"
+      preLoaderRoute: typeof Ts_adminTurretSettingsIndexRouteImport
       parentRoute: typeof Ts_adminRoute
     }
   }
