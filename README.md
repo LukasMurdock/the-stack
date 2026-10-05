@@ -50,34 +50,6 @@ API-first, type-safe template for building fast, interactive apps on Cloudflare 
 - [opencode](https://opencode.ai/) for AI coding agent
     - [Cloudflare Skill](https://github.com/dmmulroy/cloudflare-skill) for Cloudflare platform reference docs
 
-## Dependency compatibility
-
-Better Auth 1.7 uses D1 for temporary sessions, verification records, and rate-limit
-counters. Atomic SQL updates and token consumption replace the previous Workers KV
-adapter. See [auth storage migration](docs/auth-storage-migration.md) for transferring
-existing KV records before deployment. `CORE_KV` remains for admin bootstrap markers.
-
-The TypeScript 7 compiler is installed as `@typescript/native` and provides `tsc`.
-The `typescript` package aliases Microsoft's TypeScript 6 compatibility package
-for Astro, Drizzle, and ESLint-compatible plugin APIs. Oxlint runs native TypeScript
-and React rules plus the existing TanStack, Drizzle, and Fast Refresh plugins;
-ESLint remains only to satisfy those plugins' peer dependencies. Node types match
-the Node 22 runtime in CI.
-
-`pnpm run lint` and both CI check recipes reject lint errors. The rules are
-syntax-based; `tsc -b` provides type checking.
-
-A selective [anti-slop](https://github.com/dmmulroy/anti-slop) policy adds checks
-for chained and widened assertions, opaque types, module mocking, and copied
-reducer accumulators. Necessary assertions explain their invariant in a nearby
-`SAFETY:` comment. The vendored source and licenses live in
-`tools/oxlint/anti-slop/`; its pinned upstream revision is recorded in
-`UPSTREAM.json`. Oxlint and `@oxlint/plugins` use matching exact versions.
-
-Production builds select the Cloudflare environment before bundling:
-`CLOUDFLARE_ENV=production pnpm run build`. Deploy the generated configuration
-at `dist/server/wrangler.json`; `just deploy-production` handles both steps.
-
 ## Content & docs
 
 This repo ships three user-facing surfaces from the same Cloudflare Worker deployment:
@@ -164,7 +136,7 @@ Use this exact flow for a first local run.
 
 Prerequisites:
 
-- Node.js 22.22.1+ (required by the updated tooling)
+- Node.js 22.22.1+
 - npm
 - `just`
 
@@ -414,6 +386,9 @@ wrangler d1 migrations apply TURRET_DB --env production
 ```
 
 ## Deploy
+
+If upgrading an existing KV-backed auth deployment, follow the
+[auth storage migration](docs/auth-storage-migration.md) before deploying.
 
 Production deploy:
 

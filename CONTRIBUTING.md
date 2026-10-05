@@ -63,26 +63,17 @@ just check-fast
 pnpm run format:check
 ```
 
-Linting uses `.oxlintrc.json`. `pnpm run lint` runs Oxlint directly and rejects
-lint errors. Fix violations rather than adding exceptions for existing code.
+`pnpm run lint` uses Oxlint with `.oxlintrc.json`. For necessary type assertions,
+add a nearby `// SAFETY:` comment explaining why the asserted type is valid.
+`pnpm test` generates Worker and Astro types, typechecks tests, and runs them.
 
-The selective anti-slop rules apply to owned JavaScript and TypeScript, including
-tests. Prefer inference, typed bindings, boundary parsing, and `satisfies` over
-assertions. When an assertion is necessary, add a nearby `// SAFETY:` comment
-explaining the specific invariant; the comment must describe evidence, not just
-silence lint. Do not add double assertions or a baseline.
+When updating the vendored lint plugin, use the revision in
+`tools/oxlint/anti-slop/UPSTREAM.json`, preserve its licenses and provenance,
+and run `tests/unit/anti-slop.test.ts` through `pnpm test`. Keep `oxlint` and
+`@oxlint/plugins` at matching exact versions.
 
-The plugin is vendored from the revision recorded in
-`tools/oxlint/anti-slop/UPSTREAM.json`. Preserve both MIT licenses and the
-ESLint Stylistic provenance when updating it. Vendored source is excluded from
-lint and formatting. Upgrade `oxlint` and `@oxlint/plugins` together at identical
-exact versions, then run the plugin integration tests.
-`pnpm test` synchronizes generated types, typechecks test fixtures, and runs the
-Node test suite.
-
-TypeScript 7 provides `tsc` through `@typescript/native`. The `typescript` alias
-retains Microsoft's TypeScript 6 API for framework tools and JS lint plugins;
-`tsc6` is available for diagnosing compatibility differences. Keep both packages.
+`@typescript/native` provides `tsc`. The `typescript` alias supplies the
+TypeScript 6 API required by framework tools and lint plugins.
 
 For full local verification:
 

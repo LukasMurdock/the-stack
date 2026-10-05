@@ -1,12 +1,8 @@
 # Auth storage migration to Better Auth 1.7
 
-Better Auth 1.7 requires atomic `increment` and `getAndDelete` operations.
-The Worker now stores temporary auth data in `CORE_DB.auth_storage`, using
-single-statement SQL updates and `DELETE ... RETURNING`. D1 queries use the
-primary without a read-replication session, so revocations are visible to the next
-request. Expired records are rejected immediately and removed by the hourly cron.
-Users, passwords, linked Google accounts, and their existing schema stay unchanged.
-`CORE_KV` still stores admin bootstrap markers.
+Use this runbook when upgrading a deployment that stores auth records in
+Workers KV. The current Worker uses `CORE_DB.auth_storage`; `CORE_KV` continues
+to hold admin bootstrap markers. New deployments only need the D1 migrations.
 
 ## Local cutover
 
