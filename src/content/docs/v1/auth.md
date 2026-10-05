@@ -27,3 +27,9 @@ curl -s "http://localhost:4321/api/health"
 ```
 
 Check `auth.signupMode` and `auth.selfSignUpEnabled` in the response.
+
+## Email delivery
+
+Production uses Cloudflare Email Sending through the `EMAIL` binding. Set `EMAIL_FROM` to a mailbox on your onboarded domain and configure `EMAIL_FROM_NAME` for your product. Local development defaults to `EMAIL_TRANSPORT=log`, prints local auth links, and sends nothing.
+
+For the optional Resend transport, set `EMAIL_TRANSPORT=resend` and provide `RESEND_API_KEY`; credentials alone do not select a transport. Production log-only mode and missing provider configuration produce observable failures. See `docs/email.md` for setup, preview/privacy settings, and acceptance checks.

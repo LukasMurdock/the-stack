@@ -76,7 +76,7 @@ Create custom alerts in Cloudflare; no notification destination is configured by
 | Replay ingestion failures       | `ingestion-failures` recipe                                                                                          | At least 3 server errors                   | 5 min   |
 | Metrics/replay storage failures | Workers logs: action is `observability.metrics_failed`, `turret.breadcrumb_failed`, or `turret.error_capture_failed` | At least 1                                 | 5 min   |
 | SQL health query failures       | Workers logs: action is `observability.query_failed` or `turret.summary_failed`                                      | Repeated failures                          | 10 min  |
-| Email delivery failures         | Workers logs: action is `email.send_failed`                                                                          | At least 1                                 | 5 min   |
+| Email submission failures       | Workers logs: action is `email.send_failed`                                                                          | At least 1                                 | 5 min   |
 | Cleanup failures                | Workers logs: action is `turret.cleanup`, error exists                                                               | At least 1                                 | 70 min  |
 | Missing cleanup success         | Workers logs: action is `turret.cleanup`, error absent, skipped absent                                               | No successful runs                         | 130 min |
 
@@ -92,7 +92,7 @@ For an investigation: identify deployment and time window; inspect `release-erro
 
 The template enables Workers tracing at 5%. [Cloudflare domain tracing](https://developers.cloudflare.com/observability/traces/configuration/) is separate and requires a custom domain/zone. Enable persistence and a modest baseline rate, then deploy temporary Trace Rules for the affected path during an incident. Rules match incoming traffic, so a higher path sampling rate does not mean all failed/slow responses are retained. Confirm supported cache, rule, and routing spans by searching an actual Ray ID.
 
-Domain trace settings allow incoming W3C context and forwarding to an origin. This does not establish automatic propagation from a Worker's outbound fetch to Resend or arbitrary services: the [Workers limitation](https://developers.cloudflare.com/workers/observability/traces/known-limitations/) still documents that gap. Keep request/Ray correlation and verify propagation before promising a joined external trace.
+Domain trace settings allow incoming W3C context and forwarding to an origin. This does not establish automatic propagation from a Worker's outbound fetch to external email providers or arbitrary services: the [Workers limitation](https://developers.cloudflare.com/workers/observability/traces/known-limitations/) still documents that gap. Keep request/Ray correlation and verify propagation before promising a joined external trace.
 
 ## Retention, export, and cost
 

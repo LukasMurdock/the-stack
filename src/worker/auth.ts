@@ -1,43 +1,27 @@
-import * as React from "react";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { makeCoreDb } from "../bindings/d1/core/db";
 import * as schema from "../bindings/d1/core/schema";
 import { openAPI, haveIBeenPwned, admin, bearer } from "better-auth/plugins";
-import { VerifyEmail } from "./emails/verify-email";
-import { sendEmail } from "./email/send-email";
-import { renderEmail } from "./emails/render";
+import { sendAuthEmail } from "./email/auth-email";
+import type { EmailEnvironment } from "./email/send-email";
 import { isSelfSignUpEnabled } from "./auth-signup-mode";
-import { recordEmailSendFailure } from "./observability/evlog";
 import type { ObservabilityContext } from "./observability/tracing";
 
-type AuthEnv = Env & {
-	BETTER_AUTH_SECRET: string;
-	GOOGLE_CLIENT_ID?: string;
-	GOOGLE_CLIENT_SECRET?: string;
-	PRODUCT_NAME: string;
-	EMAIL_FROM: string;
-	RESEND_API_KEY?: string;
-	AUTH_SIGNUP_MODE?: string;
-};
+type AuthEnv = Env &
+	EmailEnvironment & {
+		BETTER_AUTH_SECRET: string;
+		GOOGLE_CLIENT_ID?: string;
+		GOOGLE_CLIENT_SECRET?: string;
+		PRODUCT_NAME: string;
+		AUTH_SIGNUP_MODE?: string;
+	};
 
-type ExecutionContextLike = ObservabilityContext;
-
-/**
- * await waitUntilOrAwait(ctx, sendEmail(result).catch((e) => errorReporter.capture(e));
- */
-function waitUntilOrAwait(
-	ctx: ExecutionContextLike | undefined,
-	promise: Promise<void>
-): Promise<void> {
-	if (ctx) {
-		ctx.waitUntil(promise);
-		return Promise.resolve();
-	}
-	return promise;
-}
-
-function createAuth(env: AuthEnv, ctx?: ExecutionContextLike) {
+function createAuth(
+	env: AuthEnv,
+	ctx?: ObservabilityContext,
+	requestId?: string
+) {
 	const selfSignUpEnabled = isSelfSignUpEnabled(env.AUTH_SIGNUP_MODE);
 
 	return betterAuth({
@@ -78,41 +62,15 @@ function createAuth(env: AuthEnv, ctx?: ExecutionContextLike) {
 		emailAndPassword: {
 			enabled: true,
 			disableSignUp: !selfSignUpEnabled,
-			sendResetPassword: async ({ user, url }) => {
-				if (
-					!env.RESEND_API_KEY &&
-					["local", "dev", "development"].includes(env.APP_ENV)
-				) {
-					console.log("[email:log-only:url]", {
-						type: "reset-password",
-						to: user.email,
-						url,
-					});
-				}
-
-				await waitUntilOrAwait(
+			sendResetPassword: ({ user, url }) =>
+				sendAuthEmail({
+					env,
 					ctx,
-					sendEmail({
-						ctx,
-						type: "reset-password",
-						resendApiKey: env.RESEND_API_KEY,
-						from: env.EMAIL_FROM,
-						to: user.email,
-						subject: `Reset your password for ${env.PRODUCT_NAME}`,
-						...(await renderEmail(
-							React.createElement(VerifyEmail, {
-								productName: env.PRODUCT_NAME,
-								url,
-							})
-						)),
-					}).catch((e) => {
-						recordEmailSendFailure({
-							type: "reset-password",
-							error: e,
-						});
-					})
-				);
-			},
+					requestId,
+					type: "reset-password",
+					to: user.email,
+					url,
+				}),
 		},
 		socialProviders:
 			env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
@@ -135,41 +93,15 @@ function createAuth(env: AuthEnv, ctx?: ExecutionContextLike) {
 			openAPI(),
 		],
 		emailVerification: {
-			sendVerificationEmail: async ({ user, url }) => {
-				if (
-					!env.RESEND_API_KEY &&
-					["local", "dev", "development"].includes(env.APP_ENV)
-				) {
-					console.log("[email:log-only:url]", {
-						type: "verify-email",
-						to: user.email,
-						url,
-					});
-				}
-
-				await waitUntilOrAwait(
+			sendVerificationEmail: ({ user, url }) =>
+				sendAuthEmail({
+					env,
 					ctx,
-					sendEmail({
-						ctx,
-						type: "verify-email",
-						resendApiKey: env.RESEND_API_KEY,
-						from: env.EMAIL_FROM,
-						to: user.email,
-						subject: `Verify your email for ${env.PRODUCT_NAME}`,
-						...(await renderEmail(
-							React.createElement(VerifyEmail, {
-								productName: env.PRODUCT_NAME,
-								url,
-							})
-						)),
-					}).catch((e) => {
-						recordEmailSendFailure({
-							type: "verify-email",
-							error: e,
-						});
-					})
-				);
-			},
+					requestId,
+					type: "verify-email",
+					to: user.email,
+					url,
+				}),
 		},
 	});
 }

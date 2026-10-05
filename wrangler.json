@@ -60,7 +60,9 @@
 	 */
 	"vars": {
 		"PRODUCT_NAME": "The Stack",
-		"EMAIL_FROM": "The Stack <[email protected]>",
+		"EMAIL_FROM": "noreply@localhost.test",
+		"EMAIL_FROM_NAME": "The Stack",
+		"EMAIL_TRANSPORT": "log",
 		"APP_ENV": "local",
 		"APP_URL": "http://localhost:4321",
 		"ADMIN_EMAIL": "admin@localhost.test"
@@ -101,6 +103,7 @@
 			"bucket_name": "turret-replay-local"
 		}
 	],
+	"send_email": [{ "name": "EMAIL" }],
 	"analytics_engine_datasets": [
 		{ "binding": "TURRET_METRICS", "dataset": "turret_operations_local" },
 		{
@@ -142,6 +145,7 @@
 					"bucket_name": "turret-replay-production"
 				}
 			],
+			"send_email": [{ "name": "EMAIL" }],
 			"analytics": { "binding": "ANALYTICS_SQL" },
 			"analytics_engine_datasets": [
 				{ "binding": "TURRET_METRICS", "dataset": "turret_operations" },
@@ -155,7 +159,9 @@
 			},
 			"vars": {
 				"PRODUCT_NAME": "The Stack",
-				"EMAIL_FROM": "The Stack <[email protected]>",
+				"EMAIL_FROM": "noreply@your-app.example",
+				"EMAIL_FROM_NAME": "The Stack",
+				"EMAIL_TRANSPORT": "cloudflare",
 				"APP_ENV": "production",
 				"APP_URL": "https://your-app.example",
 				"ADMIN_EMAIL": "admin@your-app.example"

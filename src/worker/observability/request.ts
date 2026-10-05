@@ -1,3 +1,9 @@
+declare module "hono" {
+	interface ContextVariableMap {
+		requestId: string;
+	}
+}
+
 import { recordOperation, requestCategory } from "./metrics";
 import { createMiddleware } from "hono/factory";
 import type { Bindings } from "../index";
@@ -33,6 +39,7 @@ export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 		const url = new URL(request.url);
 
 		const requestId = resolveRequestId(request.headers.get("x-request-id"));
+		c.set("requestId", requestId);
 		const path = url.pathname;
 
 		const pathTemplate = normalizeApiPath(path);

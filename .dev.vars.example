@@ -19,8 +19,11 @@ AUTH_SIGNUP_MODE="invite_only"
 GOOGLE_CLIENT_ID="replace-me"
 GOOGLE_CLIENT_SECRET="replace-me"
 
-# Email (optional)
-# If omitted, the app logs email contents instead of sending.
+# Email
+# Local default EMAIL_TRANSPORT=log sends nothing.
+# Set EMAIL_TRANSPORT=resend explicitly to send real local test emails.
+# Cloudflare sending uses the EMAIL binding, not an API key.
+# See docs/email.md for production setup and local simulation.
 RESEND_API_KEY=""
 
 # Turret (optional)

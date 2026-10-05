@@ -40,7 +40,8 @@ API-first, type-safe template for building fast, interactive apps on Cloudflare 
 - [Turnstile](https://www.cloudflare.com/application-services/products/turnstile/) for CAPTCHA alternative
 - [Drizzle](https://orm.drizzle.team/) for ORM
 - [Turret](/docs/turret.md) for observability framework
-- [Resend](https://resend.com/) for email deliverability service
+- [Cloudflare Email Service](https://developers.cloudflare.com/email-service/) for native transactional email
+- [Resend](https://resend.com/) as an optional email transport
 - [React Email](https://react.email/) for email components
 - [Node.js test runner](https://nodejs.org/api/test.html) + [tsx](https://tsx.is/) for tests
 - [Playwright](https://playwright.dev/) for end-to-end tests
@@ -100,7 +101,7 @@ flowchart TB
     TAE[(Analytics Engine<br/>TURRET_ANALYTICS)]
     TMET[(Operational Metrics<br/>TURRET_METRICS)]
     ASQL[Analytics SQL<br/>ANALYTICS_SQL]
-    RESEND[(Resend<br/>Email Delivery)]
+    EMAIL[Cloudflare Email Sending<br/>EMAIL binding<br/>or optional Resend]
   end
 
   U -->|"GET /"| W
@@ -127,7 +128,7 @@ flowchart TB
   W -->|"API/page metrics"| TMET
 
   W -->|"record /api/* errors"| TDB
-  AUTH -->|"send verification email"| RESEND
+  AUTH -->|"send auth emails"| EMAIL
 ```
 
 ## Turret (Built-in Observability)
@@ -250,7 +251,7 @@ Optional (required only if you enable Turret ingestion locally):
 
 - `TURRET_SIGNING_KEY` (signs Turret upload tokens)
 
-Emails are log-only by default in local. Set `RESEND_API_KEY` in `.dev.vars` if you want to send real emails.
+Emails are log-only by default locally, even when provider credentials exist. Production defaults to Cloudflare Email Sending. See [email setup](docs/email.md) for domain onboarding, local simulation, and the explicit Resend option.
 
 Run local D1 migrations manually (if needed):
 
@@ -344,19 +345,22 @@ Before your first deploy, edit `wrangler.json` and set:
 
 - `env.production.vars.APP_URL` (your public origin, no trailing slash)
 - `env.production.vars.ADMIN_EMAIL` (where bootstrap/reset emails are sent)
+- `env.production.vars.EMAIL_FROM` (mailbox on your onboarded sending domain)
+- `env.production.vars.EMAIL_FROM_NAME` (your product name)
+
+Complete [email provider setup](docs/email.md) before enabling verification/password-reset flows. The Cloudflare transport uses the production `EMAIL` binding and requires no email API-key secret.
 
 Then set these secrets:
 
 ```bash
 wrangler secret put BETTER_AUTH_SECRET --env production
 wrangler secret put BOOTSTRAP_SECRET --env production
-wrangler secret put RESEND_API_KEY --env production
 
 # Turret (required if using Turret ingestion)
 wrangler secret put TURRET_SIGNING_KEY --env production
 ```
 
-If `RESEND_API_KEY` is not set, the Worker will log emails instead of sending them.
+To use Resend instead, explicitly select `EMAIL_TRANSPORT=resend` and set `RESEND_API_KEY`. Missing production email configuration is reported as a failure; log-only mode is limited to local/dev/test.
 
 Turret mode:
 

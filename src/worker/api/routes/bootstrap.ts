@@ -123,7 +123,7 @@ const routes = bootstrapApp.openapi(postBootstrapAdmin, async (c) => {
 
 		// We keep sign-up disabled for public users, but allow this endpoint to
 		// create the initial admin via the server-side API.
-		const auth = createAuth(env, c.executionCtx);
+		const auth = createAuth(env, c.executionCtx, c.get("requestId"));
 		await auth.api.createUser({
 			body: {
 				email: adminEmail,
@@ -155,7 +155,7 @@ const routes = bootstrapApp.openapi(postBootstrapAdmin, async (c) => {
 		.where(eq(schema.auth_user.id, userId));
 
 	// Trigger the reset password email so the admin sets their real password.
-	const auth = createAuth(env, c.executionCtx);
+	const auth = createAuth(env, c.executionCtx, c.get("requestId"));
 	await auth.api.requestPasswordReset({
 		body: {
 			email: adminEmail,

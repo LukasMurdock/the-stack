@@ -81,9 +81,18 @@ function recordEmailLogOnlyEvent(args: {
 function recordEmailSendFailure(args: {
 	type?: "reset-password" | "verify-email" | "generic";
 	error: unknown;
+	provider?: string;
+	code?: string;
+	requestId?: string;
+	environment?: string;
+	version?: string;
 }): void {
-	const logger = createRequestLogger();
-	logger.set({ action: "email.send_failed", email: { type: args.type } });
+	const logger = createRequestLogger({ requestId: args.requestId });
+	logger.set({
+		action: "email.send_failed",
+		app: { env: args.environment, version: args.version },
+		email: { type: args.type, provider: args.provider, code: args.code },
+	});
 	logger.error(args.error instanceof Error ? args.error : String(args.error));
 	logger.emit();
 }

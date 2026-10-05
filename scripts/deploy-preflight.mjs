@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import ts from "typescript";
 
 function run(command, args, options = {}) {
 	return execFileSync(command, args, {
@@ -47,6 +48,39 @@ if (wranglerRaw.includes("admin@your-app.example")) {
 	failed = true;
 } else {
 	ok("Production ADMIN_EMAIL placeholder replaced");
+}
+
+const parsedConfig = ts.parseConfigFileTextToJson(wranglerPath, wranglerRaw);
+if (parsedConfig.error) {
+	fail("wrangler.json is not valid JSONC");
+	failed = true;
+} else {
+	const production = parsedConfig.config?.env?.production;
+	const transport = production?.vars?.EMAIL_TRANSPORT ?? "cloudflare";
+	const sender = production?.vars?.EMAIL_FROM;
+	if (
+		!sender ||
+		/your-app\.example|localhost|\[email protected\]/i.test(sender)
+	) {
+		fail(
+			"Configure env.production.vars.EMAIL_FROM with an onboarded sender mailbox"
+		);
+		failed = true;
+	}
+	if (!["cloudflare", "resend"].includes(transport)) {
+		fail("Production EMAIL_TRANSPORT must be cloudflare or resend");
+		failed = true;
+	} else if (
+		transport === "cloudflare" &&
+		!production?.send_email?.some((binding) => binding.name === "EMAIL")
+	) {
+		fail("Cloudflare email requires send_email EMAIL in env.production");
+		failed = true;
+	} else {
+		ok(
+			`Production email transport: ${transport} (verify domain/secrets with a live acceptance test)`
+		);
+	}
 }
 
 const placeholderDbIdMatches =

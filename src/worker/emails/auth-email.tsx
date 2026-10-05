@@ -12,13 +12,16 @@ import {
 	Text,
 } from "react-email";
 
-type VerifyEmailProps = {
+type AuthEmailProps = {
+	type: "verify-email" | "reset-password";
 	productName: string;
 	url: string;
 };
 
-export function VerifyEmail({ productName, url }: VerifyEmailProps) {
-	const previewText = `Verify your email for ${productName}`;
+export function AuthEmail({ productName, url, type }: AuthEmailProps) {
+	const reset = type === "reset-password";
+	const heading = reset ? "Reset your password" : "Verify your email";
+	const previewText = `${heading} for ${productName}`;
 
 	return (
 		<Html lang="en">
@@ -30,15 +33,16 @@ export function VerifyEmail({ productName, url }: VerifyEmailProps) {
 						<Text style={styles.brand}>{productName}</Text>
 					</Section>
 
-					<Heading style={styles.h1}>Verify your email</Heading>
+					<Heading style={styles.h1}>{heading}</Heading>
 					<Text style={styles.p}>
-						Thanks for signing up for {productName}. Please confirm
-						your email address by clicking the button below.
+						{reset
+							? `We received a request to reset the password for your ${productName} account. Use the button below to choose a new password.`
+							: `Thanks for signing up for ${productName}. Please confirm your email address by clicking the button below.`}
 					</Text>
 
 					<Section style={styles.ctaRow}>
 						<Button href={url} style={styles.button}>
-							Verify email
+							{reset ? "Reset password" : "Verify email"}
 						</Button>
 					</Section>
 
@@ -58,8 +62,6 @@ export function VerifyEmail({ productName, url }: VerifyEmailProps) {
 		</Html>
 	);
 }
-
-export const VerifyEmailText = "";
 
 const styles: Record<string, React.CSSProperties> = {
 	body: {

@@ -112,7 +112,7 @@ app.use("/api/*", async (c, next) => {
 app.use("/api/*", trimTrailingSlash());
 
 app.on(["GET", "POST"], "/api/auth/*", (c) =>
-	createAuth(c.env, c.executionCtx).handler(c.req.raw)
+	createAuth(c.env, c.executionCtx, c.get("requestId")).handler(c.req.raw)
 );
 
 app.route("/api", api);

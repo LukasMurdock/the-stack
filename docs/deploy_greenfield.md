@@ -129,8 +129,10 @@ At minimum, set on main worker:
 
 - `BETTER_AUTH_SECRET`
 - `BOOTSTRAP_SECRET`
-- `RESEND_API_KEY` (optional but recommended)
+- `RESEND_API_KEY` (only when explicitly selecting the optional Resend transport)
 - `TURRET_SIGNING_KEY` (required for Turret full mode)
+
+Configure your sender and transport using [email setup](email.md). Production defaults to Cloudflare Email Sending; onboard your sending domain and replace `EMAIL_FROM` before deployment.
 
 ### 5) First Deploy + Verification
 

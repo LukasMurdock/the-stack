@@ -93,9 +93,9 @@ Native tracing captures D1, KV, R2, and outbound fetch operations. Traces are sa
 
 Detailed replay spans are capped at 100 per request, while summary counters include all captured operations. `d1.droppedSpans` reports truncation. Span timestamps represent query start time. Batch spans share the batch's elapsed wall time; summing them is not exclusive database time. `first` and `raw` results have no D1 row metadata. Spans are inserted in groups of seven to stay within D1's 100-parameter limit.
 
-Request IDs accept at most 128 characters from `A-Z`, `a-z`, digits, `.`, `_`, `:`, and `-`; otherwise the Worker generates a UUID. IDs provide correlation, not authentication. API responses echo `x-request-id`. Stored error and breadcrumb metadata includes the same ID and deployment version. Request logs use normalized paths; application metadata omits query strings. Native URL query strings are redacted in Wrangler configuration. Raw email verification/reset links are logged only in local/dev environments without a Resend key.
+Request IDs accept at most 128 characters from `A-Z`, `a-z`, digits, `.`, `_`, `:`, and `-`; otherwise the Worker generates a UUID. IDs provide correlation, not authentication. API responses echo `x-request-id`. Stored error and breadcrumb metadata includes the same ID and deployment version. Request logs use normalized paths; application metadata omits query strings. Native URL query strings are redacted in Wrangler configuration. Raw email verification/reset links are logged only in local/dev/test environments using the explicit log transport.
 
-Cleanup emits `action = "turret.cleanup"` on completion, skip, or failure, and rethrows failures so Cloudflare sees a failed invocation. Resend errors returned as data become exceptions, so failed delivery is traced and logged rather than silently treated as success.
+Cleanup emits `action = "turret.cleanup"` on completion, skip, or failure, and rethrows failures so Cloudflare sees a failed invocation. Cloudflare sending errors preserve provider codes; Resend errors returned as data become exceptions. Auth email submission emits `email.accepted` with provider/message ID and failures emit `email.send_failed`. Acceptance is separate from delivery; see [email operations](email.md).
 
 ## Investigation Queries
 

@@ -18,7 +18,8 @@ Production has one Worker:
 
 Before first deploy, replace placeholders in `wrangler.json`:
 
-- `env.production.vars.APP_URL`, `ADMIN_EMAIL`, and D1 IDs
+- `env.production.vars.APP_URL`, `ADMIN_EMAIL`, `EMAIL_FROM`, and D1 IDs
+- Email sender/domain and transport configured using [email setup](email.md)
 
 ```bash
 pnpm exec wrangler whoami
