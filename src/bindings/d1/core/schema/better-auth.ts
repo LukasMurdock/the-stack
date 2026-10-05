@@ -110,3 +110,14 @@ export const auth_accountRelations = relations(auth_account, ({ one }) => ({
 		references: [auth_user.id],
 	}),
 }));
+
+// Temporary auth records; expiresAt is Unix seconds, matching KV expirations.
+export const authStorage = sqliteTable(
+	"auth_storage",
+	{
+		key: text("key").primaryKey(),
+		value: text("value").notNull(),
+		expiresAt: integer("expires_at"),
+	},
+	(table) => [index("auth_storage_expires_at_idx").on(table.expiresAt)]
+);

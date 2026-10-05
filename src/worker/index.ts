@@ -9,6 +9,7 @@ import type { AnalyticsSqlBinding } from "./observability/summary";
 import { traceOperation } from "./observability/tracing";
 import { createRequestLogger } from "evlog";
 import { api, apiRoutes } from "./api";
+import { cleanupAuthStorage } from "./auth-storage";
 import { createAuth, type AuthEnv } from "./auth";
 
 export type Bindings = AuthEnv &
@@ -169,6 +170,7 @@ export default {
 					"app.version": env.CF_VERSION_METADATA?.id,
 				},
 				async () => {
+					await cleanupAuthStorage(env.CORE_DB);
 					if (!db) {
 						log.set({ skipped: "missing_turret_db" });
 						return;

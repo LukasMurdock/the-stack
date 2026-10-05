@@ -5,6 +5,7 @@ import * as schema from "../bindings/d1/core/schema";
 import { openAPI, haveIBeenPwned, admin, bearer } from "better-auth/plugins";
 import { sendAuthEmail } from "./email/auth-email";
 import type { EmailEnvironment } from "./email/send-email";
+import { createAuthStorage } from "./auth-storage";
 import { isSelfSignUpEnabled } from "./auth-signup-mode";
 import type { ObservabilityContext } from "./observability/tracing";
 
@@ -42,19 +43,7 @@ function createAuth(
 				verification: schema.auth_verification,
 			},
 		}),
-		secondaryStorage: {
-			get: async (key) => {
-				return await env.CORE_KV.get(key);
-			},
-			set: async (key, value, ttl) => {
-				if (ttl)
-					await env.CORE_KV.put(key, value, { expirationTtl: ttl });
-				else await env.CORE_KV.put(key, value);
-			},
-			delete: async (key) => {
-				await env.CORE_KV.delete(key);
-			},
-		},
+		secondaryStorage: createAuthStorage(env.CORE_DB),
 		user: { modelName: "auth_user" },
 		session: { modelName: "auth_session" },
 		account: { modelName: "auth_account" },

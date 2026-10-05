@@ -79,6 +79,15 @@ function fixture() {
 			return Promise.all(statements.map((statement) => statement.run()));
 		},
 	};
+	sqlite.exec(
+		readFileSync(
+			new URL(
+				"../../src/bindings/d1/core/drizzle/0001_auth-secondary-storage.sql",
+				import.meta.url
+			),
+			"utf8"
+		)
+	);
 	const background: Promise<unknown>[] = [];
 	const spans: {
 		name: string;

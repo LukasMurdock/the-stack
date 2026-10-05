@@ -52,11 +52,14 @@ API-first, type-safe template for building fast, interactive apps on Cloudflare 
 
 ## Dependency compatibility
 
-Dependency upgrades keep TypeScript on 6.0 while `typescript-eslint` requires
-TypeScript below 6.1. Better Auth stays on 1.6 because its 1.7 secondary storage
-contract requires atomic operations that Workers KV cannot provide; upgrading
-it requires a storage migration. `better-sqlite3` stays on 12 to satisfy Better
-Auth's peer dependency. Node types target the Node 22 runtime used in CI.
+Better Auth 1.7 uses D1 for temporary sessions, verification records, and rate-limit
+counters. Atomic SQL updates and token consumption replace the previous Workers KV
+adapter. See [auth storage migration](docs/auth-storage-migration.md) for transferring
+existing KV records before deployment. `CORE_KV` remains for admin bootstrap markers.
+
+TypeScript stays on 6.0 because the current `typescript-eslint` peer range excludes
+6.1 and later. Node types match the Node 22 runtime in CI. Better Auth and
+`better-sqlite3` use their latest stable releases.
 
 Production builds select the Cloudflare environment before bundling:
 `CLOUDFLARE_ENV=production pnpm run build`. Deploy the generated configuration
