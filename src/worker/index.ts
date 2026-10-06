@@ -16,6 +16,8 @@ export type Bindings = AuthEnv &
 	OperationEnvironment & {
 		ANALYTICS_SQL?: AnalyticsSqlBinding;
 		TURRET_MODE?: string;
+		BOOTSTRAP_SECRET?: string;
+		TURRET_SIGNING_KEY?: string;
 		CF_VERSION_METADATA?: WorkerVersionMetadata;
 	};
 
