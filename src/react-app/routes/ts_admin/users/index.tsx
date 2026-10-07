@@ -1,8 +1,9 @@
+import { normalizeAccountRole } from "../../../../features/auth/policy";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
-import { authClient } from "../../../lib/authClient";
+import { authClient } from "../../../auth";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,18 +54,6 @@ function formatDate(v: unknown): string {
 	} catch {
 		return "-";
 	}
-}
-
-function normalizeRole(role: unknown): "admin" | "user" | "other" {
-	if (!role || typeof role !== "string") return "user";
-	const roles = role
-		.split(",")
-		.map((r) => r.trim())
-		.filter(Boolean);
-	if (roles.includes("admin")) return "admin";
-	if (roles.length === 0) return "user";
-	if (roles.length === 1 && roles[0] === "user") return "user";
-	return "other";
 }
 
 function TsAdminUsersPage() {
@@ -214,7 +203,9 @@ function TsAdminUsersPage() {
 							</TableHeader>
 							<TableBody>
 								{rows.map((u) => {
-									const roleNorm = normalizeRole(u.role);
+									const roleNorm = normalizeAccountRole(
+										u.role
+									);
 									const isAdmin = roleNorm === "admin";
 									const isBanned = Boolean(u.banned);
 									return (

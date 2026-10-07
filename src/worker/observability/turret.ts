@@ -1,5 +1,7 @@
+import { persistError } from "../turret/errors";
+import type { TurretCorrelation } from "../../contracts/turret-correlation";
+import { readTelemetryExpiry } from "../turret/retention";
 import { getRequestLocation } from "../../lib/cloudflareRequest";
-import { eq, sql } from "drizzle-orm";
 import { makeTurretDb } from "../../bindings/d1/turret/db";
 import * as turretSchema from "../../bindings/d1/turret/schema";
 import type { Bindings } from "../index";
@@ -9,30 +11,6 @@ import {
 	fingerprintHttp5xx,
 	normalizeApiPath,
 } from "../turret/fingerprinting";
-export function shouldSkipTurretErrorCapture(req: Request): boolean {
-	const url = new URL(req.url);
-	if (!url.pathname.startsWith("/api/")) return true;
-	if (url.pathname.startsWith("/api/turret/session/")) return true;
-	if (url.pathname.startsWith("/api/turret/replay-session/")) return true;
-	if (url.pathname.startsWith("/api/internal/turret/")) return true;
-	return false;
-}
-
-export function shouldSkipTurretBreadcrumbCapture(req: Request): boolean {
-	const url = new URL(req.url);
-	const p = url.pathname;
-	if (!p.startsWith("/api/")) return true;
-	if (p.startsWith("/api/turret/")) return true;
-	if (p.startsWith("/api/internal/turret/")) return true;
-	if (p.startsWith("/api/auth/")) return true;
-	if (p === "/api/doc") return true;
-	if (p === "/api/scalar") return true;
-	if (p === "/api/health") return true;
-	if (p === "/api/throw") return true;
-	if (p === "/api/fail") return true;
-	return false;
-}
-
 export async function recordWorkerError(args: {
 	env: Bindings & {
 		TURRET_DB?: D1Database;
@@ -42,6 +20,7 @@ export async function recordWorkerError(args: {
 	};
 	request: Request;
 	requestId: string;
+	correlation: TurretCorrelation;
 	kind: "exception" | "http_5xx";
 	status?: number;
 	error?: unknown;
@@ -49,10 +28,7 @@ export async function recordWorkerError(args: {
 	const dbBinding = args.env.TURRET_DB;
 	if (!dbBinding) return;
 
-	const sessionId = args.request.headers.get("x-turret-session-id");
-	const replayTsRaw = args.request.headers.get("x-turret-replay-ts");
-	const replayTs = replayTsRaw ? Number(replayTsRaw) : NaN;
-	const ts = Number.isFinite(replayTs) ? replayTs : Date.now();
+	const { sessionId, ts } = args.correlation;
 	const rayId = args.request.headers.get("cf-ray") ?? undefined;
 	const colo = getRequestLocation(args.request).colo;
 
@@ -69,20 +45,7 @@ export async function recordWorkerError(args: {
 
 	try {
 		const now = Date.now();
-		let expiresAt = now + 24 * 60 * 60 * 1000;
-		if (sessionId) {
-			try {
-				const turretDb = makeTurretDb(dbBinding);
-				const session = await turretDb.query.turretSessions.findFirst({
-					where: (t, ops) => ops.eq(t.sessionId, sessionId),
-					columns: { retentionExpiresAt: true },
-				});
-				const ret = session?.retentionExpiresAt;
-				if (ret instanceof Date) expiresAt = ret.getTime();
-			} catch {
-				// keep default
-			}
-		}
+		const turretDb = makeTurretDb(dbBinding);
 
 		const url = new URL(args.request.url);
 		const pathTemplate = normalizeApiPath(url.pathname);
@@ -106,39 +69,28 @@ export async function recordWorkerError(args: {
 			fp = null;
 		}
 
-		const turretDb = makeTurretDb(dbBinding);
-		await turretDb.insert(turretSchema.turretSessionErrors).values({
-			id: crypto.randomUUID(),
-			sessionId: sessionId ?? null,
-			ts: new Date(ts),
-			source: "worker",
-			message: message ? message.slice(0, 2000) : null,
-			stack: stack ? stack.slice(0, 20000) : null,
-			fingerprint: fp ? fp.slice(0, 256) : null,
-			extraJson: JSON.stringify({
-				kind: args.kind,
-				status: args.status,
-				path: pathTemplate,
-				request_id: args.requestId,
-				worker_version: args.env.CF_VERSION_METADATA?.id,
-				method: args.request.method,
-				ray_id: rayId,
-				colo,
-			}),
-			expiresAt: new Date(expiresAt),
-			createdAt: new Date(now),
-		});
-
-		if (sessionId) {
-			await turretDb
-				.update(turretSchema.turretSessions)
-				.set({
-					hasError: true,
-					errorCount: sql`${turretSchema.turretSessions.errorCount} + 1`,
-					updatedAt: new Date(Date.now()),
-				})
-				.where(eq(turretSchema.turretSessions.sessionId, sessionId));
-		}
+		await persistError(
+			turretDb,
+			{
+				sessionId,
+				ts: new Date(ts),
+				source: "worker",
+				message,
+				stack,
+				fingerprint: fp,
+				extraJson: JSON.stringify({
+					kind: args.kind,
+					status: args.status,
+					path: pathTemplate,
+					request_id: args.requestId,
+					worker_version: args.env.CF_VERSION_METADATA?.id,
+					method: args.request.method,
+					ray_id: rayId,
+					colo,
+				}),
+			},
+			now
+		);
 
 		args.env.TURRET_ANALYTICS?.writeDataPoint({
 			blobs: ["worker_error", args.kind, String(args.status ?? "")],
@@ -203,25 +155,8 @@ export async function recordBreadcrumb(
 	if (!turretDbBinding) return;
 	const now = Date.now();
 	try {
-		// Non-session requests retain for 24h.
-		let expiresAt = now + 24 * 60 * 60 * 1000;
-		if (sessionId) {
-			try {
-				const turretDb = makeTurretDb(turretDbBinding);
-				const session = await turretDb.query.turretSessions.findFirst({
-					where: (t, ops) => ops.eq(t.sessionId, sessionId),
-					columns: { retentionExpiresAt: true },
-				});
-				const ret = session?.retentionExpiresAt;
-				if (ret instanceof Date) {
-					expiresAt = ret.getTime();
-				}
-			} catch {
-				// keep default
-			}
-		}
-
 		const turretDb = makeTurretDb(turretDbBinding);
+		const expiresAt = await readTelemetryExpiry(turretDb, sessionId, now);
 
 		await turretDb.insert(turretSchema.turretRequestBreadcrumbs).values({
 			id: crypto.randomUUID(),
@@ -251,28 +186,36 @@ export async function recordBreadcrumb(
 		});
 
 		if (d1Spans.length > 0) {
-			// D1 permits 100 bound parameters per statement. Each span has 13.
-			for (let offset = 0; offset < d1Spans.length; offset += 7) {
-				await turretDb.insert(turretSchema.turretRequestSpans).values(
-					d1Spans.slice(offset, offset + 7).map((s) => ({
-						id: crypto.randomUUID(),
-						requestId,
-						ts: new Date(s.ts),
-						kind: s.kind,
-						db: s.db,
-						durationMs: s.durationMs,
-						sqlShape: s.sqlShape,
-						rowsRead: s.rowsRead ?? null,
-						rowsWritten: s.rowsWritten ?? null,
-						errorMessage: s.errorMessage
-							? s.errorMessage.slice(0, 2000)
-							: null,
-						extraJson: null,
-						expiresAt: new Date(expiresAt),
-						createdAt: new Date(Date.now()),
-					}))
-				);
-			}
+			// Every field is bound, including nulls, so a single generated row
+			// determines how many spans fit D1's 100-parameter statement limit.
+			const rows = d1Spans.map((s) => ({
+				id: crypto.randomUUID(),
+				requestId,
+				ts: new Date(s.ts),
+				kind: s.kind,
+				db: s.db,
+				durationMs: s.durationMs,
+				sqlShape: s.sqlShape,
+				rowsRead: s.rowsRead ?? null,
+				rowsWritten: s.rowsWritten ?? null,
+				errorMessage: s.errorMessage
+					? s.errorMessage.slice(0, 2000)
+					: null,
+				extraJson: null,
+				expiresAt: new Date(expiresAt),
+				createdAt: new Date(now),
+			}));
+			const parametersPerSpan = turretDb
+				.insert(turretSchema.turretRequestSpans)
+				.values(rows[0])
+				.toSQL().params.length;
+			const batchSize = Math.floor(100 / parametersPerSpan);
+			if (batchSize < 1)
+				throw new Error("A replay span exceeds D1's parameter limit.");
+			for (let offset = 0; offset < rows.length; offset += batchSize)
+				await turretDb
+					.insert(turretSchema.turretRequestSpans)
+					.values(rows.slice(offset, offset + batchSize));
 		}
 	} catch (error) {
 		console.error({ action: "turret.breadcrumb_failed", requestId }, error);

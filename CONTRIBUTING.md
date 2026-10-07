@@ -65,12 +65,13 @@ pnpm run format:check
 
 `pnpm run lint` uses Oxlint with `.oxlintrc.json`. For necessary type assertions,
 add a nearby `// SAFETY:` comment explaining why the asserted type is valid.
-`pnpm test` generates Worker and Astro types, typechecks tests, and runs them.
+`pnpm test` runs the behavior tests without rebuilding or generating files.
+`pnpm test:types` checks test types, including the compile-only RPC guarantees.
 
 When updating the vendored lint plugin, use the revision in
 `tools/oxlint/anti-slop/UPSTREAM.json`, preserve its licenses and provenance,
-and run `tests/unit/anti-slop.test.ts` through `pnpm test`. Keep `oxlint` and
-`@oxlint/plugins` at matching exact versions.
+and run `pnpm test:tooling` for lint configuration and plugin integration checks.
+Keep `oxlint` and `@oxlint/plugins` at matching exact versions.
 
 `@typescript/native` provides `tsc`. The `typescript` alias supplies the
 TypeScript 6 API required by framework tools and lint plugins.
@@ -110,3 +111,13 @@ Please include:
 - Expected behavior
 - Actual behavior
 - Environment details (OS, Node version, browser)
+
+## Organization starter
+
+After setup, open `/app/organizations`. Organizations, membership permissions,
+and invitations are core capabilities. Projects is a replaceable create/list
+example; see [the extension guide](src/content/docs/v1/extend.md).
+
+`pnpm verify` runs lint, formatting, tests, type checks, and build. Browser tests
+use isolated local D1 state: install Chromium with
+`pnpm exec playwright install chromium`, then run `pnpm test:e2e`.

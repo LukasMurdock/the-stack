@@ -11,7 +11,7 @@ BETTER_AUTH_SECRET="replace-me"
 BOOTSTRAP_SECRET="replace-me"
 
 # Auth policy
-# invite_only (default): only admin-provisioned accounts can sign in.
+# invite_only (default): signup requires admin provisioning or a live organization invitation.
 # open: allow public self-service sign-up.
 AUTH_SIGNUP_MODE="invite_only"
 

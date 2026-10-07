@@ -1,4 +1,4 @@
-import { authPolicyResponseSchema } from "@/contracts/auth";
+import { healthQueryOptions } from "../../queries/healthQuery";
 import {
 	Link,
 	createFileRoute,
@@ -7,9 +7,8 @@ import {
 } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { authClient } from "../../lib/authClient";
-import { ApiError } from "../../lib/apiClient";
-import { turretHealthQueryOptions } from "../../queries/turretQueries";
+import { authClient, safeRedirectTarget } from "../../auth";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,50 +31,20 @@ const Route = createFileRoute("/_public/login")({
 	component: LoginPage,
 });
 
-function safeRedirectTarget(href: string | undefined): string | null {
-	if (!href) return null;
-	try {
-		const u = new URL(href, window.location.origin);
-		if (u.origin !== window.location.origin) return null;
-		// This SPA is mounted under /app
-		if (!u.pathname.startsWith("/app")) return null;
-		return u.toString();
-	} catch {
-		return null;
-	}
-}
-
 function LoginPage() {
 	const navigate = useNavigate();
 	const router = useRouter();
 	const sessionQuery = authClient.useSession();
 	const search = Route.useSearch();
-	const redirectTarget = safeRedirectTarget(search.redirect);
-	const isTurretRedirect = Boolean(
-		redirectTarget?.includes("/app/ts_admin/turret")
+	const redirectTarget = safeRedirectTarget(
+		search.redirect,
+		router.basepath,
+		window.location.origin
 	);
 
-	const turretAccessQuery = useQuery({
-		...turretHealthQueryOptions,
-		enabled: Boolean(sessionQuery.data?.user && isTurretRedirect),
-	});
-
 	const authPolicyQuery = useQuery({
-		queryKey: ["auth", "policy"],
-		queryFn: async () => {
-			const res = await fetch("/api/health", { credentials: "include" });
-			if (!res.ok) {
-				throw new Error(`Failed to load auth policy (${res.status})`);
-			}
-			const data = authPolicyResponseSchema.parse(await res.json());
-			const signupMode =
-				data.auth?.signupMode === "open" ? "open" : "invite_only";
-			const selfSignUpEnabled =
-				typeof data.auth?.selfSignUpEnabled === "boolean"
-					? data.auth.selfSignUpEnabled
-					: signupMode === "open";
-			return { signupMode, selfSignUpEnabled };
-		},
+		...healthQueryOptions,
+		select: (data) => data.auth,
 		retry: false,
 	});
 	const selfSignUpEnabled = authPolicyQuery.data?.selfSignUpEnabled === true;
@@ -114,8 +83,7 @@ function LoginPage() {
 					</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-3">
-					{redirectTarget &&
-					(!isTurretRedirect || turretAccessQuery.isSuccess) ? (
+					{redirectTarget ? (
 						<Button
 							type="button"
 							variant="outline"
@@ -137,15 +105,6 @@ function LoginPage() {
 						Sign out
 					</Button>
 				</div>
-
-				{isTurretRedirect && turretAccessQuery.isError ? (
-					<div className="text-sm text-muted-foreground">
-						{turretAccessQuery.error instanceof ApiError &&
-						turretAccessQuery.error.status === 403
-							? "You do not have admin access to Turret."
-							: "Could not verify Turret access."}
-					</div>
-				) : null}
 			</section>
 		);
 	}
@@ -187,6 +146,12 @@ function LoginPage() {
 			} else {
 				navigate({ to: "/" });
 			}
+		} catch (error: unknown) {
+			setError(
+				error instanceof Error
+					? error.message
+					: "Could not sign in. Try again."
+			);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -299,33 +264,39 @@ function LoginPage() {
 					</div>
 				</form>
 
-				<FieldSeparator>Or</FieldSeparator>
+				{authPolicyQuery.data?.googleSignInEnabled === true && (
+					<>
+						<FieldSeparator>Or</FieldSeparator>
 
-				<Button
-					type="button"
-					variant="outline"
-					disabled={isSubmitting}
-					onClick={async () => {
-						setError(null);
-						setIsSubmitting(true);
-						try {
-							await authClient.signIn.social({
-								provider: "google",
-							});
-						} catch (e) {
-							setError(
-								e instanceof Error ? e.message : String(e)
-							);
-						} finally {
-							setIsSubmitting(false);
-						}
-					}}
-				>
-					Continue with Google
-				</Button>
+						<Button
+							type="button"
+							variant="outline"
+							disabled={isSubmitting}
+							onClick={async () => {
+								setError(null);
+								setIsSubmitting(true);
+								try {
+									await authClient.signIn.social({
+										provider: "google",
+									});
+								} catch (e) {
+									setError(
+										e instanceof Error
+											? e.message
+											: String(e)
+									);
+								} finally {
+									setIsSubmitting(false);
+								}
+							}}
+						>
+							Continue with Google
+						</Button>
+					</>
+				)}
 			</FieldGroup>
 		</section>
 	);
 }
 
-export { Route, safeRedirectTarget };
+export { Route };

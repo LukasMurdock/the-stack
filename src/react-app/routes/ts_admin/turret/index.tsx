@@ -1,3 +1,4 @@
+import { turretListPageDefaults } from "@/contracts/turret-pagination";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -29,17 +30,14 @@ import {
 	turretDashboardUsersQueryOptions,
 	turretIssuesQueryOptions,
 	turretSummaryQueryOptions,
-} from "../../../queries/turretQueries";
+} from "../../../features/turret/queries";
 import { BackendHealthSection } from "../../../features/turret/dashboard/BackendHealthSection";
 import {
 	LastHourReplayCard,
 	ReplayTotalValue,
 } from "../../../features/turret/dashboard/ReplayTotals";
 
-import { requireTurretAdmin } from "../../../lib/requireTurretAdmin";
-
 const Route = createFileRoute("/ts_admin/turret/")({
-	beforeLoad: requireTurretAdmin,
 	component: TurretDashboardPage,
 });
 
@@ -145,16 +143,7 @@ function SparkArea(props: {
 
 function TurretDashboardPage() {
 	const navigate = useNavigate();
-	const defaultSessionsSearch = {
-		q: "",
-		hasError: false,
-		groupBy: "none" as const,
-		preset: "1h" as const,
-		from: undefined,
-		to: undefined,
-		offset: 0,
-		limit: 50,
-	};
+
 	// Anchor time for this mount so the queryKey stays stable.
 	const [now] = useState(() => Date.now());
 	const openIssuesQuery = useQuery(
@@ -162,7 +151,7 @@ function TurretDashboardPage() {
 			status: "open",
 			from: now - 24 * 60 * 60 * 1000,
 			to: now,
-			limit: 50,
+			limit: turretListPageDefaults.limit,
 			offset: 0,
 		})
 	);
@@ -195,8 +184,8 @@ function TurretDashboardPage() {
 		: openIssuesQuery.isError
 			? "-"
 			: openIssuesCount != null
-				? openIssuesCount >= 50
-					? "50+"
+				? openIssuesCount >= turretListPageDefaults.limit
+					? `${turretListPageDefaults.limit}+`
 					: String(openIssuesCount)
 				: "-";
 
@@ -233,15 +222,7 @@ function TurretDashboardPage() {
 						onClick={() =>
 							navigate({
 								to: "/ts_admin/turret/issues",
-								search: {
-									status: "open",
-									preset: "24h",
-									q: "",
-									from: undefined,
-									to: undefined,
-									offset: 0,
-									limit: 50,
-								},
+								search: {},
 							})
 						}
 					>
@@ -271,7 +252,7 @@ function TurretDashboardPage() {
 						onClick={() =>
 							navigate({
 								to: "/ts_admin/turret/replay-sessions",
-								search: defaultSessionsSearch,
+								search: {},
 							})
 						}
 					>
@@ -283,26 +264,21 @@ function TurretDashboardPage() {
 			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 				<Card>
 					<CardHeader>
-						<CardTitle>Active Users</CardTitle>
+						<CardTitle>Replay Users</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<div className="space-y-1">
 							<div className="text-xs text-muted-foreground">
-								Users active in the last 24 hours
+								Users with retained replays from the last 24
+								hours
 							</div>
 							<div className="text-3xl font-semibold tabular-nums">
 								{dashboardUsersQuery.isLoading
 									? "…"
 									: dashboard
-										? dashboard.activeUsers24h.toLocaleString()
+										? dashboard.usersWithRetainedReplays24h.toLocaleString()
 										: "-"}
 							</div>
-							{dashboard ? (
-								<DeltaLine
-									pct={dashboard.activeUsersDeltaPct}
-									label="vs previous period"
-								/>
-							) : null}
 						</div>
 						<Separator />
 						<div className="space-y-1">
@@ -586,15 +562,7 @@ function TurretDashboardPage() {
 								onClick={() =>
 									navigate({
 										to: "/ts_admin/turret/issues",
-										search: {
-											status: "open",
-											preset: "24h",
-											q: "",
-											from: undefined,
-											to: undefined,
-											offset: 0,
-											limit: 50,
-										},
+										search: {},
 									})
 								}
 							>
@@ -607,7 +575,6 @@ function TurretDashboardPage() {
 									navigate({
 										to: "/ts_admin/turret/replay-sessions",
 										search: {
-											...defaultSessionsSearch,
 											hasError: true,
 											offset: 0,
 										},

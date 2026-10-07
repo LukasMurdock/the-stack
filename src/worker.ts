@@ -23,7 +23,6 @@ export default {
 		env: Bindings,
 		ctx: ExecutionContext
 	) {
-		// Keep the existing cleanup job exactly as-is.
 		if (apiWorker.scheduled) {
 			return apiWorker.scheduled(controller, env, ctx);
 		}

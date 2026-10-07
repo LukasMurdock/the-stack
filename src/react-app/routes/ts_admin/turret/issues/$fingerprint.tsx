@@ -1,3 +1,17 @@
+import { turretIssueStatusSchema } from "@/contracts/turret";
+import {
+	issueDetailSearchSchema,
+	issuePresetSchema,
+	issueStatusLabels,
+	bucketForIssuePreset,
+	type IssueRangePreset as RangePreset,
+} from "../../../../features/turret/issueSearch";
+import {
+	presetToRange,
+	toLocalDatetimeValue,
+	fromLocalDatetimeValue,
+} from "../../../../features/turret/timeRange";
+
 import { z } from "zod";
 import { useDraftValue } from "@/react-app/hooks/useDraftValue";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -26,49 +40,16 @@ import {
 } from "@/components/ui/table";
 import { Area, AreaChart, Tooltip, XAxis, YAxis } from "recharts";
 
-import { requireTurretAdmin } from "../../../../lib/requireTurretAdmin";
 import {
+	turretIssueMutation,
 	turretIssueEventsQueryOptions,
 	turretIssueQueryOptions,
 	turretIssueTrendQueryOptions,
-} from "../../../../queries/turretQueries";
-import { patchIssue, type TurretIssueStatus } from "../../../../lib/turretApi";
+} from "../../../../features/turret/queries";
+import type { TurretIssueStatus } from "../../../../features/turret/queries";
 
 const CLOUDFLARE_TRACES_URL =
 	"https://dash.cloudflare.com/?to=/:account/workers-and-pages/observability/traces";
-
-type RangePreset = "24h" | "7d" | "30d" | "custom";
-
-function presetToRange(
-	preset: RangePreset,
-	now: number
-): { from?: number; to?: number } {
-	switch (preset) {
-		case "24h":
-			return { from: now - 24 * 60 * 60 * 1000, to: now };
-		case "7d":
-			return { from: now - 7 * 24 * 60 * 60 * 1000, to: now };
-		case "30d":
-			return { from: now - 30 * 24 * 60 * 60 * 1000, to: now };
-		case "custom":
-		default:
-			return {};
-	}
-}
-
-function toLocalDatetimeValue(ms?: number): string {
-	if (!ms || Number.isNaN(ms)) return "";
-	const d = new Date(ms);
-	const pad = (n: number) => String(n).padStart(2, "0");
-	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function fromLocalDatetimeValue(v: string): number | undefined {
-	if (!v) return undefined;
-	const d = new Date(v);
-	const ms = d.getTime();
-	return Number.isNaN(ms) ? undefined : ms;
-}
 
 function parseJsonObject(input: string | null): Record<string, unknown> | null {
 	if (!input) return null;
@@ -81,32 +62,7 @@ function parseJsonObject(input: string | null): Record<string, unknown> | null {
 }
 
 const Route = createFileRoute("/ts_admin/turret/issues/$fingerprint")({
-	validateSearch: (s: Record<string, unknown>) => {
-		const preset: RangePreset =
-			s.preset === "24h" ||
-			s.preset === "7d" ||
-			s.preset === "30d" ||
-			s.preset === "custom"
-				? s.preset
-				: "7d";
-		const bucket: "hour" | "day" =
-			s.bucket === "hour" || s.bucket === "day"
-				? s.bucket
-				: preset === "24h"
-					? "hour"
-					: "day";
-		return {
-			preset,
-			bucket,
-			from: typeof s.from === "string" ? Number(s.from) : undefined,
-			to: typeof s.to === "string" ? Number(s.to) : undefined,
-			eventsOffset:
-				typeof s.eventsOffset === "string" ? Number(s.eventsOffset) : 0,
-			eventsLimit:
-				typeof s.eventsLimit === "string" ? Number(s.eventsLimit) : 50,
-		};
-	},
-	beforeLoad: requireTurretAdmin,
+	validateSearch: issueDetailSearchSchema,
 	component: TurretIssueDetailPage,
 });
 
@@ -146,32 +102,14 @@ function TurretIssueDetailPage() {
 		reset: resetTitleDraft,
 	} = useDraftValue(issue?.title ?? issue?.sample.message ?? "", fingerprint);
 
-	const updateMutation = useMutation({
-		mutationFn: (input: {
-			fingerprint: string;
-			update: { status?: TurretIssueStatus; title?: string | null };
-		}) => patchIssue(input.fingerprint, input.update),
-		onSuccess: async (_result, input) => {
-			await qc.invalidateQueries({ queryKey: ["turret", "issues"] });
-			await qc.invalidateQueries({
-				queryKey: ["turret", "issue", fingerprint],
-			});
-			await qc.invalidateQueries({
-				queryKey: ["turret", "issue", fingerprint, "trend"],
-			});
-			await qc.invalidateQueries({
-				queryKey: ["turret", "issue", fingerprint, "events"],
-			});
-			if (input.update.title !== undefined) resetTitleDraft();
-		},
-	});
+	const updateMutation = useMutation(turretIssueMutation(qc, fingerprint));
 
 	function setPreset(preset: RangePreset) {
 		const next =
 			preset === "custom"
 				? { from: search.from, to: search.to }
 				: presetToRange(preset, now);
-		const nextBucket = preset === "24h" ? "hour" : "day";
+		const nextBucket = bucketForIssuePreset(preset);
 		navigate({
 			to: "/ts_admin/turret/issues/$fingerprint",
 			params: { fingerprint },
@@ -188,11 +126,14 @@ function TurretIssueDetailPage() {
 	function saveTitle() {
 		const trimmed = titleDraft.trim();
 		const next = trimmed ? trimmed : null;
-		updateMutation.mutate({ fingerprint, update: { title: next } });
+		updateMutation.mutate(
+			{ title: next },
+			{ onSuccess: () => resetTitleDraft() }
+		);
 	}
 
 	function setStatus(status: TurretIssueStatus) {
-		updateMutation.mutate({ fingerprint, update: { status } });
+		updateMutation.mutate({ status });
 	}
 
 	const chartData = trendQuery.data?.points ?? [];
@@ -215,15 +156,7 @@ function TurretIssueDetailPage() {
 						onClick={() =>
 							navigate({
 								to: "/ts_admin/turret/issues",
-								search: {
-									status: "open",
-									preset: "24h",
-									q: "",
-									from: undefined,
-									to: undefined,
-									offset: 0,
-									limit: 50,
-								},
+								search: {},
 							})
 						}
 					>
@@ -242,16 +175,7 @@ function TurretIssueDetailPage() {
 						onClick={() =>
 							navigate({
 								to: "/ts_admin/turret/replay-sessions",
-								search: {
-									q: "",
-									hasError: false,
-									groupBy: "none",
-									preset: "1h",
-									from: undefined,
-									to: undefined,
-									offset: 0,
-									limit: 50,
-								},
+								search: {},
 							})
 						}
 					>
@@ -289,42 +213,23 @@ function TurretIssueDetailPage() {
 								>
 									{issue.status}
 								</Badge>
-								<Button
-									variant={
-										issue.status === "open"
-											? "default"
-											: "outline"
-									}
-									type="button"
-									disabled={updateMutation.isPending}
-									onClick={() => setStatus("open")}
-								>
-									Open
-								</Button>
-								<Button
-									variant={
-										issue.status === "resolved"
-											? "default"
-											: "outline"
-									}
-									type="button"
-									disabled={updateMutation.isPending}
-									onClick={() => setStatus("resolved")}
-								>
-									Resolved
-								</Button>
-								<Button
-									variant={
-										issue.status === "ignored"
-											? "default"
-											: "outline"
-									}
-									type="button"
-									disabled={updateMutation.isPending}
-									onClick={() => setStatus("ignored")}
-								>
-									Ignored
-								</Button>
+								{turretIssueStatusSchema.options.map(
+									(status) => (
+										<Button
+											key={status}
+											variant={
+												issue.status === status
+													? "default"
+													: "outline"
+											}
+											type="button"
+											disabled={updateMutation.isPending}
+											onClick={() => setStatus(status)}
+										>
+											{issueStatusLabels[status]}
+										</Button>
+									)
+								)}
 							</div>
 
 							<div className="grid gap-3 md:grid-cols-2">
@@ -412,44 +317,22 @@ function TurretIssueDetailPage() {
 				</CardHeader>
 				<CardContent className="space-y-3">
 					<div className="flex flex-wrap items-center gap-2">
-						<Button
-							variant={
-								search.preset === "24h" ? "default" : "outline"
-							}
-							type="button"
-							onClick={() => setPreset("24h")}
-						>
-							Last 24h
-						</Button>
-						<Button
-							variant={
-								search.preset === "7d" ? "default" : "outline"
-							}
-							type="button"
-							onClick={() => setPreset("7d")}
-						>
-							Last 7d
-						</Button>
-						<Button
-							variant={
-								search.preset === "30d" ? "default" : "outline"
-							}
-							type="button"
-							onClick={() => setPreset("30d")}
-						>
-							Last 30d
-						</Button>
-						<Button
-							variant={
-								search.preset === "custom"
-									? "default"
-									: "outline"
-							}
-							type="button"
-							onClick={() => setPreset("custom")}
-						>
-							Custom
-						</Button>
+						{issuePresetSchema.options.map((preset) => (
+							<Button
+								key={preset}
+								variant={
+									search.preset === preset
+										? "default"
+										: "outline"
+								}
+								type="button"
+								onClick={() => setPreset(preset)}
+							>
+								{preset === "custom"
+									? "Custom"
+									: `Last ${preset}`}
+							</Button>
+						))}
 						<div className="text-xs text-muted-foreground">
 							bucket: {search.bucket}
 						</div>

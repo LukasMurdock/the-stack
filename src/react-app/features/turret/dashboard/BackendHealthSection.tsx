@@ -20,7 +20,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 
-import type { TurretSummary } from "../../../lib/turretApi";
+import type { TurretSummary } from "../queries";
 import {
 	abbreviateVersion,
 	formatCount,

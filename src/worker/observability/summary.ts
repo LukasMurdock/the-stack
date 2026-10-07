@@ -1,4 +1,9 @@
 import {
+	OPERATION_METRIC_VERSION,
+	operationBlobColumn as blob,
+	operationDoubleColumn as double,
+} from "./metrics";
+import {
 	turretSummarySchema,
 	type TurretSummary,
 } from "../../contracts/observability";
@@ -16,16 +21,16 @@ type SummaryEnvironment = {
 };
 type Operations = TurretSummary["operations"];
 
-const aggregates = `COUNT(*) AS requests, SUM(double3) AS serverErrors,
-	SUM(double4) AS slowRequests, AVG(double1) AS avgDurationMs,
-	quantileWeighted(0.95, double1, sampleInterval) AS p95DurationMs`;
+const aggregates = `COUNT(*) AS requests, SUM(${double("serverError")}) AS serverErrors,
+	SUM(${double("slowRequest")}) AS slowRequests, AVG(${double("durationMs")}) AS avgDurationMs,
+	quantileWeighted(0.95, ${double("durationMs")}, sampleInterval) AS p95DurationMs`;
 const filter = `FROM events.analyticsEngine.turret_operations
-	WHERE timestamp >= $start AND timestamp < $end AND blob1 = 'v1'
-	AND blob2 = $environment AND blob7 != 'admin' AND blob7 != 'health'`;
+	WHERE timestamp >= $start AND timestamp < $end AND ${blob("schemaVersion")} = '${OPERATION_METRIC_VERSION}'
+	AND ${blob("environment")} = $environment AND ${blob("category")} != 'admin' AND ${blob("category")} != 'health'`;
 export const OPERATION_TOTALS_SQL = `SELECT ${aggregates} ${filter}`;
-export const OPERATION_ROUTES_SQL = `SELECT blob4 AS surface, blob5 AS method,
-	blob6 AS route, blob7 AS category, blob3 AS version, ${aggregates} ${filter}
-	GROUP BY blob4, blob5, blob6, blob7, blob3 ORDER BY requests DESC LIMIT 10`;
+export const OPERATION_ROUTES_SQL = `SELECT ${blob("surface")} AS surface, ${blob("method")} AS method,
+	${blob("route")} AS route, ${blob("category")} AS category, ${blob("version")} AS version, ${aggregates} ${filter}
+	GROUP BY ${blob("surface")}, ${blob("method")}, ${blob("route")}, ${blob("category")}, ${blob("version")} ORDER BY requests DESC LIMIT 10`;
 
 // Cache a single window per binding/environment and coalesce simultaneous loads.
 // No global credential, account identifier, or arbitrary client SQL is accepted.

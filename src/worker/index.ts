@@ -1,8 +1,7 @@
 import { Hono } from "hono";
 import { trimTrailingSlash } from "hono/trailing-slash";
-import { sql } from "drizzle-orm";
 import { makeTurretDb } from "../bindings/d1/turret/db";
-import * as turretSchema from "../bindings/d1/turret/schema";
+import { cleanupTurretStorage } from "./turret/retention";
 import { observeRequest } from "./observability/request";
 import type { OperationEnvironment } from "./observability/metrics";
 import type { AnalyticsSqlBinding } from "./observability/summary";
@@ -179,23 +178,13 @@ export default {
 						return;
 					}
 
-					const turretDb = makeTurretDb(db);
-					// Delete spans first, then breadcrumbs.
-					await turretDb
-						.delete(turretSchema.turretRequestSpans)
-						.where(
-							sql`${turretSchema.turretRequestSpans.expiresAt} < ${now}`
-						);
-					await turretDb
-						.delete(turretSchema.turretRequestBreadcrumbs)
-						.where(
-							sql`${turretSchema.turretRequestBreadcrumbs.expiresAt} < ${now}`
-						);
-					await turretDb
-						.delete(turretSchema.turretSessionErrors)
-						.where(
-							sql`${turretSchema.turretSessionErrors.expiresAt} < ${now}`
-						);
+					log.set(
+						await cleanupTurretStorage(
+							makeTurretDb(db),
+							env.TURRET_REPLAY_BUCKET,
+							now
+						)
+					);
 				}
 			);
 		} catch (error) {

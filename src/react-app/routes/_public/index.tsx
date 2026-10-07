@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { nameQueryOptions } from "../../queries/nameQuery";
-import { apiClient } from "../../lib/apiClient";
-import { getTurretContext } from "../../lib/turretContext";
-import { reportError } from "../../lib/error-tracker";
+import { apiClient } from "../../api";
+import {
+	getTurretContext,
+	subscribeTurretSession,
+} from "../../features/turret/context";
+import { reportError } from "../../features/turret/error-tracker";
 
 const Route = createFileRoute("/_public/")({
 	loader: ({ context }) =>
@@ -17,14 +20,11 @@ const Route = createFileRoute("/_public/")({
 function HomePage() {
 	const nameQuery = useSuspenseQuery(nameQueryOptions);
 	const [count, setCount] = useState(0);
-	const [turretActive, setTurretActive] = useState(false);
-
-	useEffect(() => {
-		const update = () => setTurretActive(Boolean(getTurretContext()));
-		update();
-		const id = window.setInterval(update, 500);
-		return () => window.clearInterval(id);
-	}, []);
+	const turretActive = useSyncExternalStore(
+		subscribeTurretSession,
+		() => Boolean(getTurretContext()),
+		() => false
+	);
 
 	function requireTurret(): boolean {
 		return Boolean(getTurretContext());
@@ -87,14 +87,14 @@ function HomePage() {
 							Error reporting test
 						</div>
 						<div className="text-sm text-muted-foreground">
-							Turret capture:{" "}
+							Turret session:{" "}
 							{turretActive ? "active" : "inactive"}
 						</div>
 					</div>
 					<div className="text-sm text-muted-foreground">
 						{turretActive
-							? "Events should appear in the replay session"
-							: "Log in to start a replay session"}
+							? "Errors should appear in the session"
+							: "Log in to start a telemetry session"}
 					</div>
 				</div>
 
@@ -103,7 +103,7 @@ function HomePage() {
 						type="button"
 						disabled={!turretActive}
 						onClick={() => {
-							// Sends via turretReportReplaySessionError if capture is active.
+							// Sends via turretReportReplaySessionError while the telemetry session is active.
 							reportError(
 								new Error("Intentional UI test error"),
 								{

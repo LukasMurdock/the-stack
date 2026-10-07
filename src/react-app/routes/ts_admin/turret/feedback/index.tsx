@@ -1,3 +1,4 @@
+import { turretListPageDefaults } from "@/contracts/turret-pagination";
 import {
 	turretFeedbackKindSchema,
 	turretFeedbackStatusSchema,
@@ -6,11 +7,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
-import { requireTurretAdmin } from "../../../../lib/requireTurretAdmin";
 import {
 	turretFeedbackQueryOptions,
 	turretFeedbackStatusMutation,
-} from "../../../../queries/turretQueries";
+} from "../../../../features/turret/queries";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,10 +34,9 @@ import { Badge } from "@/components/ui/badge";
 import type {
 	TurretFeedbackStatus,
 	TurretFeedbackKind,
-} from "../../../../lib/turretApi";
+} from "../../../../features/turret/queries";
 
 const Route = createFileRoute("/ts_admin/turret/feedback/")({
-	beforeLoad: requireTurretAdmin,
 	component: TurretFeedbackPage,
 });
 
@@ -59,7 +58,7 @@ function TurretFeedbackPage() {
 	const [kind, setKind] = useState<TurretFeedbackKind | "all">("all");
 	const [q, setQ] = useState("");
 	const [offset, setOffset] = useState(0);
-	const limit = 50;
+	const limit = turretListPageDefaults.limit;
 
 	const queryInput = useMemo(
 		() => ({
@@ -76,13 +75,7 @@ function TurretFeedbackPage() {
 
 	const feedbackQuery = useQuery(turretFeedbackQueryOptions(queryInput));
 
-	const updateStatusMutation = useMutation({
-		mutationFn: turretFeedbackStatusMutation,
-		onSuccess: async () => {
-			await qc.invalidateQueries({ queryKey: ["turret", "feedback"] });
-			await qc.invalidateQueries({ queryKey: ["turret", "session"] });
-		},
-	});
+	const updateStatusMutation = useMutation(turretFeedbackStatusMutation(qc));
 
 	const rows = feedbackQuery.data?.feedback ?? [];
 

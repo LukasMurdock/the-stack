@@ -41,7 +41,7 @@ check-fast:
     pnpm run lint && pnpm test
 
 check-full:
-    pnpm run lint && pnpm test && pnpm exec astro build && pnpm exec tsc -b
+    pnpm verify
 
 format:
     pnpm exec oxfmt --write .

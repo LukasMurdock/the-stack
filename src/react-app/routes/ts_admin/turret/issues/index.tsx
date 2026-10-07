@@ -1,3 +1,16 @@
+import { turretIssueStatusSchema } from "@/contracts/turret";
+import {
+	issuesSearchSchema,
+	issuePresetSchema,
+	issueStatusLabels,
+	type IssueRangePreset as RangePreset,
+} from "../../../../features/turret/issueSearch";
+import {
+	presetToRange,
+	toLocalDatetimeValue,
+	fromLocalDatetimeValue,
+} from "../../../../features/turret/timeRange";
+
 import { useDraftValue } from "@/react-app/hooks/useDraftValue";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -23,69 +36,11 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 
-import { requireTurretAdmin } from "../../../../lib/requireTurretAdmin";
-import { turretIssuesQueryOptions } from "../../../../queries/turretQueries";
-import type { TurretIssueStatus } from "../../../../lib/turretApi";
-
-type RangePreset = "24h" | "7d" | "30d" | "custom";
-
-function presetToRange(
-	preset: RangePreset,
-	now: number
-): { from?: number; to?: number } {
-	switch (preset) {
-		case "24h":
-			return { from: now - 24 * 60 * 60 * 1000, to: now };
-		case "7d":
-			return { from: now - 7 * 24 * 60 * 60 * 1000, to: now };
-		case "30d":
-			return { from: now - 30 * 24 * 60 * 60 * 1000, to: now };
-		case "custom":
-		default:
-			return {};
-	}
-}
-
-function toLocalDatetimeValue(ms?: number): string {
-	if (!ms || Number.isNaN(ms)) return "";
-	const d = new Date(ms);
-	const pad = (n: number) => String(n).padStart(2, "0");
-	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function fromLocalDatetimeValue(v: string): number | undefined {
-	if (!v) return undefined;
-	const d = new Date(v);
-	const ms = d.getTime();
-	return Number.isNaN(ms) ? undefined : ms;
-}
+import { turretIssuesQueryOptions } from "../../../../features/turret/queries";
+import type { TurretIssueStatus } from "../../../../features/turret/queries";
 
 const Route = createFileRoute("/ts_admin/turret/issues/")({
-	validateSearch: (s: Record<string, unknown>) => {
-		const status: TurretIssueStatus =
-			s.status === "resolved" ||
-			s.status === "ignored" ||
-			s.status === "open"
-				? s.status
-				: "open";
-		const preset: RangePreset =
-			s.preset === "24h" ||
-			s.preset === "7d" ||
-			s.preset === "30d" ||
-			s.preset === "custom"
-				? s.preset
-				: "24h";
-		return {
-			status,
-			preset,
-			q: typeof s.q === "string" ? s.q : "",
-			from: typeof s.from === "string" ? Number(s.from) : undefined,
-			to: typeof s.to === "string" ? Number(s.to) : undefined,
-			offset: typeof s.offset === "string" ? Number(s.offset) : 0,
-			limit: typeof s.limit === "string" ? Number(s.limit) : 50,
-		};
-	},
-	beforeLoad: requireTurretAdmin,
+	validateSearch: issuesSearchSchema,
 	component: TurretIssuesPage,
 });
 
@@ -187,16 +142,7 @@ function TurretIssuesPage() {
 						onClick={() =>
 							navigate({
 								to: "/ts_admin/turret/replay-sessions",
-								search: {
-									q: "",
-									hasError: false,
-									groupBy: "none",
-									preset: "1h",
-									from: undefined,
-									to: undefined,
-									offset: 0,
-									limit: 50,
-								},
+								search: {},
 							})
 						}
 					>
@@ -220,76 +166,37 @@ function TurretIssuesPage() {
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="flex flex-wrap items-center gap-2">
-						<Button
-							variant={
-								search.status === "open" ? "default" : "outline"
-							}
-							type="button"
-							onClick={() => setStatus("open")}
-						>
-							Open
-						</Button>
-						<Button
-							variant={
-								search.status === "resolved"
-									? "default"
-									: "outline"
-							}
-							type="button"
-							onClick={() => setStatus("resolved")}
-						>
-							Resolved
-						</Button>
-						<Button
-							variant={
-								search.status === "ignored"
-									? "default"
-									: "outline"
-							}
-							type="button"
-							onClick={() => setStatus("ignored")}
-						>
-							Ignored
-						</Button>
+						{turretIssueStatusSchema.options.map((status) => (
+							<Button
+								key={status}
+								variant={
+									search.status === status
+										? "default"
+										: "outline"
+								}
+								type="button"
+								onClick={() => setStatus(status)}
+							>
+								{issueStatusLabels[status]}
+							</Button>
+						))}
 						<div className="mx-2 hidden h-6 w-px bg-border sm:block" />
-						<Button
-							variant={
-								search.preset === "24h" ? "default" : "outline"
-							}
-							type="button"
-							onClick={() => setPreset("24h")}
-						>
-							Last 24h
-						</Button>
-						<Button
-							variant={
-								search.preset === "7d" ? "default" : "outline"
-							}
-							type="button"
-							onClick={() => setPreset("7d")}
-						>
-							Last 7d
-						</Button>
-						<Button
-							variant={
-								search.preset === "30d" ? "default" : "outline"
-							}
-							type="button"
-							onClick={() => setPreset("30d")}
-						>
-							Last 30d
-						</Button>
-						<Button
-							variant={
-								search.preset === "custom"
-									? "default"
-									: "outline"
-							}
-							type="button"
-							onClick={() => setPreset("custom")}
-						>
-							Custom
-						</Button>
+						{issuePresetSchema.options.map((preset) => (
+							<Button
+								key={preset}
+								variant={
+									search.preset === preset
+										? "default"
+										: "outline"
+								}
+								type="button"
+								onClick={() => setPreset(preset)}
+							>
+								{preset === "custom"
+									? "Custom"
+									: `Last ${preset}`}
+							</Button>
+						))}
 						<div className="text-xs text-muted-foreground">
 							{formatRangeLabel()}
 						</div>
@@ -405,14 +312,7 @@ function TurretIssuesPage() {
 														fingerprint:
 															i.fingerprint,
 													},
-													search: {
-														preset: "7d",
-														bucket: "day",
-														from: undefined,
-														to: undefined,
-														eventsOffset: 0,
-														eventsLimit: 50,
-													},
+													search: {},
 												})
 											}
 										>

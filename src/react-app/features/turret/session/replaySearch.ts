@@ -1,50 +1,36 @@
-export type RangePreset = "15m" | "1h" | "24h" | "custom";
-export type GroupBy = "none" | "user";
+import { turretHasErrorSchema } from "../../../../contracts/turret";
+import { z } from "zod";
+import { timeRangeSearchSchema } from "../timeRange";
+import {
+	turretListPageSchema,
+	turretListPageDefaults,
+} from "../../../../contracts/turret-pagination";
 
-export function parseReplaySearch(s: Record<string, unknown>) {
-	const legacyGrouped =
-		s.grouped === true || s.grouped === "true" || s.grouped === "1";
-	const preset: RangePreset =
-		s.preset === "15m" ||
-		s.preset === "1h" ||
-		s.preset === "24h" ||
-		s.preset === "custom"
-			? s.preset
-			: "1h";
-	const groupBy: GroupBy =
-		s.groupBy === "none" || s.groupBy === "user"
-			? s.groupBy
-			: legacyGrouped
+export const replayPresetSchema = z.enum(["15m", "1h", "24h", "custom"]);
+export type RangePreset = z.infer<typeof replayPresetSchema>;
+const groupBySchema = z.enum(["none", "user"]);
+export type GroupBy = z.infer<typeof groupBySchema>;
+
+export const replaySearchSchema = timeRangeSearchSchema
+	.extend({
+		q: z.string().default("").catch(""),
+		hasError: turretHasErrorSchema.default(false).catch(false),
+		preset: replayPresetSchema.default("1h").catch("1h"),
+		groupBy: groupBySchema.optional().catch(undefined),
+		// Preserve old grouped links at the URL boundary; current navigation uses groupBy.
+		grouped: z.unknown().optional(),
+		offset: turretListPageSchema.shape.offset.catch(
+			turretListPageDefaults.offset
+		),
+		limit: turretListPageSchema.shape.limit.catch(
+			turretListPageDefaults.limit
+		),
+	})
+	.transform(({ grouped, groupBy, ...search }) => ({
+		...search,
+		groupBy:
+			groupBy ??
+			(grouped === true || grouped === "true" || grouped === "1"
 				? "user"
-				: "none";
-	return {
-		q: typeof s.q === "string" ? s.q : "",
-		hasError: s.hasError === "1" || s.hasError === true,
-		groupBy,
-		preset,
-		from:
-			typeof s.from === "number"
-				? s.from
-				: typeof s.from === "string"
-					? Number(s.from)
-					: undefined,
-		to:
-			typeof s.to === "number"
-				? s.to
-				: typeof s.to === "string"
-					? Number(s.to)
-					: undefined,
-		offset:
-			typeof s.offset === "number"
-				? s.offset
-				: typeof s.offset === "string"
-					? Number(s.offset)
-					: 0,
-		limit:
-			typeof s.limit === "number"
-				? s.limit
-				: typeof s.limit === "string"
-					? Number(s.limit)
-					: 50,
-	};
-}
+				: "none"),
+	}));

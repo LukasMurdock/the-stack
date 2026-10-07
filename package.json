@@ -16,7 +16,7 @@
 		"dev": "astro dev",
 		"lint": "oxlint .",
 		"prepare": "husky",
-		"test": "wrangler types && astro sync && tsc -p tsconfig.tests.json && tsx --tsconfig tsconfig.app.json --test \"tests/**/*.test.ts\"",
+		"test": "tsx --tsconfig tsconfig.app.json --test \"tests/unit/**/*.test.ts\" \"tests/integration/**/*.test.ts\" \"tests/smoke/**/*.test.ts\"",
 		"preview": "pnpm run build && astro preview",
 		"db:core:generate": "drizzle-kit generate --config src/bindings/d1/core/drizzle.config.ts",
 		"db:turret:generate": "drizzle-kit generate --config src/bindings/d1/turret/drizzle.config.ts",
@@ -24,7 +24,11 @@
 		"format": "oxfmt --write .",
 		"format:check": "oxfmt --check .",
 		"db:local:squash": "rm -rf src/bindings/d1/core/drizzle/* && pnpm run db:core:generate && wrangler d1 migrations apply CORE_DB --local",
-		"db:local:squash-turret": "rm -rf src/bindings/d1/turret/drizzle/* && pnpm run db:turret:generate && wrangler d1 migrations apply TURRET_DB --local"
+		"db:local:squash-turret": "rm -rf src/bindings/d1/turret/drizzle/* && pnpm run db:turret:generate && wrangler d1 migrations apply TURRET_DB --local",
+		"test:e2e": "playwright test",
+		"verify": "pnpm run lint && pnpm run format:check && pnpm run build && pnpm run test:types && pnpm test",
+		"test:types": "tsc -p tsconfig.tests.json",
+		"test:tooling": "tsx --tsconfig tsconfig.app.json --test \"tests/tooling/**/*.test.ts\""
 	},
 	"dependencies": {
 		"@astrojs/cloudflare": "14.3.3",
@@ -66,6 +70,7 @@
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "^1.62.5",
 		"@oxlint/plugins": "1.86.0",
+		"@playwright/test": "1.63.0",
 		"@tanstack/eslint-plugin-query": "^5.104.1",
 		"@tanstack/eslint-plugin-router": "^1.162.0",
 		"@tanstack/react-query-devtools": "^5.104.1",

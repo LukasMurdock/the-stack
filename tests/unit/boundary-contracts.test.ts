@@ -3,10 +3,12 @@ import test from "node:test";
 import Database from "better-sqlite3";
 import { getRequestLocation } from "../../src/lib/cloudflareRequest";
 import { headerSessionSchema } from "../../src/contracts/auth";
+import { turretComplianceSchema } from "../../src/contracts/turret-policy";
+import { normalizeTurretCompliance } from "../../src/worker/turret/compliance";
 import { turretInitResponseSchema } from "../../src/contracts/turret";
-import { ApiError, jsonOrThrow } from "../../src/react-app/lib/apiClient";
+import { ApiError, jsonOrThrow } from "../../src/react-app/api";
 import { decodeReplayEvents } from "../../src/react-app/features/turret/session/replayLoader";
-import { parseReplaySearch } from "../../src/react-app/features/turret/session/replaySearch";
+import { replaySearchSchema } from "../../src/react-app/features/turret/session/replaySearch";
 import { createSqliteD1, readSqlRow } from "../helpers/sqlite-d1";
 
 test("Cloudflare location accepts string metadata and excludes invalid or absent values", () => {
@@ -49,15 +51,38 @@ test("replay initialization uses the same parsed contract on the server and clie
 	const payload = {
 		session_id: "session",
 		upload_token: "token",
+		upload_expires_at: Date.now() + 60000,
 		policy_version: "v1",
 		rrweb: { maskAllInputs: true },
 	};
-	assert.deepEqual(turretInitResponseSchema.parse(payload).console.level, [
-		"log",
-		"info",
-		"warn",
-		"error",
-	]);
+	const defaults = normalizeTurretCompliance(null);
+	const initialized = turretInitResponseSchema.parse(payload);
+	assert.deepEqual(initialized.console, defaults.console);
+	assert.equal(defaults.retentionDays, 14);
+	assert.equal(defaults.rrweb.maskAllInputs, true);
+	assert.equal(defaults.console.stringifyOptions.depthOfLimit, 2);
+	const extension = { maskAllInputs: false, sampling: { scroll: 150 } };
+	assert.deepEqual(
+		turretInitResponseSchema.parse({ ...payload, rrweb: extension }).rrweb,
+		extension
+	);
+	for (const depthOfLimit of [0, 21]) {
+		const console = { stringifyOptions: { depthOfLimit } };
+		assert.equal(
+			turretComplianceSchema.safeParse({ console }).success,
+			false
+		);
+		assert.equal(
+			turretInitResponseSchema.safeParse({ ...payload, console }).success,
+			false
+		);
+		assert.deepEqual(normalizeTurretCompliance({ console }), defaults);
+	}
+	assert.equal(
+		turretInitResponseSchema.safeParse({ ...payload, rrweb: undefined })
+			.success,
+		false
+	);
 	assert.equal(
 		turretInitResponseSchema.safeParse({
 			...payload,
@@ -107,7 +132,7 @@ test("replay envelopes preserve rrweb payloads and reject invalid tags, timestam
 });
 
 test("legacy replay filters survive parsing followed by a redirect to the canonical route", () => {
-	const parsed = parseReplaySearch({
+	const parsed = replaySearchSchema.parse({
 		q: "checkout",
 		hasError: "1",
 		grouped: "true",
@@ -127,7 +152,7 @@ test("legacy replay filters survive parsing followed by a redirect to the canoni
 		offset: 50,
 		limit: 25,
 	});
-	assert.deepEqual(parseReplaySearch(parsed), parsed);
+	assert.deepEqual(replaySearchSchema.parse(parsed), parsed);
 });
 
 test("API error messages never treat arbitrary JSON fields as strings", async () => {

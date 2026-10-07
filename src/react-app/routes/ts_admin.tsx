@@ -1,13 +1,32 @@
-import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
+import { AuthenticatedOutlet } from "../features/auth/AuthenticatedOutlet";
+import type { ErrorComponentProps } from "@tanstack/react-router";
+import { ApiError } from "../api";
+import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 
-import { requireCoreAdmin } from "../lib/requireCoreAdmin";
+import { authClient, requireUser } from "../auth";
 
 const Route = createFileRoute("/ts_admin")({
-	beforeLoad: requireCoreAdmin,
+	beforeLoad: async (context) => {
+		const identity = await requireUser(context);
+		const { error } = await authClient.admin.listUsers({
+			query: { limit: 1, offset: 0 },
+		});
+		if (error)
+			throw new ApiError({
+				status: error.status ?? 500,
+				message:
+					error.status === 403
+						? "Administrator access is required."
+						: "Could not check administrator access.",
+			});
+		return identity;
+	},
 	component: TsAdminLayout,
+	errorComponent: AdminAccessError,
 });
 
 function TsAdminLayout() {
+	const { userId } = Route.useRouteContext();
 	return (
 		<div className="min-h-dvh">
 			<header className="border-b bg-card">
@@ -46,22 +65,48 @@ function TsAdminLayout() {
 						>
 							Turret
 						</Link>
-						<a
+						<Link
 							className="underline"
-							href="/app"
+							to="/"
 							title="Back to public app"
 						>
 							Exit
-						</a>
+						</Link>
 					</nav>
 				</div>
 			</header>
 
 			<div className="mx-auto max-w-7xl px-4 py-6">
-				<Outlet />
+				<AuthenticatedOutlet userId={userId} />
 			</div>
 		</div>
 	);
 }
 
 export { Route };
+
+function AdminAccessError({ error }: ErrorComponentProps) {
+	const router = useRouter();
+	const denied = error instanceof ApiError && error.status === 403;
+	return (
+		<section className="space-y-3 p-6">
+			<h1 className="text-xl font-semibold">
+				{denied
+					? "Administrator access is required."
+					: "Could not load the administrator area."}
+			</h1>
+			<Link to="/" className="underline">
+				Go home
+			</Link>
+			{!denied && (
+				<button
+					type="button"
+					onClick={() => router.invalidate()}
+					className="ml-4 underline"
+				>
+					Retry
+				</button>
+			)}
+		</section>
+	);
+}

@@ -4,10 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 
 import { CopyButton } from "../CopyButton";
-import type {
-	TurretRequestBreadcrumb,
-	TurretRequestSpan,
-} from "../../../lib/turretApi";
+import type { TurretRequestBreadcrumb, TurretRequestSpan } from "../queries";
 import {
 	jumpReplayToTimestamp,
 	type RrwebPlayerInstance,

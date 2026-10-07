@@ -1,6 +1,6 @@
 import React from "react";
-import { authClient } from "../lib/authClient";
-import { createTurretCapture } from "../lib/turretCapture";
+import { authClient } from "../auth";
+import { observeTurretCapture } from "../features/turret/lifecycle";
 import {
 	CatchBoundary,
 	ErrorComponent,
@@ -15,7 +15,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { useQueryErrorResetBoundary } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
-import { reportError } from "../lib/error-tracker";
+import { reportError } from "../features/turret/error-tracker";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 type RouterContext = {
@@ -36,20 +36,32 @@ function RootComponent() {
 	});
 
 	const sessionQuery = authClient.useSession();
-	const turretCaptureRef = React.useRef<ReturnType<
-		typeof createTurretCapture
-	> | null>(null);
-
-	React.useEffect(() => {
-		const user = sessionQuery.data?.user;
-		if (user && !turretCaptureRef.current) {
-			turretCaptureRef.current = createTurretCapture();
-		}
-		if (!user && turretCaptureRef.current) {
-			void turretCaptureRef.current.stop();
-			turretCaptureRef.current = null;
-		}
-	}, [sessionQuery.data?.user]);
+	const { queryClient } = Route.useRouteContext();
+	const previousUser = React.useRef<string | null | undefined>(undefined);
+	React.useLayoutEffect(() => {
+		if (sessionQuery.isPending) return;
+		const userId = sessionQuery.data?.user.id ?? null;
+		const previous = previousUser.current;
+		previousUser.current = userId;
+		if (previous === undefined || previous === userId) return;
+		// Dispose identity caches before paint, so a replacement form cannot become
+		// interactive just before cache clearing causes it to remount.
+		queryClient.clear();
+		void router
+			.invalidate()
+			.catch((error: unknown) =>
+				reportError(error, { source: "router" })
+			);
+	}, [
+		sessionQuery.isPending,
+		sessionQuery.data?.user.id,
+		queryClient,
+		router,
+	]);
+	React.useLayoutEffect(
+		() => observeTurretCapture(authClient.$store.atoms.session),
+		[]
+	);
 
 	const impersonatedBy = sessionQuery.data?.session?.impersonatedBy ?? null;
 	const isImpersonating = Boolean(impersonatedBy);

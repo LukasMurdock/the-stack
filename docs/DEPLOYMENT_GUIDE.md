@@ -42,7 +42,18 @@ Preflight validates:
 - test/build pass
 - dry-run deploy works
 
-### 2) Deploy
+### 2) Apply database migrations
+
+Apply pending migrations to both production databases before deploying:
+
+```bash
+pnpm exec wrangler d1 migrations apply CORE_DB --remote --env production
+pnpm exec wrangler d1 migrations apply TURRET_DB --remote --env production
+```
+
+These migrations create the organization capabilities and keep replay chunk metadata unique. `just deploy-production` does not apply migrations.
+
+### 3) Deploy
 
 ```bash
 just deploy-production
@@ -50,16 +61,18 @@ just deploy-production
 
 This deploys the main production worker.
 
-### 3) Verify
+### 4) Verify
 
 ```bash
 curl -i "https://<your-domain>/api/health"
+curl -i "https://<your-domain>/api/readiness"
 curl -i "https://<your-domain>/api/scalar"
 ```
 
 Expected:
 
 - `/api/health` returns `200` with `ok: true`
+- `/api/readiness` returns `200` when the required core database schema is available
 - `/api/scalar` returns `200`
 
 Tail logs as needed:

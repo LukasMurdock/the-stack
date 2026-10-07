@@ -1,3 +1,5 @@
+import { adminAccountRoles } from "../features/auth/policy";
+import { passwordSchema } from "../contracts/auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { makeCoreDb } from "../bindings/d1/core/db";
@@ -18,14 +20,26 @@ type AuthEnv = Env &
 		AUTH_SIGNUP_MODE?: string;
 	};
 
+export function configuredGoogleProvider(
+	env: Pick<AuthEnv, "GOOGLE_CLIENT_ID" | "GOOGLE_CLIENT_SECRET">
+) {
+	if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return undefined;
+	return {
+		clientId: env.GOOGLE_CLIENT_ID,
+		clientSecret: env.GOOGLE_CLIENT_SECRET,
+	};
+}
+
 function createAuth(
 	env: AuthEnv,
 	ctx?: ObservabilityContext,
 	requestId?: string
 ) {
 	const selfSignUpEnabled = isSelfSignUpEnabled(env.AUTH_SIGNUP_MODE);
+	const google = configuredGoogleProvider(env);
 
 	return betterAuth({
+		baseURL: env.APP_URL,
 		secret: env.BETTER_AUTH_SECRET,
 		advanced: {
 			defaultCookieAttributes: {
@@ -50,6 +64,8 @@ function createAuth(
 		verification: { modelName: "auth_verification" },
 		emailAndPassword: {
 			enabled: true,
+			minPasswordLength: passwordSchema.minLength ?? undefined,
+			maxPasswordLength: passwordSchema.maxLength ?? undefined,
 			disableSignUp: !selfSignUpEnabled,
 			sendResetPassword: ({ user, url }) =>
 				sendAuthEmail({
@@ -61,18 +77,10 @@ function createAuth(
 					url,
 				}),
 		},
-		socialProviders:
-			env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
-				? {
-						google: {
-							clientId: env.GOOGLE_CLIENT_ID,
-							clientSecret: env.GOOGLE_CLIENT_SECRET,
-						},
-					}
-				: {},
+		socialProviders: google ? { google } : {},
 		plugins: [
 			admin({
-				adminRoles: ["admin"],
+				adminRoles: [...adminAccountRoles],
 			}),
 			bearer(),
 			haveIBeenPwned({

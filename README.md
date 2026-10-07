@@ -2,6 +2,22 @@
 
 API-first, type-safe template for building fast, interactive apps on Cloudflare Workers.
 
+```bash
+pnpm install
+cp .dev.vars.example .dev.vars
+# Configure local secrets and ADMIN_EMAIL, then bootstrap:
+node scripts/setup-local.mjs
+pnpm dev
+```
+
+Open <http://localhost:4321/app/organizations>. Configure `.dev.vars` and
+`ADMIN_EMAIL` before setup. Setup preserves local data and
+creates a verified administrator; its credential is saved in
+`.wrangler/.admin-password`. Organizations and permissions are core capabilities.
+Projects is a small, replaceable example connecting operations, typed APIs,
+TanStack Query and ordinary React forms. Follow the [extension guide](src/content/docs/v1/extend.md)
+to build your next feature.
+
 ## Features
 
 - ☁️ **Deploy:** Ship applications instead of managing infrastructure.
@@ -10,6 +26,7 @@ API-first, type-safe template for building fast, interactive apps on Cloudflare 
 - ⚛️ **Fetch:** Cache, refetch, and sync client data with resilient loading states.
 - 🔐 **Authenticate:** Sessions, email/password, OAuth, and verification flows ready to ship.
 - 📬 **Notify:** Send emails with React templates and reliable delivery.
+- 👥 **Collaborate:** Organizations, invitations, and owner/editor/viewer permissions.
 - 🧪 **Isolate:** Keep configs, secrets, and data separate across local/dev/staging/prod.
 - 👀 **Observe:** Turret replay and errors, correlated logs and traces, and an admin backend health dashboard.
 
@@ -308,7 +325,9 @@ curl -X POST "http://localhost:4321/api/internal/bootstrap-admin" \
   -H "x-bootstrap-secret: <BOOTSTRAP_SECRET>"
 ```
 
-Note: self-service sign-up is disabled by default (`AUTH_SIGNUP_MODE=invite_only`). Use local admin bootstrap.
+Note: public self-service sign-up is disabled by default (`AUTH_SIGNUP_MODE=invite_only`).
+Use local admin bootstrap for the first account. Organization invitations permit
+matching account signup, with email verification required before joining.
 Set `AUTH_SIGNUP_MODE=open` only if you explicitly want public self-service sign-up.
 
 Then open the logged reset link and set your password.

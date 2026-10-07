@@ -42,6 +42,12 @@ jobs:
             - name: Fast checks
               run: just check-fast
 
+            - name: Test type checks
+              run: pnpm exec astro sync && pnpm test:types
+
+            - name: Template tooling checks
+              run: pnpm test:tooling
+
     full:
         if: github.event_name != 'pull_request'
         runs-on: ubuntu-latest
@@ -74,3 +80,6 @@ jobs:
 
             - name: Full checks
               run: just check-full
+
+            - name: Template tooling checks
+              run: pnpm test:tooling

@@ -2,6 +2,7 @@ import type { Bindings } from "../index";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 import { createAuth } from "../auth";
+import { routes as readinessRoutes } from "./routes/readiness";
 import { routes as rootRoutes } from "./routes/root";
 import { routes as bootstrapRoutes } from "./routes/bootstrap";
 import { routes as internalTurretSummaryRoutes } from "./routes/internal-turret-summary";
@@ -11,13 +12,23 @@ import { routes as internalTurretComplianceRoutes } from "./routes/internal-turr
 import { routes as internalTurretIssuesRoutes } from "./routes/internal-turret-issues";
 import { routes as internalTurretFeedbackRoutes } from "./routes/internal-turret-feedback";
 import { routes as turretRoutes } from "./routes/turret";
-import { isAdminRole } from "./routes/_shared/admin-auth";
+import { isAdminRole } from "../../features/auth/policy";
+
+import { routes as organizationsRoutes } from "./routes/organizations";
+import { routes as organizationMemberRoutes } from "./routes/organization-members";
+import { routes as organizationInvitationRoutes } from "./routes/organization-invitations";
+import { routes as projectsRoutes } from "../../features/projects/http";
 
 const api = new OpenAPIHono<{ Bindings: Bindings }>();
 
 // Capture the returned type so the client can infer routes.
 const apiRoutes = api
 	.route("/", rootRoutes)
+	.route("/", readinessRoutes)
+	.route("/", organizationsRoutes)
+	.route("/", organizationMemberRoutes)
+	.route("/", organizationInvitationRoutes)
+	.route("/", projectsRoutes)
 	.route("/", bootstrapRoutes)
 	.route("/", turretRoutes)
 	.route("/", internalTurretSummaryRoutes)

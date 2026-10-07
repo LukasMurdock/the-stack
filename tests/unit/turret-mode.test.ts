@@ -16,6 +16,9 @@ test("resolveTurretMode parses known values", () => {
 	assert.equal(resolveTurretMode("off"), "off");
 	assert.equal(resolveTurretMode("basic"), "basic");
 	assert.equal(resolveTurretMode("full"), "full");
+	assert.equal(resolveTurretMode(" OFF "), "off");
+	assert.equal(resolveTurretMode(" Basic "), "basic");
+	assert.equal(resolveTurretMode(" FULL "), "full");
 });
 
 test("mode status disables ingest for off/basic", () => {

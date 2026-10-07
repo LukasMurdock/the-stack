@@ -116,7 +116,10 @@ export const turretSessionChunks = sqliteTable(
 		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 	},
 	(table) => [
-		index("turret_chunks_sessionId_seq_idx").on(table.sessionId, table.seq),
+		uniqueIndex("turret_chunks_sessionId_seq_unique").on(
+			table.sessionId,
+			table.seq
+		),
 	]
 );
 

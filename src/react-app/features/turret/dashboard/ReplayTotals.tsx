@@ -8,7 +8,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 
-import type { TurretSummary } from "../../../lib/turretApi";
+import type { TurretSummary } from "../queries";
 import { formatSummaryWindow } from "./summaryFormat";
 
 type ReplayTotals = Extract<

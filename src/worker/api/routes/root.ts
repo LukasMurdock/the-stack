@@ -1,10 +1,12 @@
+import { configuredGoogleProvider } from "../../auth";
 import type { Bindings } from "../../index";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import {
+	authSignupModeSchema,
 	isOpenSignupMode,
 	resolveAuthSignupMode,
 } from "../../auth-signup-mode";
-import { resolveTurretModeStatus } from "../../turret/mode";
+import { turretModeSchema, resolveTurretModeStatus } from "../../turret/mode";
 
 const rootApp = new OpenAPIHono<{ Bindings: Bindings }>();
 
@@ -33,21 +35,24 @@ const rootRoutes = rootApp.openapi(getRoot, (c) => {
 	return c.json({ name: "Cloudflare" }, 200);
 });
 
+// Construct OpenAPI adapters from the shared values: configuration schemas may
+// exist before OpenAPI extends Zod during module initialization.
 const HealthResponseSchema = z
 	.object({
 		ok: z.boolean().openapi({ example: true }),
 		auth: z.object({
-			signupMode: z
-				.enum(["invite_only", "open"])
-				.openapi({ example: "invite_only" }),
+			signupMode: z.enum(authSignupModeSchema.options).openapi({
+				example: "invite_only",
+			}),
 			selfSignUpEnabled: z.boolean().openapi({ example: false }),
+			googleSignInEnabled: z.boolean().openapi({ example: false }),
 		}),
 		turret: z.object({
 			configuredMode: z
-				.enum(["off", "basic", "full"])
+				.enum(turretModeSchema.options)
 				.openapi({ example: "full" }),
 			effectiveMode: z
-				.enum(["off", "basic", "full"])
+				.enum(turretModeSchema.options)
 				.openapi({ example: "basic" }),
 			ingestEnabled: z.boolean().openapi({ example: false }),
 			reason: z
@@ -117,6 +122,9 @@ const routes = rootRoutes
 				auth: {
 					signupMode,
 					selfSignUpEnabled: isOpenSignupMode(signupMode),
+					googleSignInEnabled: Boolean(
+						configuredGoogleProvider(c.env)
+					),
 				},
 				turret: turretMode,
 			},

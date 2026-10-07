@@ -1,122 +1,101 @@
 import type { Bindings } from "../../index";
+import {
+	turretComplianceSchema,
+	turretComplianceUpdateSchema,
+	applyTurretComplianceUpdate,
+} from "../../../contracts/turret-policy";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import {
 	readTurretCompliance,
 	writeTurretCompliance,
-	TurretComplianceSchema,
 } from "../../turret/compliance";
-import { requireInternalTurretAdmin } from "./_shared/admin-auth";
+import {
+	adminErrorResponses,
+	requireInternalTurretAdmin,
+} from "./_shared/admin-auth";
 
-const internalTurretComplianceApp = new OpenAPIHono<{ Bindings: Bindings }>();
-
-const ErrorResponseSchema = z
-	.object({
-		error: z.string(),
-	})
-	.openapi("ErrorResponse");
+import {
+	validationHook,
+	operationErrorHandler,
+} from "./_shared/operation-http";
+import {
+	productErrorSchema,
+	productErrors,
+} from "../../../contracts/operation";
+const internalTurretComplianceApp = new OpenAPIHono<{ Bindings: Bindings }>({
+	defaultHook: validationHook,
+});
+internalTurretComplianceApp.onError(operationErrorHandler);
 
 const TurretComplianceResponseSchema = z
 	.object({
-		policy: TurretComplianceSchema,
+		policy: turretComplianceSchema,
 	})
 	.openapi("TurretComplianceResponse");
 
-const TurretComplianceUpdateSchema = z
-	.object({
-		retentionDays: z.number().int().min(1).max(365).optional(),
-		rrweb: z
-			.object({
-				maskAllInputs: z.boolean().optional(),
-			})
-			.passthrough()
-			.optional(),
-		console: z
-			.object({
-				enabled: z.boolean().optional(),
-			})
-			.passthrough()
-			.optional(),
-	})
-	.openapi("TurretComplianceUpdate");
-
-internalTurretComplianceApp.use(
-	"/internal/turret/*",
-	requireInternalTurretAdmin
-);
-
-const getCompliance = createRoute({
-	method: "get",
-	path: "/internal/turret/compliance",
-	responses: {
-		200: {
-			description: "Get Turret compliance policy",
-			content: {
-				"application/json": { schema: TurretComplianceResponseSchema },
-			},
-		},
-		401: {
-			description: "Unauthorized",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-		403: {
-			description: "Forbidden",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-	},
-});
-
-internalTurretComplianceApp.openapi(getCompliance, async (c) => {
-	const policy = await readTurretCompliance(c.env);
-	return c.json({ policy }, 200);
-});
-
-const putCompliance = createRoute({
-	method: "put",
-	path: "/internal/turret/compliance",
-	request: {
-		body: {
-			required: true,
-			content: {
-				"application/json": { schema: TurretComplianceUpdateSchema },
-			},
-		},
-	},
-	responses: {
-		200: {
-			description: "Update Turret compliance policy",
-			content: {
-				"application/json": { schema: TurretComplianceResponseSchema },
-			},
-		},
-		401: {
-			description: "Unauthorized",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-		403: {
-			description: "Forbidden",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-	},
-});
-
-internalTurretComplianceApp.openapi(putCompliance, async (c) => {
-	const body = c.req.valid("json");
-	const current = await readTurretCompliance(c.env);
-	const next = {
-		...current,
-		...(body.retentionDays !== undefined
-			? { retentionDays: body.retentionDays }
-			: {}),
-		...(body.rrweb ? { rrweb: { ...current.rrweb, ...body.rrweb } } : {}),
-		...(body.console
-			? { console: { ...current.console, ...body.console } }
-			: {}),
-	};
-	// Re-parse to ensure we always store a normalized object.
-	const normalized = TurretComplianceSchema.parse(next);
-	await writeTurretCompliance(c.env, normalized);
-	return c.json({ policy: normalized }, 200);
-});
-
 export { internalTurretComplianceApp };
-export const routes = internalTurretComplianceApp;
+
+export const routes = internalTurretComplianceApp
+	.openapi(
+		createRoute({
+			method: "get",
+			path: "/internal/turret/compliance",
+			middleware: [requireInternalTurretAdmin] as const,
+			responses: {
+				200: {
+					description: "Get Turret compliance policy",
+					content: {
+						"application/json": {
+							schema: TurretComplianceResponseSchema,
+						},
+					},
+				},
+				...adminErrorResponses,
+			},
+		}),
+		async (c) => {
+			const policy = await readTurretCompliance(c.env);
+			return c.json({ policy }, 200);
+		}
+	)
+	.openapi(
+		createRoute({
+			method: "put",
+			path: "/internal/turret/compliance",
+			middleware: [requireInternalTurretAdmin] as const,
+			request: {
+				body: {
+					required: true,
+					content: {
+						"application/json": {
+							schema: turretComplianceUpdateSchema,
+						},
+					},
+				},
+			},
+			responses: {
+				[productErrors.invalid_input.status]: {
+					description: productErrors.invalid_input.description,
+					content: {
+						"application/json": { schema: productErrorSchema },
+					},
+				},
+				200: {
+					description: "Update Turret compliance policy",
+					content: {
+						"application/json": {
+							schema: TurretComplianceResponseSchema,
+						},
+					},
+				},
+				...adminErrorResponses,
+			},
+		}),
+		async (c) => {
+			const body = c.req.valid("json");
+			const current = await readTurretCompliance(c.env);
+			const normalized = applyTurretComplianceUpdate(current, body);
+			await writeTurretCompliance(c.env, normalized);
+			return c.json({ policy: normalized }, 200);
+		}
+	);

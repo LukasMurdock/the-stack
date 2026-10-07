@@ -1,108 +1,97 @@
 import type { Bindings } from "../../index";
+import {
+	turretFeaturesSchema,
+	turretFeaturesUpdateSchema,
+} from "../../../contracts/turret-features";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { readTurretFeatures, writeTurretFeatures } from "../../turret/features";
-import { requireInternalTurretAdmin } from "./_shared/admin-auth";
+import {
+	adminErrorResponses,
+	requireInternalTurretAdmin,
+} from "./_shared/admin-auth";
 
-const internalTurretFeaturesApp = new OpenAPIHono<{ Bindings: Bindings }>();
-
-const ErrorResponseSchema = z
-	.object({
-		error: z.string(),
-	})
-	.openapi("ErrorResponse");
-
-const TurretFeaturesSchema = z
-	.object({
-		storeUserEmail: z.boolean(),
-	})
-	.openapi("TurretFeatures");
+import {
+	validationHook,
+	operationErrorHandler,
+} from "./_shared/operation-http";
+import {
+	productErrorSchema,
+	productErrors,
+} from "../../../contracts/operation";
+const internalTurretFeaturesApp = new OpenAPIHono<{ Bindings: Bindings }>({
+	defaultHook: validationHook,
+});
+internalTurretFeaturesApp.onError(operationErrorHandler);
 
 const TurretFeaturesResponseSchema = z
 	.object({
-		features: TurretFeaturesSchema,
+		features: turretFeaturesSchema,
 	})
 	.openapi("TurretFeaturesResponse");
 
-const TurretFeaturesUpdateSchema = z
-	.object({
-		storeUserEmail: z.boolean().optional(),
-	})
-	.openapi("TurretFeaturesUpdate");
-
-internalTurretFeaturesApp.use("/internal/turret/*", requireInternalTurretAdmin);
-const getFeatures = createRoute({
-	method: "get",
-	path: "/internal/turret/features",
-	responses: {
-		200: {
-			description: "Get turret features",
-			content: {
-				"application/json": {
-					schema: TurretFeaturesResponseSchema,
-				},
-			},
-		},
-		401: {
-			description: "Unauthorized",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-		403: {
-			description: "Forbidden",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-	},
-});
-
-internalTurretFeaturesApp.openapi(getFeatures, async (c) => {
-	const features = await readTurretFeatures(c.env);
-	return c.json({ features }, 200);
-});
-
-const putFeatures = createRoute({
-	method: "put",
-	path: "/internal/turret/features",
-	request: {
-		body: {
-			required: true,
-			content: {
-				"application/json": {
-					schema: TurretFeaturesUpdateSchema,
-				},
-			},
-		},
-	},
-	responses: {
-		200: {
-			description: "Update turret features",
-			content: {
-				"application/json": {
-					schema: TurretFeaturesResponseSchema,
-				},
-			},
-		},
-		401: {
-			description: "Unauthorized",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-		403: {
-			description: "Forbidden",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-	},
-});
-
-internalTurretFeaturesApp.openapi(putFeatures, async (c) => {
-	const body = c.req.valid("json");
-	const current = await readTurretFeatures(c.env);
-	const next = {
-		...current,
-		...(body.storeUserEmail !== undefined
-			? { storeUserEmail: body.storeUserEmail }
-			: {}),
-	};
-	await writeTurretFeatures(c.env, next);
-	return c.json({ features: next }, 200);
-});
-
 export { internalTurretFeaturesApp };
-export const routes = internalTurretFeaturesApp;
+
+export const routes = internalTurretFeaturesApp
+	.openapi(
+		createRoute({
+			method: "get",
+			path: "/internal/turret/features",
+			middleware: [requireInternalTurretAdmin] as const,
+			responses: {
+				200: {
+					description: "Get turret features",
+					content: {
+						"application/json": {
+							schema: TurretFeaturesResponseSchema,
+						},
+					},
+				},
+				...adminErrorResponses,
+			},
+		}),
+		async (c) => {
+			const features = await readTurretFeatures(c.env);
+			return c.json({ features }, 200);
+		}
+	)
+	.openapi(
+		createRoute({
+			method: "put",
+			path: "/internal/turret/features",
+			middleware: [requireInternalTurretAdmin] as const,
+			request: {
+				body: {
+					required: true,
+					content: {
+						"application/json": {
+							schema: turretFeaturesUpdateSchema,
+						},
+					},
+				},
+			},
+			responses: {
+				[productErrors.invalid_input.status]: {
+					description: productErrors.invalid_input.description,
+					content: {
+						"application/json": { schema: productErrorSchema },
+					},
+				},
+				200: {
+					description: "Update turret features",
+					content: {
+						"application/json": {
+							schema: TurretFeaturesResponseSchema,
+						},
+					},
+				},
+				...adminErrorResponses,
+			},
+		}),
+		async (c) => {
+			const body = c.req.valid("json");
+			const current = await readTurretFeatures(c.env);
+			const next = { ...current, ...body };
+			await writeTurretFeatures(c.env, next);
+			return c.json({ features: next }, 200);
+		}
+	);

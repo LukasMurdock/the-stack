@@ -1,51 +1,41 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { safeRedirectTarget } from "../../src/react-app/auth";
 
-import { safeRedirectTarget } from "../../src/react-app/routes/_public/login";
-
-test("safeRedirectTarget allows same-origin /app redirects", () => {
-	const previousWindow = Object.getOwnPropertyDescriptor(
-		globalThis,
-		"window"
-	);
-	Object.defineProperty(globalThis, "window", {
-		configurable: true,
-		value: { location: { origin: "http://localhost:4321" } },
-	});
-
-	try {
+const origin = "http://localhost:4321";
+test("login returns stay within the configured mount and preserve query and fragment", () => {
+	for (const mount of ["/app", "/workspace", "/nested/app/"]) {
+		const path = `${mount.replace(/\/$/, "")}/organizations?q=term#section`;
+		assert.equal(safeRedirectTarget(path, mount, origin), path);
 		assert.equal(
-			safeRedirectTarget("/app/ts_admin/turret"),
-			"http://localhost:4321/app/ts_admin/turret"
+			safeRedirectTarget(`${origin}${path}`, mount, origin),
+			path
 		);
-	} finally {
-		if (previousWindow === undefined) {
-			Reflect.deleteProperty(globalThis, "window");
-		} else {
-			Object.defineProperty(globalThis, "window", previousWindow);
+		assert.equal(
+			safeRedirectTarget(mount.replace(/\/$/, ""), mount, origin),
+			mount.replace(/\/$/, "")
+		);
+		for (const href of [
+			"https://example.com/app",
+			"//example.com/app",
+			"/docs",
+			`${mount.replace(/\/$/, "")}lication`,
+			`${mount.replace(/\/$/, "")}/../outside`,
+			undefined,
+		]) {
+			assert.equal(safeRedirectTarget(href, mount, origin), null);
 		}
 	}
-});
-
-test("safeRedirectTarget rejects external and non-app paths", () => {
-	const previousWindow = Object.getOwnPropertyDescriptor(
-		globalThis,
-		"window"
+	assert.equal(
+		safeRedirectTarget(`${origin}//example.com/path`, "/", origin),
+		null
 	);
-	Object.defineProperty(globalThis, "window", {
-		configurable: true,
-		value: { location: { origin: "http://localhost:4321" } },
-	});
-
-	try {
-		assert.equal(safeRedirectTarget("https://example.com/app"), null);
-		assert.equal(safeRedirectTarget("/docs"), null);
-		assert.equal(safeRedirectTarget(undefined), null);
-	} finally {
-		if (previousWindow === undefined) {
-			Reflect.deleteProperty(globalThis, "window");
-		} else {
-			Object.defineProperty(globalThis, "window", previousWindow);
-		}
-	}
+	assert.equal(
+		safeRedirectTarget("/organizations", "/", origin),
+		"/organizations"
+	);
+	assert.equal(
+		safeRedirectTarget("https://example.com/organizations", "/", origin),
+		null
+	);
 });

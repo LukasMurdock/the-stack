@@ -103,3 +103,6 @@ worker-configuration.d.ts
 
 .astro
 .tanstack
+
+/test-results/
+/playwright-report/

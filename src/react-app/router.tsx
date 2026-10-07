@@ -1,7 +1,8 @@
+import { appBasepath } from "./mount";
 import { createRouter } from "@tanstack/react-router";
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { routeTree } from "./routeTree.gen";
-import { reportError } from "./lib/error-tracker";
+import { reportError } from "./features/turret/error-tracker";
 
 // Router context is created here so route loaders can prefetch via TanStack Query.
 
@@ -30,7 +31,7 @@ const queryClient = new QueryClient({
 
 const router = createRouter({
 	routeTree,
-	basepath: "/app",
+	basepath: appBasepath,
 	context: {
 		queryClient,
 	},

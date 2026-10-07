@@ -1,4 +1,7 @@
-type TurretMode = "off" | "basic" | "full";
+import { z } from "zod";
+
+export const turretModeSchema = z.enum(["off", "basic", "full"]);
+type TurretMode = z.infer<typeof turretModeSchema>;
 
 type TurretModeStatus = {
 	configuredMode: TurretMode;
@@ -9,10 +12,8 @@ type TurretModeStatus = {
 
 function resolveTurretMode(raw: string | undefined): TurretMode {
 	const normalized = raw?.trim().toLowerCase();
-	if (normalized === "off") return "off";
-	if (normalized === "basic") return "basic";
-	if (normalized === "full") return "full";
-	return "full";
+	const parsed = turretModeSchema.safeParse(normalized);
+	return parsed.success ? parsed.data : "full";
 }
 
 function resolveTurretModeStatus(input: {

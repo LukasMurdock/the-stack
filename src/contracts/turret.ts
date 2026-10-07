@@ -1,8 +1,41 @@
+import { turretTimestampMsSchema } from "./turret-time-range";
+import { turretComplianceSchema } from "./turret-policy";
 import { z } from "zod";
+
+// Typed navigation and serialized query strings represent the same replay filter.
+export const turretHasErrorSchema = z
+	.union([z.boolean(), z.enum(["1", "0", "true", "false"])])
+	.transform((value) => value === true || value === "1" || value === "true");
 
 const turretIssueStatusSchema = z.enum(["open", "resolved", "ignored"]);
 const turretFeedbackKindSchema = z.enum(["bug", "idea", "praise", "other"]);
 const turretFeedbackStatusSchema = z.enum(["open", "triaged", "resolved"]);
+
+export const turretFeedbackBodySchema = z.object({
+	ts: turretTimestampMsSchema,
+	kind: turretFeedbackKindSchema,
+	message: z
+		.string()
+		.trim()
+		.min(1, "Message is required")
+		.max(4000, {
+			error: (issue) => `Use ${issue.maximum} characters or fewer.`,
+		}),
+	// Capture the current URL without rejecting feedback from a long application URL.
+	url: z
+		.string()
+		.transform((value) => value.slice(0, 2000))
+		.optional(),
+	contact: z
+		.string()
+		.trim()
+		.max(320, {
+			error: (issue) =>
+				`Use ${issue.maximum} characters or fewer for contact details.`,
+		})
+		.optional(),
+	extra: z.record(z.string(), z.unknown()).optional(),
+});
 
 const turretRequestSpanSchema = z.object({
 	id: z.string(),
@@ -54,27 +87,16 @@ export type {
 export const turretInitResponseSchema = z.object({
 	session_id: z.string(),
 	upload_token: z.string(),
+	upload_expires_at: turretTimestampMsSchema,
 	policy_version: z.string(),
-	rrweb: z.record(z.string(), z.unknown()),
-	console: z
-		.object({
-			enabled: z.boolean().default(true),
-			level: z
-				.array(z.enum(["log", "info", "warn", "error"]))
-				.default(["log", "info", "warn", "error"]),
-			lengthThreshold: z.number().int().min(0).default(200),
-			stringifyOptions: z
-				.object({
-					stringLengthLimit: z.number().int().optional(),
-					numOfKeysLimit: z.number().int().min(0).default(30),
-					depthOfLimit: z.number().int().min(0).default(2),
-				})
-				.default({ numOfKeysLimit: 30, depthOfLimit: 2 }),
-		})
-		.default({
-			enabled: true,
-			level: ["log", "info", "warn", "error"],
-			lengthThreshold: 200,
-			stringifyOptions: { numOfKeysLimit: 30, depthOfLimit: 2 },
-		}),
+	rrweb: turretComplianceSchema.shape.rrweb.unwrap(),
+	console: turretComplianceSchema.shape.console,
+});
+
+// Stored verbatim by ingest and streamed back from R2 by the replay reader.
+export const turretReplayChunkSchema = z.object({
+	seq: z.number().int().min(0),
+	events: z.array(z.unknown()),
+	ts_start: z.number().optional(),
+	ts_end: z.number().optional(),
 });

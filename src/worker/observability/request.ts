@@ -1,3 +1,5 @@
+import { requestObservability } from "./request-policy";
+import { readTurretCorrelation } from "../../contracts/turret-correlation";
 import { getRequestLocation } from "../../lib/cloudflareRequest";
 declare module "hono" {
 	interface ContextVariableMap {
@@ -5,19 +7,14 @@ declare module "hono" {
 	}
 }
 
-import { recordOperation, requestCategory } from "./metrics";
+import { recordOperation } from "./metrics";
 import { createMiddleware } from "hono/factory";
 import type { Bindings } from "../index";
 import { wrapD1Database, type D1Span } from "./d1Proxy";
 import { createApiRequestLogger } from "./evlog";
 import { traceOperation } from "./tracing";
 import { normalizeApiPath } from "../turret/fingerprinting";
-import {
-	recordWorkerError,
-	recordBreadcrumb,
-	shouldSkipTurretBreadcrumbCapture,
-	shouldSkipTurretErrorCapture,
-} from "./turret";
+import { recordWorkerError, recordBreadcrumb } from "./turret";
 
 const MAX_REPLAY_D1_SPANS = 100;
 
@@ -27,12 +24,6 @@ export function resolveRequestId(input: string | null): string {
 		: crypto.randomUUID();
 }
 
-function requestSpanName(path: string): string {
-	if (path.startsWith("/api/auth/")) return "auth.request";
-	if (path.startsWith("/api/turret/")) return "turret.ingest";
-	if (path.startsWith("/api/internal/turret/")) return "turret.admin";
-	return "api.request";
-}
 export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 	async (c, next) => {
 		const originalEnv = { ...c.env };
@@ -45,15 +36,13 @@ export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 
 		const pathTemplate = normalizeApiPath(path);
 
-		const sessionId = request.headers.get("x-turret-session-id");
-		const replayTsRaw = request.headers.get("x-turret-replay-ts");
-		const replayTs = replayTsRaw ? Number(replayTsRaw) : NaN;
-		const ts = Number.isFinite(replayTs) ? replayTs : Date.now();
+		const correlation = readTurretCorrelation(request.headers, Date.now());
+		const { sessionId, replayTs, ts } = correlation;
 		const rayId = request.headers.get("cf-ray") ?? null;
 		const colo = getRequestLocation(request).colo ?? null;
 
-		const shouldCaptureBreadcrumb =
-			!shouldSkipTurretBreadcrumbCapture(request);
+		const { category, spanName, captureBreadcrumbs, captureErrors } =
+			requestObservability(path);
 		const requestLog = createApiRequestLogger({
 			request,
 			requestId,
@@ -66,13 +55,13 @@ export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 			cloudflare: { rayId, colo },
 			turret: {
 				sessionId: sessionId ?? null,
-				replayTs: Number.isFinite(replayTs) ? replayTs : null,
+				replayTs,
 			},
 			route: { pathTemplate },
 		});
 		const d1Spans: D1Span[] = [];
 		const d1 = {
-			captured: shouldCaptureBreadcrumb,
+			captured: captureBreadcrumbs,
 			queries: 0,
 			timeMs: 0,
 			rowsRead: 0,
@@ -96,7 +85,7 @@ export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 		};
 
 		// Wrap D1 bindings per request to capture query spans.
-		if (shouldCaptureBreadcrumb) {
+		if (captureBreadcrumbs) {
 			const requestEnv = c.env;
 			if (requestEnv.CORE_DB) {
 				requestEnv.CORE_DB = wrapD1Database({
@@ -121,7 +110,7 @@ export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 		try {
 			await traceOperation(
 				c.executionCtx,
-				requestSpanName(path),
+				spanName,
 				{
 					"request.id": requestId,
 					"turret.session_id": sessionId ?? undefined,
@@ -135,10 +124,12 @@ export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 						"http.response.status_code": c.res.status,
 					});
 					// Hono converts route exceptions into responses before next() returns.
-					if (c.error) span?.recordException(c.error);
+					// An error mapped to an expected 4xx outcome is already handled.
+					if (c.error && c.res.status >= 500)
+						span?.recordException(c.error);
 				}
 			);
-			if (c.error) {
+			if (c.error && c.res.status >= 500) {
 				caughtError = c.error;
 				hasException = true;
 			}
@@ -157,10 +148,7 @@ export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 				// ignore
 			}
 
-			if (
-				!shouldSkipTurretErrorCapture(request) &&
-				(hasException || status >= 500)
-			) {
+			if (captureErrors && (hasException || status >= 500)) {
 				c.executionCtx.waitUntil(
 					recordWorkerError({
 						env: originalEnv,
@@ -168,6 +156,7 @@ export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 						requestId,
 						status,
 						kind: hasException ? "exception" : "http_5xx",
+						correlation,
 						error: caughtError,
 					})
 				);
@@ -213,13 +202,13 @@ export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 				surface: "api",
 				method: request.method,
 				route: pathTemplate,
-				category: requestCategory(path),
+				category,
 				colo,
 				status,
 				durationMs,
 			});
 
-			if (shouldCaptureBreadcrumb) {
+			if (captureBreadcrumbs) {
 				c.executionCtx.waitUntil(
 					recordBreadcrumb({
 						env: originalEnv,

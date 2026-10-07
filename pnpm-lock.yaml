@@ -120,6 +120,9 @@ importers:
       '@oxlint/plugins':
         specifier: 1.86.0
         version: 1.86.0
+      '@playwright/test':
+        specifier: 1.63.0
+        version: 1.63.0
       '@tanstack/eslint-plugin-query':
         specifier: ^5.104.1
         version: 5.104.1(@typescript/typescript6@6.0.2)(eslint@10.12.0(jiti@2.7.0))
@@ -2156,6 +2159,11 @@ packages:
   '@oxlint/plugins@1.86.0':
     resolution: {integrity: sha512-JeAiaaRMyUiUEQHQ7zBsJn1aEdbLyt1HJsOs4XKIIlATNxcvWRrRxneZA+RF4G03cQobq3IhTqSfyLhOFv03qA==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+
+  '@playwright/test@1.63.0':
+    resolution: {integrity: sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   '@poppinss/colors@4.1.6':
     resolution: {integrity: sha512-H9xkIdFswbS8n1d6vmRd8+c10t2Qe+rZITbbDHHkQixH5+2x1FDGmi/0K+WgWiqQFKPSlIYB7jlH6Kpfn6Fleg==}
@@ -4730,6 +4738,16 @@ packages:
     resolution: {integrity: sha512-0Z++uU8mvB0EvCPAEUq9BGiPcSravzJ+RPdXfjYlzXffqsogisiKRQqI6ctrSSJ6n985vxrgKtQ5n4sRINcJZg==}
     engines: {node: '>=18.0.0'}
 
+  playwright-core@1.63.0:
+    resolution: {integrity: sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.63.0:
+    resolution: {integrity: sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   postal-mime@2.7.6:
     resolution: {integrity: sha512-UUlyE2KlxmvwMGq060onF/VWU3zD6dVW31FwokQ5v26jWd35fbs2MoTFzh+jXnPwAyV2MULMKXcBInGOl5TO6Q==}
 
@@ -6973,6 +6991,10 @@ snapshots:
     optional: true
 
   '@oxlint/plugins@1.86.0': {}
+
+  '@playwright/test@1.63.0':
+    dependencies:
+      playwright: 1.63.0
 
   '@poppinss/colors@4.1.6':
     dependencies:
@@ -9306,6 +9328,12 @@ snapshots:
   picomatch@4.0.7: {}
 
   picospinner@3.1.2: {}
+
+  playwright-core@1.63.0: {}
+
+  playwright@1.63.0:
+    dependencies:
+      playwright-core: 1.63.0
 
   postal-mime@2.7.6: {}
 

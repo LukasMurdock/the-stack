@@ -9,18 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from "./routes/__root"
+import { Route as AuthenticatedRouteImport } from "./routes/_authenticated"
 import { Route as PublicRouteImport } from "./routes/_public"
 import { Route as Ts_adminRouteImport } from "./routes/ts_admin"
+import { Route as AuthenticatedOrganizationsRouteImport } from "./routes/_authenticated/organizations"
 import { Route as PublicIndexRouteImport } from "./routes/_public/index"
+import { Route as PublicInvitationsRouteImport } from "./routes/_public/invitations"
 import { Route as PublicLoginRouteImport } from "./routes/_public/login"
 import { Route as PublicResetPasswordRouteImport } from "./routes/_public/reset-password"
 import { Route as PublicStatusRouteImport } from "./routes/_public/status"
 import { Route as Ts_adminIndexRouteImport } from "./routes/ts_admin/index"
+import { Route as Ts_adminTurretRouteImport } from "./routes/ts_admin/turret"
 import { Route as Ts_adminUsersRouteImport } from "./routes/ts_admin/users"
+import { Route as AuthenticatedOrganizationsIndexRouteImport } from "./routes/_authenticated/organizations/index"
+import { Route as AuthenticatedOrganizationsOrganizationIdRouteImport } from "./routes/_authenticated/organizations/$organizationId"
 import { Route as PublicResetPasswordTokenRouteImport } from "./routes/_public/reset-password/$token"
 import { Route as Ts_adminTurretIndexRouteImport } from "./routes/ts_admin/turret/index"
 import { Route as Ts_adminUsersIndexRouteImport } from "./routes/ts_admin/users/index"
 import { Route as Ts_adminUsersUserIdRouteImport } from "./routes/ts_admin/users/$userId"
+import { Route as AuthenticatedOrganizationsOrganizationIdMembersRouteImport } from "./routes/_authenticated/organizations/$organizationId/members"
 import { Route as Ts_adminTurretFeedbackIndexRouteImport } from "./routes/ts_admin/turret/feedback/index"
 import { Route as Ts_adminTurretIssuesIndexRouteImport } from "./routes/ts_admin/turret/issues/index"
 import { Route as Ts_adminTurretIssuesFingerprintRouteImport } from "./routes/ts_admin/turret/issues/$fingerprint"
@@ -29,7 +36,12 @@ import { Route as Ts_adminTurretReplaySessionsSessionIdRouteImport } from "./rou
 import { Route as Ts_adminTurretSessionsIndexRouteImport } from "./routes/ts_admin/turret/sessions/index"
 import { Route as Ts_adminTurretSessionsSessionIdRouteImport } from "./routes/ts_admin/turret/sessions/$sessionId"
 import { Route as Ts_adminTurretSettingsIndexRouteImport } from "./routes/ts_admin/turret/settings/index"
+import { Route as AuthenticatedOrganizationsOrganizationIdProjectsIndexRouteImport } from "./routes/_authenticated/organizations/$organizationId/projects/index"
 
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: "/_authenticated",
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PublicRoute = PublicRouteImport.update({
   id: "/_public",
   getParentRoute: () => rootRouteImport,
@@ -39,9 +51,20 @@ const Ts_adminRoute = Ts_adminRouteImport.update({
   path: "/ts_admin",
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedOrganizationsRoute =
+  AuthenticatedOrganizationsRouteImport.update({
+    id: "/organizations",
+    path: "/organizations",
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const PublicIndexRoute = PublicIndexRouteImport.update({
   id: "/",
   path: "/",
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicInvitationsRoute = PublicInvitationsRouteImport.update({
+  id: "/invitations",
+  path: "/invitations",
   getParentRoute: () => PublicRoute,
 } as any)
 const PublicLoginRoute = PublicLoginRouteImport.update({
@@ -64,11 +87,28 @@ const Ts_adminIndexRoute = Ts_adminIndexRouteImport.update({
   path: "/",
   getParentRoute: () => Ts_adminRoute,
 } as any)
+const Ts_adminTurretRoute = Ts_adminTurretRouteImport.update({
+  id: "/turret",
+  path: "/turret",
+  getParentRoute: () => Ts_adminRoute,
+} as any)
 const Ts_adminUsersRoute = Ts_adminUsersRouteImport.update({
   id: "/users",
   path: "/users",
   getParentRoute: () => Ts_adminRoute,
 } as any)
+const AuthenticatedOrganizationsIndexRoute =
+  AuthenticatedOrganizationsIndexRouteImport.update({
+    id: "/",
+    path: "/",
+    getParentRoute: () => AuthenticatedOrganizationsRoute,
+  } as any)
+const AuthenticatedOrganizationsOrganizationIdRoute =
+  AuthenticatedOrganizationsOrganizationIdRouteImport.update({
+    id: "/$organizationId",
+    path: "/$organizationId",
+    getParentRoute: () => AuthenticatedOrganizationsRoute,
+  } as any)
 const PublicResetPasswordTokenRoute =
   PublicResetPasswordTokenRouteImport.update({
     id: "/$token",
@@ -76,9 +116,9 @@ const PublicResetPasswordTokenRoute =
     getParentRoute: () => PublicResetPasswordRoute,
   } as any)
 const Ts_adminTurretIndexRoute = Ts_adminTurretIndexRouteImport.update({
-  id: "/turret/",
-  path: "/turret/",
-  getParentRoute: () => Ts_adminRoute,
+  id: "/",
+  path: "/",
+  getParentRoute: () => Ts_adminTurretRoute,
 } as any)
 const Ts_adminUsersIndexRoute = Ts_adminUsersIndexRouteImport.update({
   id: "/",
@@ -90,67 +130,85 @@ const Ts_adminUsersUserIdRoute = Ts_adminUsersUserIdRouteImport.update({
   path: "/$userId",
   getParentRoute: () => Ts_adminUsersRoute,
 } as any)
+const AuthenticatedOrganizationsOrganizationIdMembersRoute =
+  AuthenticatedOrganizationsOrganizationIdMembersRouteImport.update({
+    id: "/members",
+    path: "/members",
+    getParentRoute: () => AuthenticatedOrganizationsOrganizationIdRoute,
+  } as any)
 const Ts_adminTurretFeedbackIndexRoute =
   Ts_adminTurretFeedbackIndexRouteImport.update({
-    id: "/turret/feedback/",
-    path: "/turret/feedback/",
-    getParentRoute: () => Ts_adminRoute,
+    id: "/feedback/",
+    path: "/feedback/",
+    getParentRoute: () => Ts_adminTurretRoute,
   } as any)
 const Ts_adminTurretIssuesIndexRoute =
   Ts_adminTurretIssuesIndexRouteImport.update({
-    id: "/turret/issues/",
-    path: "/turret/issues/",
-    getParentRoute: () => Ts_adminRoute,
+    id: "/issues/",
+    path: "/issues/",
+    getParentRoute: () => Ts_adminTurretRoute,
   } as any)
 const Ts_adminTurretIssuesFingerprintRoute =
   Ts_adminTurretIssuesFingerprintRouteImport.update({
-    id: "/turret/issues/$fingerprint",
-    path: "/turret/issues/$fingerprint",
-    getParentRoute: () => Ts_adminRoute,
+    id: "/issues/$fingerprint",
+    path: "/issues/$fingerprint",
+    getParentRoute: () => Ts_adminTurretRoute,
   } as any)
 const Ts_adminTurretReplaySessionsIndexRoute =
   Ts_adminTurretReplaySessionsIndexRouteImport.update({
-    id: "/turret/replay-sessions/",
-    path: "/turret/replay-sessions/",
-    getParentRoute: () => Ts_adminRoute,
+    id: "/replay-sessions/",
+    path: "/replay-sessions/",
+    getParentRoute: () => Ts_adminTurretRoute,
   } as any)
 const Ts_adminTurretReplaySessionsSessionIdRoute =
   Ts_adminTurretReplaySessionsSessionIdRouteImport.update({
-    id: "/turret/replay-sessions/$sessionId",
-    path: "/turret/replay-sessions/$sessionId",
-    getParentRoute: () => Ts_adminRoute,
+    id: "/replay-sessions/$sessionId",
+    path: "/replay-sessions/$sessionId",
+    getParentRoute: () => Ts_adminTurretRoute,
   } as any)
 const Ts_adminTurretSessionsIndexRoute =
   Ts_adminTurretSessionsIndexRouteImport.update({
-    id: "/turret/sessions/",
-    path: "/turret/sessions/",
-    getParentRoute: () => Ts_adminRoute,
+    id: "/sessions/",
+    path: "/sessions/",
+    getParentRoute: () => Ts_adminTurretRoute,
   } as any)
 const Ts_adminTurretSessionsSessionIdRoute =
   Ts_adminTurretSessionsSessionIdRouteImport.update({
-    id: "/turret/sessions/$sessionId",
-    path: "/turret/sessions/$sessionId",
-    getParentRoute: () => Ts_adminRoute,
+    id: "/sessions/$sessionId",
+    path: "/sessions/$sessionId",
+    getParentRoute: () => Ts_adminTurretRoute,
   } as any)
 const Ts_adminTurretSettingsIndexRoute =
   Ts_adminTurretSettingsIndexRouteImport.update({
-    id: "/turret/settings/",
-    path: "/turret/settings/",
-    getParentRoute: () => Ts_adminRoute,
+    id: "/settings/",
+    path: "/settings/",
+    getParentRoute: () => Ts_adminTurretRoute,
+  } as any)
+const AuthenticatedOrganizationsOrganizationIdProjectsIndexRoute =
+  AuthenticatedOrganizationsOrganizationIdProjectsIndexRouteImport.update({
+    id: "/projects/",
+    path: "/projects/",
+    getParentRoute: () => AuthenticatedOrganizationsOrganizationIdRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
   "/": typeof PublicIndexRoute
   "/ts_admin": typeof Ts_adminRouteWithChildren
+  "/organizations": typeof AuthenticatedOrganizationsRouteWithChildren
+  "/invitations": typeof PublicInvitationsRoute
   "/login": typeof PublicLoginRoute
   "/reset-password": typeof PublicResetPasswordRouteWithChildren
   "/status": typeof PublicStatusRoute
+  "/ts_admin/turret": typeof Ts_adminTurretRouteWithChildren
   "/ts_admin/users": typeof Ts_adminUsersRouteWithChildren
   "/ts_admin/": typeof Ts_adminIndexRoute
+  "/organizations/$organizationId": typeof AuthenticatedOrganizationsOrganizationIdRouteWithChildren
   "/reset-password/$token": typeof PublicResetPasswordTokenRoute
   "/ts_admin/users/$userId": typeof Ts_adminUsersUserIdRoute
+  "/organizations/": typeof AuthenticatedOrganizationsIndexRoute
   "/ts_admin/turret/": typeof Ts_adminTurretIndexRoute
   "/ts_admin/users/": typeof Ts_adminUsersIndexRoute
+  "/organizations/$organizationId/members": typeof AuthenticatedOrganizationsOrganizationIdMembersRoute
   "/ts_admin/turret/issues/$fingerprint": typeof Ts_adminTurretIssuesFingerprintRoute
   "/ts_admin/turret/replay-sessions/$sessionId": typeof Ts_adminTurretReplaySessionsSessionIdRoute
   "/ts_admin/turret/sessions/$sessionId": typeof Ts_adminTurretSessionsSessionIdRoute
@@ -159,17 +217,22 @@ export interface FileRoutesByFullPath {
   "/ts_admin/turret/replay-sessions/": typeof Ts_adminTurretReplaySessionsIndexRoute
   "/ts_admin/turret/sessions/": typeof Ts_adminTurretSessionsIndexRoute
   "/ts_admin/turret/settings/": typeof Ts_adminTurretSettingsIndexRoute
+  "/organizations/$organizationId/projects/": typeof AuthenticatedOrganizationsOrganizationIdProjectsIndexRoute
 }
 export interface FileRoutesByTo {
+  "/": typeof PublicIndexRoute
+  "/invitations": typeof PublicInvitationsRoute
   "/login": typeof PublicLoginRoute
   "/reset-password": typeof PublicResetPasswordRouteWithChildren
   "/status": typeof PublicStatusRoute
-  "/": typeof PublicIndexRoute
   "/ts_admin": typeof Ts_adminIndexRoute
+  "/organizations/$organizationId": typeof AuthenticatedOrganizationsOrganizationIdRouteWithChildren
   "/reset-password/$token": typeof PublicResetPasswordTokenRoute
   "/ts_admin/users/$userId": typeof Ts_adminUsersUserIdRoute
+  "/organizations": typeof AuthenticatedOrganizationsIndexRoute
   "/ts_admin/turret": typeof Ts_adminTurretIndexRoute
   "/ts_admin/users": typeof Ts_adminUsersIndexRoute
+  "/organizations/$organizationId/members": typeof AuthenticatedOrganizationsOrganizationIdMembersRoute
   "/ts_admin/turret/issues/$fingerprint": typeof Ts_adminTurretIssuesFingerprintRoute
   "/ts_admin/turret/replay-sessions/$sessionId": typeof Ts_adminTurretReplaySessionsSessionIdRoute
   "/ts_admin/turret/sessions/$sessionId": typeof Ts_adminTurretSessionsSessionIdRoute
@@ -178,21 +241,29 @@ export interface FileRoutesByTo {
   "/ts_admin/turret/replay-sessions": typeof Ts_adminTurretReplaySessionsIndexRoute
   "/ts_admin/turret/sessions": typeof Ts_adminTurretSessionsIndexRoute
   "/ts_admin/turret/settings": typeof Ts_adminTurretSettingsIndexRoute
+  "/organizations/$organizationId/projects": typeof AuthenticatedOrganizationsOrganizationIdProjectsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  "/_authenticated": typeof AuthenticatedRouteWithChildren
   "/_public": typeof PublicRouteWithChildren
   "/ts_admin": typeof Ts_adminRouteWithChildren
+  "/_authenticated/organizations": typeof AuthenticatedOrganizationsRouteWithChildren
+  "/_public/invitations": typeof PublicInvitationsRoute
   "/_public/login": typeof PublicLoginRoute
   "/_public/reset-password": typeof PublicResetPasswordRouteWithChildren
   "/_public/status": typeof PublicStatusRoute
+  "/ts_admin/turret": typeof Ts_adminTurretRouteWithChildren
   "/ts_admin/users": typeof Ts_adminUsersRouteWithChildren
   "/_public/": typeof PublicIndexRoute
   "/ts_admin/": typeof Ts_adminIndexRoute
+  "/_authenticated/organizations/$organizationId": typeof AuthenticatedOrganizationsOrganizationIdRouteWithChildren
   "/_public/reset-password/$token": typeof PublicResetPasswordTokenRoute
   "/ts_admin/users/$userId": typeof Ts_adminUsersUserIdRoute
+  "/_authenticated/organizations/": typeof AuthenticatedOrganizationsIndexRoute
   "/ts_admin/turret/": typeof Ts_adminTurretIndexRoute
   "/ts_admin/users/": typeof Ts_adminUsersIndexRoute
+  "/_authenticated/organizations/$organizationId/members": typeof AuthenticatedOrganizationsOrganizationIdMembersRoute
   "/ts_admin/turret/issues/$fingerprint": typeof Ts_adminTurretIssuesFingerprintRoute
   "/ts_admin/turret/replay-sessions/$sessionId": typeof Ts_adminTurretReplaySessionsSessionIdRoute
   "/ts_admin/turret/sessions/$sessionId": typeof Ts_adminTurretSessionsSessionIdRoute
@@ -201,21 +272,28 @@ export interface FileRoutesById {
   "/ts_admin/turret/replay-sessions/": typeof Ts_adminTurretReplaySessionsIndexRoute
   "/ts_admin/turret/sessions/": typeof Ts_adminTurretSessionsIndexRoute
   "/ts_admin/turret/settings/": typeof Ts_adminTurretSettingsIndexRoute
+  "/_authenticated/organizations/$organizationId/projects/": typeof AuthenticatedOrganizationsOrganizationIdProjectsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | "/"
     | "/ts_admin"
+    | "/organizations"
+    | "/invitations"
     | "/login"
     | "/reset-password"
     | "/status"
+    | "/ts_admin/turret"
     | "/ts_admin/users"
     | "/ts_admin/"
+    | "/organizations/$organizationId"
     | "/reset-password/$token"
     | "/ts_admin/users/$userId"
+    | "/organizations/"
     | "/ts_admin/turret/"
     | "/ts_admin/users/"
+    | "/organizations/$organizationId/members"
     | "/ts_admin/turret/issues/$fingerprint"
     | "/ts_admin/turret/replay-sessions/$sessionId"
     | "/ts_admin/turret/sessions/$sessionId"
@@ -224,17 +302,22 @@ export interface FileRouteTypes {
     | "/ts_admin/turret/replay-sessions/"
     | "/ts_admin/turret/sessions/"
     | "/ts_admin/turret/settings/"
+    | "/organizations/$organizationId/projects/"
   fileRoutesByTo: FileRoutesByTo
   to:
+    | "/"
+    | "/invitations"
     | "/login"
     | "/reset-password"
     | "/status"
-    | "/"
     | "/ts_admin"
+    | "/organizations/$organizationId"
     | "/reset-password/$token"
     | "/ts_admin/users/$userId"
+    | "/organizations"
     | "/ts_admin/turret"
     | "/ts_admin/users"
+    | "/organizations/$organizationId/members"
     | "/ts_admin/turret/issues/$fingerprint"
     | "/ts_admin/turret/replay-sessions/$sessionId"
     | "/ts_admin/turret/sessions/$sessionId"
@@ -243,20 +326,28 @@ export interface FileRouteTypes {
     | "/ts_admin/turret/replay-sessions"
     | "/ts_admin/turret/sessions"
     | "/ts_admin/turret/settings"
+    | "/organizations/$organizationId/projects"
   id:
     | "__root__"
+    | "/_authenticated"
     | "/_public"
     | "/ts_admin"
+    | "/_authenticated/organizations"
+    | "/_public/invitations"
     | "/_public/login"
     | "/_public/reset-password"
     | "/_public/status"
+    | "/ts_admin/turret"
     | "/ts_admin/users"
     | "/_public/"
     | "/ts_admin/"
+    | "/_authenticated/organizations/$organizationId"
     | "/_public/reset-password/$token"
     | "/ts_admin/users/$userId"
+    | "/_authenticated/organizations/"
     | "/ts_admin/turret/"
     | "/ts_admin/users/"
+    | "/_authenticated/organizations/$organizationId/members"
     | "/ts_admin/turret/issues/$fingerprint"
     | "/ts_admin/turret/replay-sessions/$sessionId"
     | "/ts_admin/turret/sessions/$sessionId"
@@ -265,15 +356,24 @@ export interface FileRouteTypes {
     | "/ts_admin/turret/replay-sessions/"
     | "/ts_admin/turret/sessions/"
     | "/ts_admin/turret/settings/"
+    | "/_authenticated/organizations/$organizationId/projects/"
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   PublicRoute: typeof PublicRouteWithChildren
   Ts_adminRoute: typeof Ts_adminRouteWithChildren
 }
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
+    "/_authenticated": {
+      id: "/_authenticated"
+      path: ""
+      fullPath: "/"
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     "/_public": {
       id: "/_public"
       path: ""
@@ -288,11 +388,25 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof Ts_adminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    "/_authenticated/organizations": {
+      id: "/_authenticated/organizations"
+      path: "/organizations"
+      fullPath: "/organizations"
+      preLoaderRoute: typeof AuthenticatedOrganizationsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     "/_public/": {
       id: "/_public/"
       path: "/"
       fullPath: "/"
       preLoaderRoute: typeof PublicIndexRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    "/_public/invitations": {
+      id: "/_public/invitations"
+      path: "/invitations"
+      fullPath: "/invitations"
+      preLoaderRoute: typeof PublicInvitationsRouteImport
       parentRoute: typeof PublicRoute
     }
     "/_public/login": {
@@ -323,12 +437,33 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof Ts_adminIndexRouteImport
       parentRoute: typeof Ts_adminRoute
     }
+    "/ts_admin/turret": {
+      id: "/ts_admin/turret"
+      path: "/turret"
+      fullPath: "/ts_admin/turret"
+      preLoaderRoute: typeof Ts_adminTurretRouteImport
+      parentRoute: typeof Ts_adminRoute
+    }
     "/ts_admin/users": {
       id: "/ts_admin/users"
       path: "/users"
       fullPath: "/ts_admin/users"
       preLoaderRoute: typeof Ts_adminUsersRouteImport
       parentRoute: typeof Ts_adminRoute
+    }
+    "/_authenticated/organizations/": {
+      id: "/_authenticated/organizations/"
+      path: "/"
+      fullPath: "/organizations/"
+      preLoaderRoute: typeof AuthenticatedOrganizationsIndexRouteImport
+      parentRoute: typeof AuthenticatedOrganizationsRoute
+    }
+    "/_authenticated/organizations/$organizationId": {
+      id: "/_authenticated/organizations/$organizationId"
+      path: "/$organizationId"
+      fullPath: "/organizations/$organizationId"
+      preLoaderRoute: typeof AuthenticatedOrganizationsOrganizationIdRouteImport
+      parentRoute: typeof AuthenticatedOrganizationsRoute
     }
     "/_public/reset-password/$token": {
       id: "/_public/reset-password/$token"
@@ -339,10 +474,10 @@ declare module "@tanstack/react-router" {
     }
     "/ts_admin/turret/": {
       id: "/ts_admin/turret/"
-      path: "/turret"
+      path: "/"
       fullPath: "/ts_admin/turret/"
       preLoaderRoute: typeof Ts_adminTurretIndexRouteImport
-      parentRoute: typeof Ts_adminRoute
+      parentRoute: typeof Ts_adminTurretRoute
     }
     "/ts_admin/users/": {
       id: "/ts_admin/users/"
@@ -358,64 +493,125 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof Ts_adminUsersUserIdRouteImport
       parentRoute: typeof Ts_adminUsersRoute
     }
+    "/_authenticated/organizations/$organizationId/members": {
+      id: "/_authenticated/organizations/$organizationId/members"
+      path: "/members"
+      fullPath: "/organizations/$organizationId/members"
+      preLoaderRoute: typeof AuthenticatedOrganizationsOrganizationIdMembersRouteImport
+      parentRoute: typeof AuthenticatedOrganizationsOrganizationIdRoute
+    }
     "/ts_admin/turret/feedback/": {
       id: "/ts_admin/turret/feedback/"
-      path: "/turret/feedback"
+      path: "/feedback"
       fullPath: "/ts_admin/turret/feedback/"
       preLoaderRoute: typeof Ts_adminTurretFeedbackIndexRouteImport
-      parentRoute: typeof Ts_adminRoute
+      parentRoute: typeof Ts_adminTurretRoute
     }
     "/ts_admin/turret/issues/": {
       id: "/ts_admin/turret/issues/"
-      path: "/turret/issues"
+      path: "/issues"
       fullPath: "/ts_admin/turret/issues/"
       preLoaderRoute: typeof Ts_adminTurretIssuesIndexRouteImport
-      parentRoute: typeof Ts_adminRoute
+      parentRoute: typeof Ts_adminTurretRoute
     }
     "/ts_admin/turret/issues/$fingerprint": {
       id: "/ts_admin/turret/issues/$fingerprint"
-      path: "/turret/issues/$fingerprint"
+      path: "/issues/$fingerprint"
       fullPath: "/ts_admin/turret/issues/$fingerprint"
       preLoaderRoute: typeof Ts_adminTurretIssuesFingerprintRouteImport
-      parentRoute: typeof Ts_adminRoute
+      parentRoute: typeof Ts_adminTurretRoute
     }
     "/ts_admin/turret/replay-sessions/": {
       id: "/ts_admin/turret/replay-sessions/"
-      path: "/turret/replay-sessions"
+      path: "/replay-sessions"
       fullPath: "/ts_admin/turret/replay-sessions/"
       preLoaderRoute: typeof Ts_adminTurretReplaySessionsIndexRouteImport
-      parentRoute: typeof Ts_adminRoute
+      parentRoute: typeof Ts_adminTurretRoute
     }
     "/ts_admin/turret/replay-sessions/$sessionId": {
       id: "/ts_admin/turret/replay-sessions/$sessionId"
-      path: "/turret/replay-sessions/$sessionId"
+      path: "/replay-sessions/$sessionId"
       fullPath: "/ts_admin/turret/replay-sessions/$sessionId"
       preLoaderRoute: typeof Ts_adminTurretReplaySessionsSessionIdRouteImport
-      parentRoute: typeof Ts_adminRoute
+      parentRoute: typeof Ts_adminTurretRoute
     }
     "/ts_admin/turret/sessions/": {
       id: "/ts_admin/turret/sessions/"
-      path: "/turret/sessions"
+      path: "/sessions"
       fullPath: "/ts_admin/turret/sessions/"
       preLoaderRoute: typeof Ts_adminTurretSessionsIndexRouteImport
-      parentRoute: typeof Ts_adminRoute
+      parentRoute: typeof Ts_adminTurretRoute
     }
     "/ts_admin/turret/sessions/$sessionId": {
       id: "/ts_admin/turret/sessions/$sessionId"
-      path: "/turret/sessions/$sessionId"
+      path: "/sessions/$sessionId"
       fullPath: "/ts_admin/turret/sessions/$sessionId"
       preLoaderRoute: typeof Ts_adminTurretSessionsSessionIdRouteImport
-      parentRoute: typeof Ts_adminRoute
+      parentRoute: typeof Ts_adminTurretRoute
     }
     "/ts_admin/turret/settings/": {
       id: "/ts_admin/turret/settings/"
-      path: "/turret/settings"
+      path: "/settings"
       fullPath: "/ts_admin/turret/settings/"
       preLoaderRoute: typeof Ts_adminTurretSettingsIndexRouteImport
-      parentRoute: typeof Ts_adminRoute
+      parentRoute: typeof Ts_adminTurretRoute
+    }
+    "/_authenticated/organizations/$organizationId/projects/": {
+      id: "/_authenticated/organizations/$organizationId/projects/"
+      path: "/projects"
+      fullPath: "/organizations/$organizationId/projects/"
+      preLoaderRoute: typeof AuthenticatedOrganizationsOrganizationIdProjectsIndexRouteImport
+      parentRoute: typeof AuthenticatedOrganizationsOrganizationIdRoute
     }
   }
 }
+
+interface AuthenticatedOrganizationsOrganizationIdRouteChildren {
+  AuthenticatedOrganizationsOrganizationIdMembersRoute: typeof AuthenticatedOrganizationsOrganizationIdMembersRoute
+  AuthenticatedOrganizationsOrganizationIdProjectsIndexRoute: typeof AuthenticatedOrganizationsOrganizationIdProjectsIndexRoute
+}
+
+const AuthenticatedOrganizationsOrganizationIdRouteChildren: AuthenticatedOrganizationsOrganizationIdRouteChildren =
+  {
+    AuthenticatedOrganizationsOrganizationIdMembersRoute:
+      AuthenticatedOrganizationsOrganizationIdMembersRoute,
+    AuthenticatedOrganizationsOrganizationIdProjectsIndexRoute:
+      AuthenticatedOrganizationsOrganizationIdProjectsIndexRoute,
+  }
+
+const AuthenticatedOrganizationsOrganizationIdRouteWithChildren =
+  AuthenticatedOrganizationsOrganizationIdRoute._addFileChildren(
+    AuthenticatedOrganizationsOrganizationIdRouteChildren,
+  )
+
+interface AuthenticatedOrganizationsRouteChildren {
+  AuthenticatedOrganizationsOrganizationIdRoute: typeof AuthenticatedOrganizationsOrganizationIdRouteWithChildren
+  AuthenticatedOrganizationsIndexRoute: typeof AuthenticatedOrganizationsIndexRoute
+}
+
+const AuthenticatedOrganizationsRouteChildren: AuthenticatedOrganizationsRouteChildren =
+  {
+    AuthenticatedOrganizationsOrganizationIdRoute:
+      AuthenticatedOrganizationsOrganizationIdRouteWithChildren,
+    AuthenticatedOrganizationsIndexRoute: AuthenticatedOrganizationsIndexRoute,
+  }
+
+const AuthenticatedOrganizationsRouteWithChildren =
+  AuthenticatedOrganizationsRoute._addFileChildren(
+    AuthenticatedOrganizationsRouteChildren,
+  )
+
+interface AuthenticatedRouteChildren {
+  AuthenticatedOrganizationsRoute: typeof AuthenticatedOrganizationsRouteWithChildren
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedOrganizationsRoute: AuthenticatedOrganizationsRouteWithChildren,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
 
 interface PublicResetPasswordRouteChildren {
   PublicResetPasswordTokenRoute: typeof PublicResetPasswordTokenRoute
@@ -429,6 +625,7 @@ const PublicResetPasswordRouteWithChildren =
   PublicResetPasswordRoute._addFileChildren(PublicResetPasswordRouteChildren)
 
 interface PublicRouteChildren {
+  PublicInvitationsRoute: typeof PublicInvitationsRoute
   PublicLoginRoute: typeof PublicLoginRoute
   PublicResetPasswordRoute: typeof PublicResetPasswordRouteWithChildren
   PublicStatusRoute: typeof PublicStatusRoute
@@ -436,6 +633,7 @@ interface PublicRouteChildren {
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
+  PublicInvitationsRoute: PublicInvitationsRoute,
   PublicLoginRoute: PublicLoginRoute,
   PublicResetPasswordRoute: PublicResetPasswordRouteWithChildren,
   PublicStatusRoute: PublicStatusRoute,
@@ -444,6 +642,36 @@ const PublicRouteChildren: PublicRouteChildren = {
 
 const PublicRouteWithChildren =
   PublicRoute._addFileChildren(PublicRouteChildren)
+
+interface Ts_adminTurretRouteChildren {
+  Ts_adminTurretIndexRoute: typeof Ts_adminTurretIndexRoute
+  Ts_adminTurretIssuesFingerprintRoute: typeof Ts_adminTurretIssuesFingerprintRoute
+  Ts_adminTurretReplaySessionsSessionIdRoute: typeof Ts_adminTurretReplaySessionsSessionIdRoute
+  Ts_adminTurretSessionsSessionIdRoute: typeof Ts_adminTurretSessionsSessionIdRoute
+  Ts_adminTurretFeedbackIndexRoute: typeof Ts_adminTurretFeedbackIndexRoute
+  Ts_adminTurretIssuesIndexRoute: typeof Ts_adminTurretIssuesIndexRoute
+  Ts_adminTurretReplaySessionsIndexRoute: typeof Ts_adminTurretReplaySessionsIndexRoute
+  Ts_adminTurretSessionsIndexRoute: typeof Ts_adminTurretSessionsIndexRoute
+  Ts_adminTurretSettingsIndexRoute: typeof Ts_adminTurretSettingsIndexRoute
+}
+
+const Ts_adminTurretRouteChildren: Ts_adminTurretRouteChildren = {
+  Ts_adminTurretIndexRoute: Ts_adminTurretIndexRoute,
+  Ts_adminTurretIssuesFingerprintRoute: Ts_adminTurretIssuesFingerprintRoute,
+  Ts_adminTurretReplaySessionsSessionIdRoute:
+    Ts_adminTurretReplaySessionsSessionIdRoute,
+  Ts_adminTurretSessionsSessionIdRoute: Ts_adminTurretSessionsSessionIdRoute,
+  Ts_adminTurretFeedbackIndexRoute: Ts_adminTurretFeedbackIndexRoute,
+  Ts_adminTurretIssuesIndexRoute: Ts_adminTurretIssuesIndexRoute,
+  Ts_adminTurretReplaySessionsIndexRoute:
+    Ts_adminTurretReplaySessionsIndexRoute,
+  Ts_adminTurretSessionsIndexRoute: Ts_adminTurretSessionsIndexRoute,
+  Ts_adminTurretSettingsIndexRoute: Ts_adminTurretSettingsIndexRoute,
+}
+
+const Ts_adminTurretRouteWithChildren = Ts_adminTurretRoute._addFileChildren(
+  Ts_adminTurretRouteChildren,
+)
 
 interface Ts_adminUsersRouteChildren {
   Ts_adminUsersUserIdRoute: typeof Ts_adminUsersUserIdRoute
@@ -460,33 +688,15 @@ const Ts_adminUsersRouteWithChildren = Ts_adminUsersRoute._addFileChildren(
 )
 
 interface Ts_adminRouteChildren {
+  Ts_adminTurretRoute: typeof Ts_adminTurretRouteWithChildren
   Ts_adminUsersRoute: typeof Ts_adminUsersRouteWithChildren
   Ts_adminIndexRoute: typeof Ts_adminIndexRoute
-  Ts_adminTurretIndexRoute: typeof Ts_adminTurretIndexRoute
-  Ts_adminTurretIssuesFingerprintRoute: typeof Ts_adminTurretIssuesFingerprintRoute
-  Ts_adminTurretReplaySessionsSessionIdRoute: typeof Ts_adminTurretReplaySessionsSessionIdRoute
-  Ts_adminTurretSessionsSessionIdRoute: typeof Ts_adminTurretSessionsSessionIdRoute
-  Ts_adminTurretFeedbackIndexRoute: typeof Ts_adminTurretFeedbackIndexRoute
-  Ts_adminTurretIssuesIndexRoute: typeof Ts_adminTurretIssuesIndexRoute
-  Ts_adminTurretReplaySessionsIndexRoute: typeof Ts_adminTurretReplaySessionsIndexRoute
-  Ts_adminTurretSessionsIndexRoute: typeof Ts_adminTurretSessionsIndexRoute
-  Ts_adminTurretSettingsIndexRoute: typeof Ts_adminTurretSettingsIndexRoute
 }
 
 const Ts_adminRouteChildren: Ts_adminRouteChildren = {
+  Ts_adminTurretRoute: Ts_adminTurretRouteWithChildren,
   Ts_adminUsersRoute: Ts_adminUsersRouteWithChildren,
   Ts_adminIndexRoute: Ts_adminIndexRoute,
-  Ts_adminTurretIndexRoute: Ts_adminTurretIndexRoute,
-  Ts_adminTurretIssuesFingerprintRoute: Ts_adminTurretIssuesFingerprintRoute,
-  Ts_adminTurretReplaySessionsSessionIdRoute:
-    Ts_adminTurretReplaySessionsSessionIdRoute,
-  Ts_adminTurretSessionsSessionIdRoute: Ts_adminTurretSessionsSessionIdRoute,
-  Ts_adminTurretFeedbackIndexRoute: Ts_adminTurretFeedbackIndexRoute,
-  Ts_adminTurretIssuesIndexRoute: Ts_adminTurretIssuesIndexRoute,
-  Ts_adminTurretReplaySessionsIndexRoute:
-    Ts_adminTurretReplaySessionsIndexRoute,
-  Ts_adminTurretSessionsIndexRoute: Ts_adminTurretSessionsIndexRoute,
-  Ts_adminTurretSettingsIndexRoute: Ts_adminTurretSettingsIndexRoute,
 }
 
 const Ts_adminRouteWithChildren = Ts_adminRoute._addFileChildren(
@@ -494,6 +704,7 @@ const Ts_adminRouteWithChildren = Ts_adminRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
   PublicRoute: PublicRouteWithChildren,
   Ts_adminRoute: Ts_adminRouteWithChildren,
 }

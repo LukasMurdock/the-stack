@@ -1,15 +1,14 @@
+import type { InferResponseType } from "hono/client";
 import { queryOptions } from "@tanstack/react-query";
-import { apiClient, jsonOrThrow } from "../lib/apiClient";
+import { apiClient, jsonOrThrow } from "../api";
 
-type HealthResponse = {
-	ok: boolean;
-};
+type HealthResponse = InferResponseType<typeof apiClient.health.$get, 200>;
 
 const healthQueryOptions = queryOptions({
 	queryKey: ["api", "health"],
 	queryFn: async (): Promise<HealthResponse> => {
 		const res = await apiClient.health.$get();
-		return jsonOrThrow<HealthResponse>(res);
+		return jsonOrThrow(res);
 	},
 });
 

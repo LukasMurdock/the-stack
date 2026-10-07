@@ -1,18 +1,36 @@
+import { and, desc, eq, gte, lt, sql, type SQL } from "drizzle-orm";
+import { turretUserFeedback } from "../../../bindings/d1/turret/schema";
+import { readRetainedReplay } from "../../turret/retention";
+import { makeTurretDb } from "../../../bindings/d1/turret/db";
+import {
+	turretTimeRangeSchema,
+	resolveTurretTimeRange,
+	turretRangeDurations,
+} from "../../../contracts/turret-time-range";
+import { commandInput } from "../../../features/shared/context";
+import {
+	validationHook,
+	operationErrorHandler,
+	errorResponses,
+} from "./_shared/operation-http";
+import { productErrors } from "../../../contracts/operation";
+import { turretListPageSchema } from "../../../contracts/turret-pagination";
 import type { Bindings } from "../../index";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import {
 	turretFeedbackKindSchema,
 	turretFeedbackStatusSchema,
 } from "../../../contracts/turret";
-import { requireInternalTurretAdmin } from "./_shared/admin-auth";
+import {
+	adminErrorResponseSchema,
+	adminErrorResponses,
+	requireInternalTurretAdmin,
+} from "./_shared/admin-auth";
 
-const internalTurretFeedbackApp = new OpenAPIHono<{ Bindings: Bindings }>();
-
-const ErrorResponseSchema = z
-	.object({
-		error: z.string(),
-	})
-	.openapi("ErrorResponse");
+const internalTurretFeedbackApp = new OpenAPIHono<{ Bindings: Bindings }>({
+	defaultHook: validationHook,
+});
+internalTurretFeedbackApp.onError(operationErrorHandler);
 
 const FeedbackStatusSchema = turretFeedbackStatusSchema;
 const FeedbackKindSchema = turretFeedbackKindSchema;
@@ -34,6 +52,23 @@ const FeedbackItemSchema = z
 	})
 	.openapi("TurretFeedbackItem");
 
+// Dates are deliberately milliseconds on this API. SQL expressions bypass the
+// table's Date decoder; all readers share this explicit public projection.
+const feedbackProjection = {
+	id: turretUserFeedback.id,
+	sessionId: turretUserFeedback.sessionId,
+	userId: turretUserFeedback.userId,
+	userEmail: turretUserFeedback.userEmail,
+	ts: sql<number>`${turretUserFeedback.ts}`,
+	url: turretUserFeedback.url,
+	kind: turretUserFeedback.kind,
+	message: turretUserFeedback.message,
+	contact: turretUserFeedback.contact,
+	status: turretUserFeedback.status,
+	createdAt: sql<number>`${turretUserFeedback.createdAt}`,
+	updatedAt: sql<number>`${turretUserFeedback.updatedAt}`,
+} satisfies Record<keyof z.infer<typeof FeedbackItemSchema>, unknown>;
+
 const FeedbackListResponseSchema = z
 	.object({
 		feedback: z.array(FeedbackItemSchema),
@@ -42,269 +77,234 @@ const FeedbackListResponseSchema = z
 	})
 	.openapi("TurretFeedbackListResponse");
 
-internalTurretFeedbackApp.use("/internal/turret/*", requireInternalTurretAdmin);
-internalTurretFeedbackApp.get("/internal/turret/session/:id/feedback", (c) => {
-	const query = new URL(c.req.url).search;
-	return c.redirect(
-		`/api/internal/turret/replay-session/${c.req.param("id")}/feedback${query}`,
-		308
-	);
-});
+internalTurretFeedbackApp.get(
+	"/internal/turret/session/:id/feedback",
+	requireInternalTurretAdmin,
+	(c) => {
+		const query = new URL(c.req.url).search;
+		return c.redirect(
+			`/api/internal/turret/replay-session/${c.req.param("id")}/feedback${query}`,
+			308
+		);
+	}
+);
 
 const SAFE_LIKE = /[%_\\]/g;
 function escapeLike(input: string): string {
 	return input.replace(SAFE_LIKE, (m) => `\\${m}`);
 }
 
-function parseMs(input: unknown): number | null {
-	if (typeof input === "number" && Number.isFinite(input)) return input;
-	if (typeof input !== "string" || !input) return null;
-	const n = Number(input);
-	return Number.isFinite(n) ? n : null;
-}
-
-const listFeedback = createRoute({
-	method: "get",
-	path: "/internal/turret/feedback",
-	request: {
-		query: z
-			.object({
-				status: FeedbackStatusSchema.optional(),
-				kind: FeedbackKindSchema.optional(),
-				q: z.string().optional(),
-				from: z.string().optional(),
-				to: z.string().optional(),
-				limit: z.string().optional(),
-				offset: z.string().optional(),
-				sessionId: z.string().optional(),
-				userId: z.string().optional(),
-			})
-			.openapi("TurretFeedbackQuery"),
-	},
-	responses: {
-		200: {
-			description: "List user feedback",
-			content: {
-				"application/json": { schema: FeedbackListResponseSchema },
-			},
-		},
-		401: {
-			description: "Unauthorized",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-		403: {
-			description: "Forbidden",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-	},
-});
-
-internalTurretFeedbackApp.openapi(listFeedback, async (c) => {
-	const env = c.env;
-	const qv = c.req.valid("query");
-	const now = Date.now();
-	const fromMs = parseMs(qv.from) ?? now - 30 * 24 * 60 * 60 * 1000;
-	const toMs = parseMs(qv.to) ?? now;
-	const status = qv.status;
-	const kind = qv.kind;
-	const sessionId = qv.sessionId;
-	const userId = qv.userId;
-	const limit = Math.max(1, Math.min(200, Number(qv.limit ?? "50") || 50));
-	const offset = Math.max(0, Number(qv.offset ?? "0") || 0);
-	const q = (qv.q ?? "").trim();
-	const like = q ? `%${escapeLike(q)}%` : "";
-
-	let sqlText = `
-		SELECT
-			id,
-			session_id AS sessionId,
-			user_id AS userId,
-			user_email AS userEmail,
-			ts,
-			url,
-			kind,
-			message,
-			contact,
-			status,
-			created_at AS createdAt,
-			updated_at AS updatedAt
-		FROM turret_user_feedback
-		WHERE ts >= ? AND ts < ?
-	`;
-	const params: unknown[] = [fromMs, toMs];
-
-	if (status) {
-		sqlText += " AND status = ?";
-		params.push(status);
-	}
-	if (kind) {
-		sqlText += " AND kind = ?";
-		params.push(kind);
-	}
-	if (sessionId) {
-		sqlText += " AND session_id = ?";
-		params.push(sessionId);
-	}
-	if (userId) {
-		sqlText += " AND user_id = ?";
-		params.push(userId);
-	}
-	if (q) {
-		sqlText +=
-			" AND (message LIKE ? ESCAPE '\\' OR COALESCE(url,'') LIKE ? ESCAPE '\\')";
-		params.push(like, like);
-	}
-
-	sqlText += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
-	params.push(limit, offset);
-
-	const res = await env.TURRET_DB.prepare(sqlText)
-		.bind(...params)
-		.all<z.infer<typeof FeedbackItemSchema>>();
-	const rows = res.results;
-
-	return c.json(
-		{
-			feedback: rows,
-			limit,
-			offset,
-		},
-		200
-	);
-});
-
-const listReplaySessionFeedback = createRoute({
-	method: "get",
-	path: "/internal/turret/replay-session/{id}/feedback",
-	request: {
-		params: z.object({
-			id: z.string().openapi({ example: "<session-id>" }),
-		}),
-		query: z.object({
-			limit: z.string().optional(),
-			offset: z.string().optional(),
-		}),
-	},
-	responses: {
-		200: {
-			description: "List feedback for a replay session",
-			content: {
-				"application/json": { schema: FeedbackListResponseSchema },
-			},
-		},
-		401: {
-			description: "Unauthorized",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-		403: {
-			description: "Forbidden",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-	},
-});
-
-internalTurretFeedbackApp.openapi(listReplaySessionFeedback, async (c) => {
-	const env = c.env;
-	const { id: sessionId } = c.req.valid("param");
-	const { limit: limitRaw, offset: offsetRaw } = c.req.valid("query");
-	const limit = Math.max(1, Math.min(200, Number(limitRaw ?? "50") || 50));
-	const offset = Math.max(0, Number(offsetRaw ?? "0") || 0);
-
-	const sqlText = `
-		SELECT
-			id,
-			session_id AS sessionId,
-			user_id AS userId,
-			user_email AS userEmail,
-			ts,
-			url,
-			kind,
-			message,
-			contact,
-			status,
-			created_at AS createdAt,
-			updated_at AS updatedAt
-		FROM turret_user_feedback
-		WHERE session_id = ?
-		ORDER BY ts DESC
-		LIMIT ? OFFSET ?
-	`;
-
-	const res = await env.TURRET_DB.prepare(sqlText)
-		.bind(sessionId, limit, offset)
-		.all<z.infer<typeof FeedbackItemSchema>>();
-	return c.json(
-		{
-			feedback: res.results,
-			limit,
-			offset,
-		},
-		200
-	);
-});
-
-const patchFeedback = createRoute({
-	method: "patch",
-	path: "/internal/turret/feedback/{id}",
-	request: {
-		params: z.object({
-			id: z.string().openapi({ example: "<feedback-id>" }),
-		}),
-		body: {
-			required: true,
-			content: {
-				"application/json": {
-					schema: z
-						.object({ status: FeedbackStatusSchema })
-						.openapi("TurretFeedbackPatch"),
-				},
-			},
-		},
-	},
-	responses: {
-		200: {
-			description: "Update feedback status",
-			content: {
-				"application/json": {
-					schema: z
-						.object({ ok: z.literal(true) })
-						.openapi("OkResponse"),
-				},
-			},
-		},
-		401: {
-			description: "Unauthorized",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-		403: {
-			description: "Forbidden",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-		404: {
-			description: "Not found",
-			content: { "application/json": { schema: ErrorResponseSchema } },
-		},
-	},
-});
-
-internalTurretFeedbackApp.openapi(patchFeedback, async (c) => {
-	const env = c.env;
-	const { id } = c.req.valid("param");
-	const { status } = c.req.valid("json");
-	const now = Date.now();
-
-	const result = await env.TURRET_DB.prepare(
-		"UPDATE turret_user_feedback SET status = ?, updated_at = ? WHERE id = ?"
-	)
-		.bind(status, now, id)
-		.run();
-
-	if (!result.success || (result.meta?.changes ?? 0) === 0) {
-		return c.json({ error: "Not Found" }, 404);
-	}
-
-	return c.json({ ok: true as const }, 200);
-});
-
 export { internalTurretFeedbackApp };
-export const routes = internalTurretFeedbackApp;
+
+export const routes = internalTurretFeedbackApp
+	.openapi(
+		createRoute({
+			method: "get",
+			path: "/internal/turret/feedback",
+			middleware: [requireInternalTurretAdmin] as const,
+			request: {
+				query: turretTimeRangeSchema
+					.safeExtend({
+						status: FeedbackStatusSchema.optional(),
+						kind: FeedbackKindSchema.optional(),
+						q: z.string().optional(),
+						...turretListPageSchema.shape,
+						sessionId: z.string().optional(),
+						userId: z.string().optional(),
+					})
+					.openapi("TurretFeedbackQuery"),
+			},
+			responses: {
+				[productErrors.invalid_input.status]:
+					errorResponses[productErrors.invalid_input.status],
+				200: {
+					description: "List user feedback",
+					content: {
+						"application/json": {
+							schema: FeedbackListResponseSchema,
+						},
+					},
+				},
+				...adminErrorResponses,
+			},
+		}),
+		async (c) => {
+			const env = c.env;
+			const qv = c.req.valid("query");
+			const { limit, offset } = qv;
+			const now = Date.now();
+			const { from: fromMs, to: toMs } = commandInput(
+				turretTimeRangeSchema.required(),
+				resolveTurretTimeRange(qv, now, turretRangeDurations["30d"])
+			);
+			const status = qv.status;
+			const kind = qv.kind;
+			const sessionId = qv.sessionId;
+			const userId = qv.userId;
+			const q = (qv.q ?? "").trim();
+			const like = q ? `%${escapeLike(q)}%` : "";
+
+			const table = turretUserFeedback;
+			const filters: SQL[] = [
+				gte(table.ts, new Date(fromMs)),
+				lt(table.ts, new Date(toMs)),
+			];
+			if (status) filters.push(eq(table.status, status));
+			if (kind) filters.push(eq(table.kind, kind));
+			if (sessionId) filters.push(eq(table.sessionId, sessionId));
+			if (userId) filters.push(eq(table.userId, userId));
+			if (q)
+				filters.push(
+					sql`(${table.message} LIKE ${like} ESCAPE '\\' OR ${table.url} LIKE ${like} ESCAPE '\\')`
+				);
+			const rows = FeedbackItemSchema.array().parse(
+				await makeTurretDb(env.TURRET_DB)
+					.select(feedbackProjection)
+					.from(table)
+					.where(and(...filters))
+					.orderBy(desc(table.createdAt), desc(table.id))
+					.limit(limit)
+					.offset(offset)
+			);
+
+			return c.json(
+				{
+					feedback: rows,
+					limit,
+					offset,
+				},
+				200
+			);
+		}
+	)
+	.openapi(
+		createRoute({
+			method: "get",
+			path: "/internal/turret/replay-session/{id}/feedback",
+			middleware: [requireInternalTurretAdmin] as const,
+			request: {
+				params: z.object({
+					id: z.string().openapi({ example: "<session-id>" }),
+				}),
+				query: z.object({
+					...turretListPageSchema.shape,
+				}),
+			},
+			responses: {
+				[productErrors.invalid_input.status]:
+					errorResponses[productErrors.invalid_input.status],
+				200: {
+					description: "List feedback for a replay session",
+					content: {
+						"application/json": {
+							schema: FeedbackListResponseSchema,
+						},
+					},
+				},
+				...adminErrorResponses,
+				404: {
+					description: "Replay session not found or expired",
+					content: {
+						"application/json": {
+							schema: adminErrorResponseSchema,
+						},
+					},
+				},
+			},
+		}),
+		async (c) => {
+			const env = c.env;
+			const { id: sessionId } = c.req.valid("param");
+			const { limit, offset } = c.req.valid("query");
+
+			if (
+				!(await readRetainedReplay(
+					makeTurretDb(env.TURRET_DB),
+					sessionId
+				))
+			)
+				return c.json({ error: "Not Found" }, 404);
+			const rows = FeedbackItemSchema.array().parse(
+				await makeTurretDb(env.TURRET_DB)
+					.select(feedbackProjection)
+					.from(turretUserFeedback)
+					.where(eq(turretUserFeedback.sessionId, sessionId))
+					.orderBy(
+						desc(turretUserFeedback.ts),
+						desc(turretUserFeedback.id)
+					)
+					.limit(limit)
+					.offset(offset)
+			);
+
+			return c.json(
+				{
+					feedback: rows,
+					limit,
+					offset,
+				},
+				200
+			);
+		}
+	)
+	.openapi(
+		createRoute({
+			method: "patch",
+			path: "/internal/turret/feedback/{id}",
+			middleware: [requireInternalTurretAdmin] as const,
+			request: {
+				params: z.object({
+					id: z.string().openapi({ example: "<feedback-id>" }),
+				}),
+				body: {
+					required: true,
+					content: {
+						"application/json": {
+							schema: z
+								.object({ status: FeedbackStatusSchema })
+								.openapi("TurretFeedbackPatch"),
+						},
+					},
+				},
+			},
+			responses: {
+				200: {
+					description: "Update feedback status",
+					content: {
+						"application/json": {
+							schema: z
+								.object({ ok: z.literal(true) })
+								.openapi("OkResponse"),
+						},
+					},
+				},
+				...adminErrorResponses,
+				404: {
+					description: "Not found",
+					content: {
+						"application/json": {
+							schema: adminErrorResponseSchema,
+						},
+					},
+				},
+			},
+		}),
+		async (c) => {
+			const env = c.env;
+			const { id } = c.req.valid("param");
+			const { status } = c.req.valid("json");
+			const now = Date.now();
+
+			const result = await env.TURRET_DB.prepare(
+				"UPDATE turret_user_feedback SET status = ?, updated_at = ? WHERE id = ?"
+			)
+				.bind(status, now, id)
+				.run();
+
+			if (!result.success || (result.meta?.changes ?? 0) === 0) {
+				return c.json({ error: "Not Found" }, 404);
+			}
+
+			return c.json({ ok: true as const }, 200);
+		}
+	);

@@ -1,3 +1,4 @@
+import { recordOperation } from "../../src/worker/observability/metrics";
 import { testBindings, unavailableD1 } from "../helpers/worker";
 import { createSqliteD1 } from "../helpers/sqlite-d1";
 import assert from "node:assert/strict";
@@ -8,6 +9,66 @@ import {
 	loadTurretSummary,
 	type AnalyticsSqlBinding,
 } from "../../src/worker/observability/summary";
+
+test("operational metrics retain the persisted v1 layout", () => {
+	// These literal positions describe historical data, independently of the encoder's layout declaration.
+	const points: { indexes: string[]; blobs: string[]; doubles: number[] }[] =
+		[];
+	for (const [status, durationMs] of [
+		[503, 125],
+		[200, 1500],
+	]) {
+		recordOperation({
+			env: {
+				APP_ENV: "production",
+				CF_VERSION_METADATA: { id: "release-1" },
+				TURRET_METRICS: {
+					writeDataPoint: (point) => {
+						points.push(point);
+					},
+				},
+			},
+			requestId: "request-1",
+			surface: "api",
+			method: "GET",
+			route: "/api/example/:id",
+			category: "application",
+			colo: "IAD",
+			status,
+			durationMs,
+		});
+	}
+	assert.deepEqual(points, [
+		{
+			indexes: ["production"],
+			blobs: [
+				"v1",
+				"production",
+				"release-1",
+				"api",
+				"GET",
+				"/api/example/:id",
+				"application",
+				"IAD",
+			],
+			doubles: [125, 503, 1, 0, 1],
+		},
+		{
+			indexes: ["production"],
+			blobs: [
+				"v1",
+				"production",
+				"release-1",
+				"api",
+				"GET",
+				"/api/example/:id",
+				"application",
+				"IAD",
+			],
+			doubles: [1500, 200, 0, 1, 1],
+		},
+	]);
+});
 
 function replayDb() {
 	const sqlite = new Database(":memory:");

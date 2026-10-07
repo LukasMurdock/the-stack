@@ -1,4 +1,7 @@
-import { z } from "zod";
+import {
+	turretFeaturesSchema,
+	type TurretFeatures,
+} from "../../contracts/turret-features";
 
 type KVNamespaceRead = {
 	get(key: string, type: "json"): Promise<unknown>;
@@ -10,18 +13,11 @@ type KVNamespaceWrite = KVNamespaceRead & {
 
 const FEATURES_KEY = "cfg:turret:features";
 
-// Keep all Turret feature defaults here.
-const TurretFeaturesSchema = z.object({
-	storeUserEmail: z.boolean().default(true),
-});
-
-type TurretFeatures = z.infer<typeof TurretFeaturesSchema>;
-
 function normalizeTurretFeatures(input: unknown): TurretFeatures {
-	const parsed = TurretFeaturesSchema.safeParse(input);
+	const parsed = turretFeaturesSchema.safeParse(input);
 	if (parsed.success) return parsed.data;
 	// If the stored config ever becomes invalid/corrupt, fall back to defaults.
-	return TurretFeaturesSchema.parse({});
+	return turretFeaturesSchema.parse({});
 }
 
 async function readTurretFeatures(env: {
@@ -40,9 +36,7 @@ async function writeTurretFeatures(
 
 export {
 	FEATURES_KEY,
-	TurretFeaturesSchema,
 	normalizeTurretFeatures,
 	readTurretFeatures,
 	writeTurretFeatures,
 };
-export type { TurretFeatures };

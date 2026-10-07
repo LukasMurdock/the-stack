@@ -1,7 +1,11 @@
+import {
+	turretComplianceSchema,
+	type TurretCompliance,
+} from "@/contracts/turret-policy";
 import { useDraftValue } from "@/react-app/hooks/useDraftValue";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,14 +19,22 @@ import {
 	turretComplianceQueryOptions,
 	turretFeaturesMutation,
 	turretFeaturesQueryOptions,
-} from "../../../../queries/turretQueries";
-import { requireTurretAdmin } from "../../../../lib/requireTurretAdmin";
-import type { TurretCompliancePolicy } from "../../../../lib/turretApi";
+} from "../../../../features/turret/queries";
+import type { TurretComplianceUpdate } from "../../../../features/turret/queries";
 
 const Route = createFileRoute("/ts_admin/turret/settings/")({
-	beforeLoad: requireTurretAdmin,
 	component: TurretSettingsPage,
 });
+
+// This page edits a subset of policy. The draft is also the update payload;
+// settings without controls must survive saving it.
+function editablePolicy(policy: TurretCompliance) {
+	return {
+		retentionDays: policy.retentionDays,
+		rrweb: { maskAllInputs: policy.rrweb.maskAllInputs },
+		console: { enabled: policy.console.enabled },
+	} satisfies TurretComplianceUpdate;
+}
 
 function TurretSettingsPage() {
 	const navigate = useNavigate();
@@ -31,59 +43,28 @@ function TurretSettingsPage() {
 	const featuresQuery = useQuery(turretFeaturesQueryOptions);
 	const complianceQuery = useQuery(turretComplianceQueryOptions);
 
-	const featuresMutation = useMutation({
-		mutationFn: turretFeaturesMutation,
-		onSuccess: async () => {
-			await qc.invalidateQueries({ queryKey: ["turret", "features"] });
-		},
-	});
+	const featuresMutation = useMutation(turretFeaturesMutation(qc));
 
-	const complianceMutation = useMutation({
-		mutationFn: turretComplianceMutation,
-		onSuccess: async () => {
-			await qc.invalidateQueries({ queryKey: ["turret", "compliance"] });
-		},
-	});
+	const complianceMutation = useMutation(turretComplianceMutation(qc));
 
 	const policy = complianceQuery.data?.policy;
 	const {
 		value: draft,
 		setValue: setDraft,
 		reset: resetDraft,
-	} = useDraftValue<
-		Pick<TurretCompliancePolicy, "retentionDays" | "rrweb" | "console">
-	>(
-		policy ?? {
-			retentionDays: 14,
-			rrweb: { maskAllInputs: true },
-			console: { enabled: true },
-		},
+	} = useDraftValue(
+		editablePolicy(policy ?? turretComplianceSchema.parse({})),
 		policy?.version ?? "loading"
 	);
 	const [savedAt, setSavedAt] = useState<number | null>(null);
 
-	const isDirty = useMemo(() => {
-		if (!policy) return false;
-		const maskCurrent = Boolean(policy.rrweb?.maskAllInputs);
-		const maskDraft = Boolean(draft.rrweb?.maskAllInputs);
-		const consoleCurrent = Boolean(policy.console?.enabled);
-		const consoleDraft = Boolean(draft.console?.enabled);
-		return (
-			policy.retentionDays !== draft.retentionDays ||
-			maskCurrent !== maskDraft ||
-			consoleCurrent !== consoleDraft
-		);
-	}, [policy, draft]);
+	const isDirty =
+		policy != null &&
+		JSON.stringify(editablePolicy(policy)) !== JSON.stringify(draft);
 
 	async function saveCompliance() {
 		setSavedAt(null);
-		await complianceMutation.mutateAsync({
-			retentionDays: draft.retentionDays,
-			rrweb: {
-				maskAllInputs: Boolean(draft.rrweb?.maskAllInputs),
-			},
-			console: { enabled: Boolean(draft.console?.enabled) },
-		});
+		await complianceMutation.mutateAsync(draft);
 		resetDraft();
 		setSavedAt(Date.now());
 	}
@@ -113,16 +94,7 @@ function TurretSettingsPage() {
 						onClick={() =>
 							navigate({
 								to: "/ts_admin/turret/replay-sessions",
-								search: {
-									q: "",
-									hasError: false,
-									groupBy: "none",
-									preset: "1h",
-									from: undefined,
-									to: undefined,
-									offset: 0,
-									limit: 50,
-								},
+								search: {},
 							})
 						}
 					>
@@ -134,15 +106,7 @@ function TurretSettingsPage() {
 						onClick={() =>
 							navigate({
 								to: "/ts_admin/turret/issues",
-								search: {
-									status: "open",
-									preset: "24h",
-									q: "",
-									from: undefined,
-									to: undefined,
-									offset: 0,
-									limit: 50,
-								},
+								search: {},
 							})
 						}
 					>
@@ -209,8 +173,14 @@ function TurretSettingsPage() {
 									<Input
 										id="retentionDays"
 										type="number"
-										min={1}
-										max={365}
+										min={
+											turretComplianceSchema.shape.retentionDays.unwrap()
+												.minValue ?? undefined
+										}
+										max={
+											turretComplianceSchema.shape.retentionDays.unwrap()
+												.maxValue ?? undefined
+										}
 										disabled={complianceMutation.isPending}
 										value={draft.retentionDays}
 										onChange={(e) =>
@@ -243,9 +213,7 @@ function TurretSettingsPage() {
 									<Switch
 										id="maskAllInputs"
 										disabled={complianceMutation.isPending}
-										checked={Boolean(
-											draft.rrweb?.maskAllInputs
-										)}
+										checked={draft.rrweb.maskAllInputs}
 										onCheckedChange={(checked) =>
 											setDraft((d) => ({
 												...d,
@@ -271,9 +239,7 @@ function TurretSettingsPage() {
 									<Switch
 										id="consoleEnabled"
 										disabled={complianceMutation.isPending}
-										checked={Boolean(
-											draft.console?.enabled
-										)}
+										checked={draft.console.enabled}
 										onCheckedChange={(checked) =>
 											setDraft((d) => ({
 												...d,

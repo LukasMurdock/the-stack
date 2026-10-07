@@ -8,11 +8,9 @@ export const headerSessionSchema = z
 	})
 	.nullable();
 
-export const authPolicyResponseSchema = z.object({
-	auth: z
-		.object({
-			signupMode: z.enum(["invite_only", "open"]).optional(),
-			selfSignUpEnabled: z.boolean().optional(),
-		})
-		.optional(),
-});
+export const passwordSchema = z
+	.string()
+	.min(8, { error: (issue) => `Use at least ${issue.minimum} characters.` })
+	.max(128, {
+		error: (issue) => `Use ${issue.maximum} characters or fewer.`,
+	});

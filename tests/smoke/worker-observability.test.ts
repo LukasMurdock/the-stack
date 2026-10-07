@@ -1,10 +1,12 @@
+import { recordWorkerError } from "../../src/worker/observability/turret";
+import { fingerprintException } from "../../src/worker/turret/fingerprinting";
 import { readSqlRow } from "../helpers/sqlite-d1";
 import { z } from "zod";
 import { testBindings } from "../helpers/worker";
 import { isRecord } from "../../src/lib/isRecord";
 import { createSqliteD1 } from "../helpers/sqlite-d1";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import test, { type TestContext } from "node:test";
 import Database from "better-sqlite3";
 import { Hono } from "hono";
@@ -43,6 +45,21 @@ function fixture() {
 	sqlite.exec(
 		"ALTER TABLE turret_session_errors ADD COLUMN expires_at integer"
 	);
+	const migrations = new URL(
+		"../../src/bindings/d1/turret/drizzle/",
+		import.meta.url
+	);
+	for (const file of readdirSync(migrations).filter((file) =>
+		file.endsWith(".sql")
+	)) {
+		const source = readFileSync(new URL(file, migrations), "utf8");
+		for (const table of ["turret_session_chunks", "turret_user_feedback"]) {
+			const definition = source.match(
+				new RegExp("CREATE TABLE `" + table + "` \\([\\s\\S]*?\\);")
+			);
+			if (definition) sqlite.exec(definition[0]);
+		}
+	}
 	const db = createSqliteD1(sqlite);
 	sqlite.exec(
 		readFileSync(
@@ -324,6 +341,7 @@ test("Worker exceptions keep their stack, fingerprint and correlation without a 
 		.all();
 	assert.equal(rows.length, 1);
 	assert.equal(rows[0].session_id, sessionId);
+	assert.equal(rows[0].expires_at, now + 3600000);
 	assert.equal(
 		readSqlRow(f.sqlite, "SELECT error_count FROM turret_sessions")
 			.error_count,
@@ -423,6 +441,46 @@ test("D1 replay spans are bounded, inserted within D1 limits, and exclude teleme
 	assert.equal(f.env.CORE_DB, f.db);
 });
 
+test("failed span persistence keeps its breadcrumb and never fails the application response", async (t) => {
+	const logs = captureLogs(t);
+	const f = fixture();
+	t.after(() => f.sqlite.close());
+	f.sqlite
+		.exec(`CREATE TRIGGER reject_spans BEFORE INSERT ON turret_request_spans
+		BEGIN SELECT RAISE(ABORT, 'Span storage unavailable'); END;`);
+	const app = new Hono<{ Bindings: Bindings }>();
+	app.use("*", observeRequest);
+	app.get("/api/example", async (c) => {
+		await c.env.CORE_DB.prepare("SELECT 1 AS value").all();
+		return c.json({ ok: true });
+	});
+	const response = await app.fetch(
+		new Request("http://localhost:4321/api/example"),
+		f.env,
+		f.ctx
+	);
+	assert.equal(response.status, 200);
+	assert.deepEqual(await response.json(), { ok: true });
+	await f.flush();
+	assert.equal(
+		readSqlRow(f.sqlite, "SELECT count(*) AS n FROM turret_request_spans")
+			.n,
+		0
+	);
+	assert.equal(
+		readSqlRow(
+			f.sqlite,
+			"SELECT d1_queries_count AS n FROM turret_request_breadcrumbs"
+		).n,
+		1
+	);
+	assert.ok(
+		wideEvents(logs).some(
+			(event) => event.action === "turret.breadcrumb_failed"
+		)
+	);
+});
+
 test("Cleanup emits completion, preserves failure, and never masks scheduled errors", async (t) => {
 	const logs = captureLogs(t);
 	const f = fixture();
@@ -484,4 +542,190 @@ test("Concurrent requests isolate shared bindings and replace invalid request ID
 		).n,
 		2
 	);
+});
+
+test("correlation is decoded once and invalid timestamps cannot discard errors or breadcrumbs", async (t) => {
+	const logs = captureLogs(t);
+	const f = fixture();
+	t.after(() => f.sqlite.close());
+	const app = new Hono<{ Bindings: Bindings }>();
+	app.use("*", observeRequest);
+	app.get("/api/example-error", (c) => {
+		// Downstream header mutation must not change the correlation snapshot taken at entry.
+		c.req.raw.headers.set("x-turret-replay-ts", "999");
+		return c.json({ error: "failed" }, 500);
+	});
+	for (const [index, value] of [
+		undefined,
+		"",
+		"NaN",
+		"Infinity",
+		"1e100",
+		"8640000000000001",
+		"-1",
+		"1.5",
+		"1000",
+		"0",
+	].entries()) {
+		const requestId = `correlation-${index}`;
+		const before = Date.now();
+		const response = await app.fetch(
+			new Request("http://localhost:4321/api/example-error", {
+				headers: {
+					"x-request-id": requestId,
+					"x-turret-session-id": "session",
+					...(value === undefined
+						? {}
+						: { "x-turret-replay-ts": value }),
+				},
+			}),
+			{ ...f.env },
+			f.ctx
+		);
+		assert.equal(response.status, 500);
+		await f.flush();
+		const error = f.sqlite
+			.prepare(
+				"SELECT ts, session_id FROM turret_session_errors WHERE json_extract(extra_json, '$.request_id') = ?"
+			)
+			.get(requestId);
+		assert.ok(isRecord(error));
+		const breadcrumb = f.sqlite
+			.prepare(
+				"SELECT ts, session_id FROM turret_request_breadcrumbs WHERE request_id = ?"
+			)
+			.get(requestId);
+		assert.ok(isRecord(breadcrumb));
+		assert.equal(error.ts, breadcrumb.ts);
+		assert.equal(error.session_id, "session");
+		assert.equal(breadcrumb.session_id, "session");
+		if (value === "1000" || value === "0")
+			assert.equal(error.ts, Number(value));
+		else
+			assert.ok(
+				Number(error.ts) >= before && Number(error.ts) <= Date.now()
+			);
+	}
+	assert.ok(!JSON.stringify(logs).includes("turret.error_capture_failed"));
+});
+
+test("worker capture bounds stored diagnostics without changing fingerprint input", async (t) => {
+	const f = fixture();
+	t.after(() => f.sqlite.close());
+	// Leading whitespace puts meaningful fingerprint input beyond the storage limits.
+	const error = new Error(" ".repeat(2000) + "failure");
+	error.stack = " ".repeat(20000) + "at example()";
+	await recordWorkerError({
+		env: f.env,
+		request: new Request("http://localhost:4321/api/example"),
+		requestId: "long-error",
+		correlation: { sessionId: null, replayTs: null, ts: 0 },
+		kind: "exception",
+		error,
+	});
+	const row = readSqlRow(
+		f.sqlite,
+		"SELECT ts, message, stack, fingerprint FROM turret_session_errors"
+	);
+	assert.equal(row.ts, 0);
+	assert.equal(row.message, " ".repeat(2000));
+	assert.equal(row.stack, " ".repeat(20000));
+	assert.equal(
+		row.fingerprint,
+		await fingerprintException({
+			platform: "worker",
+			message: error.message,
+			stack: error.stack,
+			method: "GET",
+			pathTemplate: "/api/example",
+		})
+	);
+});
+
+test("request policy keeps metrics, trace names, breadcrumbs, and errors distinct", async (t) => {
+	captureLogs(t);
+	const f = fixture();
+	t.after(() => f.sqlite.close());
+	const categories: string[] = [];
+	f.env.TURRET_METRICS = {
+		writeDataPoint(point) {
+			categories.push(
+				z
+					.string()
+					.parse(
+						z.object({ blobs: z.array(z.string()) }).parse(point)
+							.blobs[6]
+					)
+			);
+		},
+	};
+	const app = new Hono<{ Bindings: Bindings }>();
+	app.use("*", observeRequest);
+	app.all("*", (c) => c.json({ error: "Expected failure" }, 500));
+	for (const [path, category, spanName, breadcrumb, error] of [
+		["/api/projects", "application", "api.request", true, true],
+		["/api/auth/get-session", "auth", "auth.request", false, true],
+		["/api/internal/turret/issues", "admin", "turret.admin", false, false],
+		["/api/internal/example", "admin", "api.request", true, true],
+		[
+			"/api/turret/replay-session/session/error",
+			"ingest",
+			"turret.ingest",
+			false,
+			false,
+		],
+		[
+			"/api/turret/session/session/chunk",
+			"ingest",
+			"turret.ingest",
+			false,
+			false,
+		],
+		["/api/turret/other", "ingest", "turret.ingest", false, true],
+		["/api/turret/replay-session", "ingest", "turret.ingest", false, true],
+		["/api/health", "health", "api.request", false, true],
+		["/api/doc", "application", "api.request", false, true],
+		["/api/scalar", "application", "api.request", false, true],
+		["/api/throw", "application", "api.request", false, true],
+		["/api/fail", "application", "api.request", false, true],
+		["/api/health/example", "application", "api.request", true, true],
+		["/api/authentication", "application", "api.request", true, true],
+		["/api/internal/turretish/example", "admin", "api.request", true, true],
+		["/outside", "application", "api.request", false, false],
+	] as const) {
+		const beforeErrors = f.sqlite
+			.prepare("SELECT count(*) FROM turret_session_errors")
+			.pluck()
+			.get();
+		const beforeBreadcrumbs = f.sqlite
+			.prepare("SELECT count(*) FROM turret_request_breadcrumbs")
+			.pluck()
+			.get();
+		const beforeSpans = f.spans.length;
+		const response = await app.fetch(
+			new Request(`http://localhost:4321${path}`),
+			{ ...f.env },
+			f.ctx
+		);
+		assert.equal(response.status, 500);
+		await f.flush();
+		assert.equal(categories.at(-1), category, path);
+		assert.equal(f.spans[beforeSpans].name, spanName, path);
+		assert.equal(
+			f.sqlite
+				.prepare("SELECT count(*) FROM turret_session_errors")
+				.pluck()
+				.get(),
+			Number(beforeErrors) + Number(error),
+			path
+		);
+		assert.equal(
+			f.sqlite
+				.prepare("SELECT count(*) FROM turret_request_breadcrumbs")
+				.pluck()
+				.get(),
+			Number(beforeBreadcrumbs) + Number(breadcrumb),
+			path
+		);
+	}
 });

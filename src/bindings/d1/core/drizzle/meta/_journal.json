@@ -15,6 +15,13 @@
 			"when": 1791239778578,
 			"tag": "0001_auth-secondary-storage",
 			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "6",
+			"when": 1791268219476,
+			"tag": "0002_organizations-and-example",
+			"breakpoints": true
 		}
 	]
 }

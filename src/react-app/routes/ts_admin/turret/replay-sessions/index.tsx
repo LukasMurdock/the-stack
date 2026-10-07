@@ -1,3 +1,8 @@
+import {
+	presetToRange,
+	toLocalDatetimeValue,
+	fromLocalDatetimeValue,
+} from "../../../../features/turret/timeRange";
 import { useDraftValue } from "@/react-app/hooks/useDraftValue";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -35,52 +40,19 @@ import {
 	turretFeaturesMutation,
 	turretFeaturesQueryOptions,
 	turretReplaySessionsQueryOptions,
-} from "../../../../queries/turretQueries";
-
-import { requireTurretAdmin } from "../../../../lib/requireTurretAdmin";
+} from "../../../../features/turret/queries";
 
 import {
-	parseReplaySearch,
+	replaySearchSchema,
+	replayPresetSchema,
 	type RangePreset,
 	type GroupBy,
 } from "../../../../features/turret/session/replaySearch";
 
 const Route = createFileRoute("/ts_admin/turret/replay-sessions/")({
-	validateSearch: parseReplaySearch,
-	beforeLoad: requireTurretAdmin,
+	validateSearch: replaySearchSchema,
 	component: TurretReplaySessionsPage,
 });
-
-function presetToRange(
-	preset: RangePreset,
-	now: number
-): { from?: number; to?: number } {
-	switch (preset) {
-		case "15m":
-			return { from: now - 15 * 60 * 1000, to: now };
-		case "1h":
-			return { from: now - 60 * 60 * 1000, to: now };
-		case "24h":
-			return { from: now - 24 * 60 * 60 * 1000, to: now };
-		case "custom":
-		default:
-			return {};
-	}
-}
-
-function toLocalDatetimeValue(ms?: number): string {
-	if (!ms || Number.isNaN(ms)) return "";
-	const d = new Date(ms);
-	const pad = (n: number) => String(n).padStart(2, "0");
-	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function fromLocalDatetimeValue(v: string): number | undefined {
-	if (!v) return undefined;
-	const d = new Date(v);
-	const ms = d.getTime();
-	return Number.isNaN(ms) ? undefined : ms;
-}
 
 type ReplaySessionRow = {
 	sessionId: string;
@@ -259,14 +231,7 @@ function TurretReplaySessionsPage() {
 
 	const queryClient = useQueryClient();
 	const featuresQuery = useQuery(turretFeaturesQueryOptions);
-	const featuresMutation = useMutation({
-		mutationFn: turretFeaturesMutation,
-		onSuccess: () => {
-			void queryClient.invalidateQueries({
-				queryKey: ["turret", "features"],
-			});
-		},
-	});
+	const featuresMutation = useMutation(turretFeaturesMutation(queryClient));
 
 	const range = useMemo(() => {
 		if (search.preset === "custom") {
@@ -366,15 +331,7 @@ function TurretReplaySessionsPage() {
 						onClick={() =>
 							navigate({
 								to: "/ts_admin/turret/issues",
-								search: {
-									status: "open",
-									preset: "24h",
-									q: "",
-									from: undefined,
-									to: undefined,
-									offset: 0,
-									limit: 50,
-								},
+								search: {},
 							})
 						}
 					>
@@ -420,44 +377,22 @@ function TurretReplaySessionsPage() {
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="flex flex-wrap items-center gap-2">
-						<Button
-							variant={
-								search.preset === "15m" ? "default" : "outline"
-							}
-							onClick={() => setPreset("15m")}
-							type="button"
-						>
-							Last 15m
-						</Button>
-						<Button
-							variant={
-								search.preset === "1h" ? "default" : "outline"
-							}
-							onClick={() => setPreset("1h")}
-							type="button"
-						>
-							Last 1h
-						</Button>
-						<Button
-							variant={
-								search.preset === "24h" ? "default" : "outline"
-							}
-							onClick={() => setPreset("24h")}
-							type="button"
-						>
-							Last 24h
-						</Button>
-						<Button
-							variant={
-								search.preset === "custom"
-									? "default"
-									: "outline"
-							}
-							onClick={() => setPreset("custom")}
-							type="button"
-						>
-							Custom
-						</Button>
+						{replayPresetSchema.options.map((preset) => (
+							<Button
+								key={preset}
+								variant={
+									search.preset === preset
+										? "default"
+										: "outline"
+								}
+								type="button"
+								onClick={() => setPreset(preset)}
+							>
+								{preset === "custom"
+									? "Custom"
+									: `Last ${preset}`}
+							</Button>
+						))}
 
 						<Button
 							variant={search.hasError ? "default" : "outline"}

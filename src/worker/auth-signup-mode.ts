@@ -1,9 +1,12 @@
-type AuthSignupMode = "invite_only" | "open";
+import { z } from "zod";
+
+export const authSignupModeSchema = z.enum(["invite_only", "open"]);
+type AuthSignupMode = z.infer<typeof authSignupModeSchema>;
 
 function resolveAuthSignupMode(raw: string | undefined): AuthSignupMode {
 	const normalized = raw?.trim().toLowerCase();
-	if (normalized === "open") return "open";
-	return "invite_only";
+	const parsed = authSignupModeSchema.safeParse(normalized);
+	return parsed.success ? parsed.data : "invite_only";
 }
 
 function isOpenSignupMode(mode: AuthSignupMode): boolean {

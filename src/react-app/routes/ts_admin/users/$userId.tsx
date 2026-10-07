@@ -1,10 +1,10 @@
+import { normalizeAccountRole } from "../../../../features/auth/policy";
 import { useDraftValue } from "@/react-app/hooks/useDraftValue";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
-import { authClient } from "../../../lib/authClient";
-import { requireCoreAdmin } from "../../../lib/requireCoreAdmin";
+import { authClient } from "../../../auth";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,20 +66,7 @@ function formatDate(v: unknown): string {
 	}
 }
 
-function normalizeRole(role: unknown): "admin" | "user" | "other" {
-	if (!role || typeof role !== "string") return "user";
-	const roles = role
-		.split(",")
-		.map((r) => r.trim())
-		.filter(Boolean);
-	if (roles.includes("admin")) return "admin";
-	if (roles.length === 0) return "user";
-	if (roles.length === 1 && roles[0] === "user") return "user";
-	return "other";
-}
-
 const Route = createFileRoute("/ts_admin/users/$userId")({
-	beforeLoad: requireCoreAdmin,
 	component: TsAdminUserDetailPage,
 });
 
@@ -129,7 +116,9 @@ function TsAdminUserDetailPage() {
 		setValue: setRole,
 		reset: resetRole,
 	} = useDraftValue<"admin" | "user">(
-		normalizeRole(userQuery.data?.role) === "admin" ? "admin" : "user",
+		normalizeAccountRole(userQuery.data?.role) === "admin"
+			? "admin"
+			: "user",
 		userId
 	);
 	const [newPassword, setNewPassword] = useState("");
@@ -245,7 +234,7 @@ function TsAdminUserDetailPage() {
 
 	const user = userQuery.data;
 	const sessions = sessionsQuery.data?.sessions ?? [];
-	const roleNorm = normalizeRole(user?.role);
+	const roleNorm = normalizeAccountRole(user?.role);
 	const isBanned = Boolean(user?.banned);
 
 	const headerTitle = user?.email ?? user?.id ?? userId;
