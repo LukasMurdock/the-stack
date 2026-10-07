@@ -17,29 +17,13 @@ test("admin parent denies a signed-in non-admin without a login loop", async ({
 	expect(page.url()).toContain("/app/ts_admin/users/viewer");
 });
 
-test("marketing and docs layouts execute their compiled replay entry", async ({
-	page,
-}) => {
-	const errors: string[] = [];
-	page.on("pageerror", (error) => errors.push(error.message));
-	for (const path of ["/", "/docs/v1/extend"]) {
-		const [session] = await Promise.all([
-			page.waitForResponse(
-				(response) =>
-					new URL(response.url()).pathname === "/api/auth/get-session"
-			),
-			page.goto(path),
-		]);
-		expect(session.ok()).toBe(true);
-		expect(errors).toEqual([]);
-	}
-});
-
 test("Astro replay starts only for authenticated sessions and tolerates session failures", async ({
 	page,
 	baseURL,
 }) => {
 	if (!baseURL) throw new Error("The Worker base URL is required.");
+	const errors: string[] = [];
+	page.on("pageerror", (error) => errors.push(error.message));
 	const initializations: string[] = [];
 	page.on("request", (request) => {
 		if (
@@ -49,7 +33,14 @@ test("Astro replay starts only for authenticated sessions and tolerates session 
 			initializations.push(request.url());
 	});
 	for (const path of ["/", "/docs/v1/extend"]) {
-		await page.goto(path);
+		const [session] = await Promise.all([
+			page.waitForResponse(
+				(response) =>
+					new URL(response.url()).pathname === "/api/auth/get-session"
+			),
+			page.goto(path),
+		]);
+		expect(session.ok()).toBe(true);
 		await page.waitForLoadState("networkidle");
 	}
 	expect(initializations).toHaveLength(0);
@@ -86,6 +77,7 @@ test("Astro replay starts only for authenticated sessions and tolerates session 
 		expect(initialized.ok()).toBe(true);
 	}
 	expect(initializations).toHaveLength(2);
+	expect(errors).toEqual([]);
 });
 
 test("login offers Google only when the server reports it available", async ({

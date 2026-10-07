@@ -406,9 +406,6 @@ wrangler d1 migrations apply TURRET_DB --env production
 
 ## Deploy
 
-If upgrading an existing KV-backed auth deployment, follow the
-[auth storage migration](docs/auth-storage-migration.md) before deploying.
-
 Production deploy:
 
 ```bash

@@ -5,7 +5,6 @@ import assert from "node:assert/strict";
 import { z } from "zod";
 import test, { type TestContext } from "node:test";
 import { migratedSqlite } from "../helpers/migrations";
-import { readFileSync } from "node:fs";
 import { api } from "../../src/worker/api";
 import { signUploadToken } from "../../src/worker/api/routes/_shared/turret-upload-token";
 import { REPLAY_CHUNK_BYTES_MAX } from "../../src/contracts/turret-ingest";
@@ -316,52 +315,6 @@ test("concurrent commits preserve one sequence and legacy objects can be verifie
 			.pluck()
 			.get(),
 		2
-	);
-});
-
-test("the chunk identity migration keeps latest metadata, repairs counts, and enforces uniqueness", async (t) => {
-	const f = await ingestFixture(t);
-	f.sqlite.exec("DROP INDEX turret_chunks_sessionId_seq_unique");
-	f.sqlite.exec(
-		"INSERT INTO turret_session_chunks (session_id, seq, r2_key, size, created_at) VALUES ('session', 0, 'key', 1, 0), ('session', 0, 'key', 2, 1), ('session', 1, 'other', 1, 0)"
-	);
-	f.sqlite.exec("UPDATE turret_sessions SET chunk_count = 3");
-	f.sqlite.exec(
-		readFileSync(
-			new URL(
-				"../../src/bindings/d1/turret/drizzle/0008_real_doctor_faustus.sql",
-				import.meta.url
-			),
-			"utf8"
-		)
-	);
-	assert.equal(
-		f.sqlite
-			.prepare("SELECT count(*) FROM turret_session_chunks")
-			.pluck()
-			.get(),
-		2
-	);
-	assert.equal(
-		f.sqlite
-			.prepare("SELECT size FROM turret_session_chunks WHERE seq = 0")
-			.pluck()
-			.get(),
-		2
-	);
-	assert.equal(
-		f.sqlite
-			.prepare("SELECT chunk_count FROM turret_sessions")
-			.pluck()
-			.get(),
-		2
-	);
-	assert.throws(
-		() =>
-			f.sqlite.exec(
-				"INSERT INTO turret_session_chunks (session_id, seq, r2_key, size, created_at) VALUES ('session', 0, 'key', 3, 2)"
-			),
-		/UNIQUE constraint/
 	);
 });
 

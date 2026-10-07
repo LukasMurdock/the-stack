@@ -4,10 +4,11 @@ import { joinedViewer } from "./organizations";
 test("account replacement refreshes private permissions in both directions", async ({
 	page,
 	browser,
+	baseURL,
 }) => {
 	const viewerContext = await browser.newContext();
 	try {
-		const viewer = await joinedViewer(page, viewerContext);
+		const viewer = await joinedViewer(page, viewerContext, baseURL);
 		// Replace the account without an intervening signed-out state. Focus refetch
 		// must replace both route identity and cached role, then reverse cleanly.
 		const otherTab = await viewerContext.newPage();
@@ -78,10 +79,11 @@ test("account replacement refreshes private permissions in both directions", asy
 test("signing out in another tab removes the mounted private screen", async ({
 	page,
 	browser,
+	baseURL,
 }) => {
 	const viewerContext = await browser.newContext();
 	try {
-		const viewer = await joinedViewer(page, viewerContext);
+		const viewer = await joinedViewer(page, viewerContext, baseURL);
 		const otherTab = await viewerContext.newPage();
 		await otherTab.goto("/app/login");
 		await otherTab

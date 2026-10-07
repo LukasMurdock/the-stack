@@ -67,6 +67,9 @@ pnpm run format:check
 `pnpm run lint` uses Oxlint with `.oxlintrc.json`. For necessary type assertions,
 add a nearby `// SAFETY:` comment explaining why the asserted type is valid.
 `pnpm test` runs the behavior tests without rebuilding or generating files.
+Before adding tests, follow [the test portfolio constraints](tests/AGENTS.md):
+inspect existing claims, keep permutations at their lowest useful layer, and
+reserve browser workflows for properties that require real UI or Worker bindings.
 `pnpm test:types` checks test types, including the compile-only RPC guarantees.
 
 When updating the vendored lint plugin, use the revision in

@@ -310,6 +310,29 @@ test("replay-backed readers preserve authorization, expiry and response contract
 	assert.equal(r2Reads, 1);
 
 	await t.test(
+		"replay lists include the range start and exclude its end",
+		async () => {
+			f.sqlite.exec(
+				"UPDATE turret_sessions SET started_at=1000 WHERE session_id='live'"
+			);
+			const schema = z.object({
+				sessions: z.array(z.object({ sessionId: z.string() })),
+			});
+			const included = await request("replay-sessions?from=1000&to=1001");
+			assert.equal(included.status, 200);
+			assert.deepEqual(
+				schema
+					.parse(await included.json())
+					.sessions.map((row) => row.sessionId),
+				["live"]
+			);
+			const excluded = await request("replay-sessions?from=999&to=1000");
+			assert.equal(excluded.status, 200);
+			assert.deepEqual(schema.parse(await excluded.json()).sessions, []);
+		}
+	);
+
+	await t.test(
 		"grouped spans isolate observations sharing a correlation ID across sessions",
 		async () => {
 			f.sqlite.exec(`

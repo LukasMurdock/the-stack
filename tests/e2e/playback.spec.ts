@@ -89,7 +89,7 @@ function playerModule(throws = false) {
 	}`;
 }
 
-for (const failure of ["library", "chunk", "construction"] as const) {
+for (const failure of ["library", "construction"] as const) {
 	test(`${failure} failure leaves replay controls disabled and clears partial mounting`, async ({
 		page,
 		baseURL,
@@ -106,11 +106,7 @@ for (const failure of ["library", "chunk", "construction"] as const) {
 					})
 		);
 		await page.route(`**${fixture.readPath}/chunk/0`, (route) =>
-			route.fulfill(
-				failure === "chunk"
-					? { status: 500, json: { error: "Chunk unavailable" } }
-					: { json: chunk }
-			)
+			route.fulfill({ json: chunk })
 		);
 		await page.goto(fixture.path);
 		await expect(

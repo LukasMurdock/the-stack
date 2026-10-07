@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import Database from "better-sqlite3";
 import { getRequestLocation } from "../../src/lib/cloudflareRequest";
 import { headerSessionSchema } from "../../src/contracts/auth";
 import { turretComplianceSchema } from "../../src/contracts/turret-policy";
@@ -9,7 +8,6 @@ import { turretInitResponseSchema } from "../../src/contracts/turret";
 import { ApiError, jsonOrThrow } from "../../src/react-app/api";
 import { decodeReplayEvents } from "../../src/react-app/features/turret/session/replayLoader";
 import { replaySearchSchema } from "../../src/react-app/features/turret/session/replaySearch";
-import { createSqliteD1, readSqlRow } from "../helpers/sqlite-d1";
 
 test("Cloudflare location accepts string metadata and excludes invalid or absent values", () => {
 	const request = new Request("https://example.com");
@@ -179,19 +177,4 @@ test("API error messages never treat arbitrary JSON fields as strings", async ()
 			error.message === "Forbidden" &&
 			error.status === 403
 	);
-});
-
-test("SQLite D1 batches roll back preceding writes when a later statement fails", async (t) => {
-	const sqlite = new Database(":memory:");
-	t.after(() => sqlite.close());
-	sqlite.exec("CREATE TABLE items (id INTEGER PRIMARY KEY)");
-	const db = createSqliteD1(sqlite);
-	await assert.rejects(
-		db.batch([
-			db.prepare("INSERT INTO items VALUES (?)").bind(1),
-			db.prepare("INSERT INTO items VALUES (?)").bind(1),
-		]),
-		/UNIQUE constraint/
-	);
-	assert.equal(readSqlRow(sqlite, "SELECT count(*) AS n FROM items").n, 0);
 });

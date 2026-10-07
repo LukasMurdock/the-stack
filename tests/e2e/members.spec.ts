@@ -4,10 +4,11 @@ import { joinedViewer } from "./organizations";
 test("member changes refresh role controls and revoke organization access", async ({
 	page,
 	browser,
+	baseURL,
 }) => {
 	const context = await browser.newContext();
 	try {
-		const viewer = await joinedViewer(page, context);
+		const viewer = await joinedViewer(page, context, baseURL);
 		// Acceptance happened in another browser context; refresh the owner's list.
 		await page.reload();
 		const role = page.getByLabel("Role for viewer", { exact: true });

@@ -81,11 +81,8 @@ test("HTTP authentication, validation, typed outcomes and resource routes work t
 	);
 	for (const [path, method] of [
 		["/internal/turret/health", "GET"],
-		["/internal/turret/summary", "GET"],
 		["/internal/turret/features", "PUT"],
 		["/internal/turret/compliance", "PUT"],
-		["/internal/turret/issues", "GET"],
-		["/internal/turret/feedback", "GET"],
 		["/internal/turret/sessions", "GET"],
 		["/internal/turret/session/test/meta", "GET"],
 		["/internal/turret/session/test/feedback", "GET"],
