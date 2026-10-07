@@ -6,6 +6,10 @@ pubDate: "2026-02-27"
 
 # Extend
 
+Start with [Build your first feature](/docs/v1/first-feature/) for a step-by-step
+change through the database, typed API, and React form. This page is the
+architecture reference for extending or replacing the example.
+
 Organizations, memberships, and invitations are core capabilities. Owners manage
 membership; editors and owners can create example projects; viewers can read
 them. Platform administrator access does not bypass organization permissions.

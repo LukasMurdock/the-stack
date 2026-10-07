@@ -1,6 +1,4 @@
 import { execFileSync } from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
 
 import { loadLocalEnv } from "./local-env.mjs";
 
@@ -18,24 +16,14 @@ function runNodeScript(scriptPath) {
 	execFileSync("node", [scriptPath], { stdio: "inherit" });
 }
 
-const cwd = process.cwd();
-const devVarsPath = path.resolve(cwd, ".dev.vars");
-const devVarsExamplePath = path.resolve(cwd, ".dev.vars.example");
-
-if (!fs.existsSync(devVarsPath)) {
-	if (!fs.existsSync(devVarsExamplePath)) {
-		throw new Error(
-			"Missing .dev.vars.example. Cannot bootstrap local env."
-		);
-	}
-	fs.copyFileSync(devVarsExamplePath, devVarsPath);
-	log("Created .dev.vars from .dev.vars.example");
-}
+runNodeScript("scripts/setup-local-env.mjs");
 
 const parsed = loadLocalEnv();
 if (parsed.error) {
 	throw parsed.error;
 }
+// Local setup and the Worker must agree even if the shell exports another secret.
+process.env.BETTER_AUTH_SECRET = parsed.parsed.BETTER_AUTH_SECRET;
 
 const requiredKeys = ["BETTER_AUTH_SECRET", "APP_URL", "ADMIN_EMAIL"];
 const missing = requiredKeys.filter((key) => {
@@ -49,7 +37,6 @@ if (missing.length > 0) {
 	log("Please update .dev.vars before continuing.");
 	log("Required values: BETTER_AUTH_SECRET, APP_URL, ADMIN_EMAIL");
 	log(`Missing or placeholder values: ${missing.join(", ")}`);
-	log("Tip: run `just secret-auth` to generate BETTER_AUTH_SECRET.");
 	process.exit(1);
 }
 
@@ -76,5 +63,10 @@ runCommand("pnpm", [
 runNodeScript("scripts/create-admin-local.mjs");
 
 log("\nLocal setup complete.");
-log("Next: just dev");
+log("Next: pnpm dev");
 runNodeScript("scripts/dev-status.mjs");
+log("\nSign in with the email and password in .wrangler/.admin-password.");
+log(
+	"Create an organization, open it, then select Projects to create your first record."
+);
+log("Follow the First feature URL above to extend the example.");

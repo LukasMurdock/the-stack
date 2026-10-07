@@ -9,16 +9,17 @@ pubDate: "2026-02-27"
 ## Local workflow
 
 ```bash
-just migrate-core
-just migrate-turret
+pnpm exec wrangler d1 migrations apply CORE_DB --local
+pnpm exec wrangler d1 migrations apply TURRET_DB --local
 ```
 
-Use `just studio-core` and `just studio-turret` for inspection.
+If you use the optional `just` task runner, `just studio-core` and
+`just studio-turret` open the local databases for inspection.
 
 ## New migration
 
 ```bash
-just db-generate-core add_user_timezone
+pnpm exec drizzle-kit generate --config src/bindings/d1/core/drizzle.config.ts --name add_user_timezone
 ```
 
 Review generated SQL before applying remotely.
@@ -26,8 +27,8 @@ Review generated SQL before applying remotely.
 ## Production workflow
 
 ```bash
-wrangler d1 migrations apply CORE_DB --env production
-wrangler d1 migrations apply TURRET_DB --env production
+pnpm exec wrangler d1 migrations apply CORE_DB --env production
+pnpm exec wrangler d1 migrations apply TURRET_DB --env production
 ```
 
 Use expand/contract for schema changes that affect live traffic.

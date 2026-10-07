@@ -45,6 +45,16 @@ export function DocsNav({ pathname }: DocsNavProps) {
 
 				<NavigationMenuItem>
 					<NavigationMenuLink
+						href="/docs/v1/first-feature/"
+						className={linkClass("/docs/v1/first-feature/")}
+						aria-current={ariaCurrent("/docs/v1/first-feature/")}
+					>
+						First Feature
+					</NavigationMenuLink>
+				</NavigationMenuItem>
+
+				<NavigationMenuItem>
+					<NavigationMenuLink
 						href="/docs/"
 						className={linkClass("/docs/")}
 						aria-current={ariaCurrent("/docs/")}

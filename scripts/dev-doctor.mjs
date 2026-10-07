@@ -22,7 +22,7 @@ const devVarsPath = path.resolve(cwd, ".dev.vars");
 let failed = false;
 
 if (!fs.existsSync(devVarsPath)) {
-	fail("Missing .dev.vars. Run: cp .dev.vars.example .dev.vars");
+	fail("Missing .dev.vars. Run: pnpm local:setup");
 	failed = true;
 } else {
 	ok("Found .dev.vars");
@@ -39,6 +39,19 @@ if (!fs.existsSync(devVarsPath)) {
 				failed = true;
 			} else {
 				ok(`Configured ${key}`);
+			}
+		}
+		for (const key of [
+			"GOOGLE_CLIENT_ID",
+			"GOOGLE_CLIENT_SECRET",
+			"BOOTSTRAP_SECRET",
+			"TURRET_SIGNING_KEY",
+		]) {
+			if (process.env[key] === "replace-me") {
+				fail(
+					`${key} still uses replace-me. Set it to an empty string to disable it locally, or configure a real value.`
+				);
+				failed = true;
 			}
 		}
 
@@ -131,7 +144,9 @@ const adminPasswordPath = path.resolve(cwd, ".wrangler/.admin-password");
 if (fs.existsSync(adminPasswordPath)) {
 	ok("Admin credential file present (.wrangler/.admin-password)");
 } else {
-	warn("Admin credential file missing. Run: just admin-create");
+	warn(
+		"Admin credential file missing. Run: pnpm local:setup (or follow Getting Started to recover a lost password)."
+	);
 }
 
 if (failed) {

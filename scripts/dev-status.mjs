@@ -37,7 +37,8 @@ line("Turret mode", `${configuredTurretMode} -> ${effectiveTurretMode}`);
 process.stdout.write("\n");
 
 line("Marketing", `${appOrigin}/`);
-line("App", `${appOrigin}/app`);
+line("App", `${appOrigin}/app/organizations`);
+line("First feature", `${appOrigin}/docs/v1/first-feature/`);
 line("Docs", `${appOrigin}/docs`);
 line("API health", `${appOrigin}/api/health`);
 line("API docs", `${appOrigin}/api/scalar`);

@@ -1,14 +1,14 @@
 # Local development secrets for `wrangler dev` / Cloudflare Vite plugin.
-# Copy to `.dev.vars` and fill in real values.
+# `pnpm local:setup` copies this file and initializes the local auth secret.
 # Non-sensitive local defaults like APP_URL and ADMIN_EMAIL live in wrangler.json vars.
 
 # Better Auth
-# Generate a secret with:
+# Setup generates this automatically for local development. For production:
 # npx @better-auth/cli@latest secret
 BETTER_AUTH_SECRET="replace-me"
 
 # Used by the one-time bootstrap admin endpoint.
-BOOTSTRAP_SECRET="replace-me"
+BOOTSTRAP_SECRET=""
 
 # Auth policy
 # invite_only (default): signup requires admin provisioning or a live organization invitation.
@@ -16,8 +16,8 @@ BOOTSTRAP_SECRET="replace-me"
 AUTH_SIGNUP_MODE="invite_only"
 
 # OAuth (optional)
-GOOGLE_CLIENT_ID="replace-me"
-GOOGLE_CLIENT_SECRET="replace-me"
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
 
 # Email
 # Local default EMAIL_TRANSPORT=log sends nothing.
@@ -28,7 +28,7 @@ RESEND_API_KEY=""
 
 # Turret (optional)
 # Signs Turret upload tokens. Only required if you enable Turret ingestion locally.
-TURRET_SIGNING_KEY="replace-me"
+TURRET_SIGNING_KEY=""
 
 # Turret mode
 # full (default): enable ingestion when signing key is present, otherwise degrade to basic.

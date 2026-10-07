@@ -2,21 +2,28 @@
 
 API-first, type-safe template for building fast, interactive apps on Cloudflare Workers.
 
+Start locally with Node.js 22.22.1+ and pnpm 10.34.6 (see [Getting Started](src/content/docs/v1/welcome.md) for installation):
+
 ```bash
 pnpm install
-cp .dev.vars.example .dev.vars
-# Configure local secrets and ADMIN_EMAIL, then bootstrap:
-node scripts/setup-local.mjs
+pnpm local:setup
 pnpm dev
 ```
 
-Open <http://localhost:4321/app/organizations>. Configure `.dev.vars` and
-`ADMIN_EMAIL` before setup. Setup preserves local data and
-creates a verified administrator; its credential is saved in
-`.wrangler/.admin-password`. Organizations and permissions are core capabilities.
-Projects is a small, replaceable example connecting operations, typed APIs,
-TanStack Query and ordinary React forms. Follow the [extension guide](src/content/docs/v1/extend.md)
-to build your next feature.
+Setup creates `.dev.vars`, initializes a local auth secret, applies both local D1
+migration chains, and creates a verified administrator. It preserves existing
+settings, records, and credentials on rerun. No Cloudflare account or external
+service credentials are needed locally.
+
+Open <http://localhost:4321/app/organizations> and sign in with the email and
+password saved in `.wrangler/.admin-password`. Create an organization, open it,
+then select **Projects** and create your first record.
+
+Next, follow [Build your first feature](src/content/docs/v1/first-feature.md) to
+add a persisted project status through the database, typed API, and React form.
+Organizations and permissions are core capabilities; Projects is a small,
+replaceable example. The [extension reference](src/content/docs/v1/extend.md)
+explains the architecture and boundaries.
 
 ## Features
 
@@ -147,193 +154,28 @@ Local replay totals use local D1. Backend health queries require the deployed pr
 
 ## Getting started
 
-### 10-minute quickstart (golden path)
+[Getting Started](src/content/docs/v1/welcome.md) is the complete local setup and
+first-record walkthrough. [Build your first feature](src/content/docs/v1/first-feature.md)
+continues with a concrete, end-to-end change.
 
-Use this exact flow for a first local run.
-
-Prerequisites:
-
-- Node.js 22.22.1+
-- npm
-- `just`
-
-Install `just`:
+Useful local commands:
 
 ```bash
-# macOS
-brew install just
-
-# Linux
-cargo install just
+pnpm doctor
+pnpm status
+pnpm exec wrangler d1 migrations apply CORE_DB --local
+pnpm exec wrangler d1 migrations apply TURRET_DB --local
 ```
 
-Copy-paste setup:
+Local non-sensitive defaults, including `APP_URL` and `ADMIN_EMAIL`, live in
+`wrangler.json` vars. Edit `.dev.vars` to override them before setup. Email is
+log-only locally; auth links appear in the dev terminal. Public signup is disabled
+by default; sign in with the setup administrator or use an organization invitation.
 
-```bash
-cp .dev.vars.example .dev.vars
-
-# Set these values in .dev.vars before continuing:
-# BETTER_AUTH_SECRET="<paste output of: just secret-auth>"
-
-just setup
-just dev
-```
-
-In another terminal, verify the golden-path endpoints:
-
-```bash
-curl -i "http://localhost:4321/"
-curl -i "http://localhost:4321/docs"
-curl -i "http://localhost:4321/app"
-curl -i "http://localhost:4321/api/health"
-curl -i "http://localhost:4321/api/scalar"
-```
-
-Expected results:
-
-- `just setup` ends with `Local setup complete.` and no `FAIL` lines.
-- `just dev` starts the server on `http://localhost:4321`.
-- `/api/health` returns `200` with JSON containing `"ok": true`.
-- `/api/scalar` returns `200` and loads API docs.
-
-Quick troubleshooting:
-
-| Symptom                                       | Likely cause                | Fix                                                    |
-| --------------------------------------------- | --------------------------- | ------------------------------------------------------ |
-| `Missing required values` during `just setup` | `.dev.vars` not filled      | Set `BETTER_AUTH_SECRET` in `.dev.vars`                |
-| `Wrangler not available` in doctor output     | dependencies not installed  | Run `pnpm install` then `just doctor`                  |
-| `Could not find a local D1 sqlite file`       | migrations not applied yet  | Run `just migrate-core` and `just migrate-turret`      |
-| Login works but no account exists             | invite-only mode is default | Run `just admin-create` or set `AUTH_SIGNUP_MODE=open` |
-
-### Detailed setup and commands
-
-Install `just` (required):
-
-```bash
-# macOS
-brew install just
-
-# Linux
-cargo install just
-```
-
-Show available tasks:
-
-```bash
-just
-```
-
-Generate a Better Auth secret:
-
-```bash
-just secret-auth
-```
-
-Set local secrets:
-
-```bash
-cp .dev.vars.example .dev.vars
-```
-
-Then set required secret values in `.dev.vars` before setup:
-
-- `BETTER_AUTH_SECRET`
-
-Local non-sensitive defaults like `APP_URL` and `ADMIN_EMAIL` live in `wrangler.json` vars.
-
-Bootstrap local dev (install, migrations, admin bootstrap):
-
-```bash
-just setup
-```
-
-Optional:
-
-- `BOOTSTRAP_SECRET` (only needed for the `/api/internal/bootstrap-admin` endpoint)
-- `AUTH_SIGNUP_MODE` (`invite_only` default, set `open` to allow public sign-up)
-
-Optional (required only if you enable Turret ingestion locally):
-
-- `TURRET_SIGNING_KEY` (signs Turret upload tokens)
-
-Emails are log-only by default locally, even when provider credentials exist. Production defaults to Cloudflare Email Sending. See [email setup](docs/email.md) for domain onboarding, local simulation, and the explicit Resend option.
-
-Run local D1 migrations manually (if needed):
-
-```bash
-just migrate-core
-```
-
-Or run setup script directly:
-
-```bash
-just setup
-```
-
-Health-check your local setup at any time:
-
-```bash
-just doctor
-just status
-```
-
-Reset local DB state and rebuild from migrations:
-
-```bash
-just reset
-```
-
-Seed local demo records for faster internal testing:
-
-```bash
-just seed
-```
-
-Optional: run local Turret migrations (session replay index tables):
-
-```bash
-just migrate-turret
-```
-
-Open Drizzle Studio (local):
-
-```bash
-just studio-core
-just studio-turret
-```
-
-Run the app locally:
-
-```bash
-just dev
-```
-
-Create the initial local admin user (if you did not run `just setup`):
-
-```bash
-just admin-create
-```
-
-- Creates (or promotes) `ADMIN_EMAIL` to admin in local `CORE_DB`
-- Generates a random password only if needed, prints it once, and saves it to `.wrangler/.admin-password`
-- Re-running is idempotent: if the admin already has a credential password, it will not rotate or print it again
-
-Alternative: bootstrap via HTTP endpoint (triggers a password reset link, requires `BOOTSTRAP_SECRET`):
-
-```bash
-curl -X POST "http://localhost:4321/api/internal/bootstrap-admin" \
-  -H "x-bootstrap-secret: <BOOTSTRAP_SECRET>"
-```
-
-Note: public self-service sign-up is disabled by default (`AUTH_SIGNUP_MODE=invite_only`).
-Use local admin bootstrap for the first account. Organization invitations permit
-matching account signup, with email verification required before joining.
-Set `AUTH_SIGNUP_MODE=open` only if you explicitly want public self-service sign-up.
-
-Then open the logged reset link and set your password.
-
-> [!NOTE]
-> Highly recommend installing [opencode](https://opencode.ai/) and the [Cloudflare Skill for OpenCode](https://github.com/dmmulroy/cloudflare-skill)
+`just` is an optional shortcut for maintenance tasks. Install it with
+`brew install just` on macOS or `cargo install just` on Linux, then run `just` to
+list recipes. `just setup` installs dependencies and runs `pnpm local:setup`;
+`just dev` runs `pnpm dev`. Deployment recipes below use `just`.
 
 ## Production Deployment
 

@@ -10,10 +10,13 @@
 		"publish": true
 	},
 	"scripts": {
+		"local:setup": "node scripts/setup-local.mjs",
 		"build": "astro sync && tsc -b && astro build",
 		"check": "CLOUDFLARE_ENV=production pnpm run build && wrangler deploy --config dist/server/wrangler.json --dry-run",
 		"deploy": "node -e \"console.error('Refusing to deploy without an env. Use: just deploy-production'); process.exit(1)\"",
 		"dev": "astro dev",
+		"doctor": "node scripts/dev-doctor.mjs",
+		"status": "node scripts/dev-status.mjs",
 		"lint": "oxlint .",
 		"prepare": "husky",
 		"test": "tsx --tsconfig tsconfig.app.json --test \"tests/unit/**/*.test.ts\" \"tests/integration/**/*.test.ts\" \"tests/smoke/**/*.test.ts\"",

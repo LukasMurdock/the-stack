@@ -5,19 +5,19 @@ default:
 
 setup:
     pnpm install
-    node scripts/setup-local.mjs
+    pnpm local:setup
 
 secret-auth:
-    pnpm dlx @better-auth/cli@latest secret
+    node -e 'console.log(require("node:crypto").randomBytes(32).toString("base64url"))'
 
 dev:
-    astro dev
+    pnpm dev
 
 doctor:
-    node scripts/dev-doctor.mjs
+    pnpm doctor
 
 status:
-    node scripts/dev-status.mjs
+    pnpm status
 
 cf-typegen:
     pnpm exec wrangler types
@@ -65,7 +65,7 @@ logs:
     pnpm exec wrangler tail --env production
 
 db-generate-core name:
-    drizzle-kit generate --config src/bindings/d1/core/drizzle.config.ts --name {{ name }}
+    pnpm exec drizzle-kit generate --config src/bindings/d1/core/drizzle.config.ts --name {{ name }}
 
 new-route path:
     node scripts/new-route.mjs {{ path }}

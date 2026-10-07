@@ -15,7 +15,8 @@ pubDate: "2026-02-27"
 ## Local admin bootstrap
 
 ```bash
-just admin-create
+pnpm exec wrangler d1 migrations apply CORE_DB --local
+node scripts/create-admin-local.mjs
 ```
 
 This promotes `ADMIN_EMAIL` and creates a local credential if missing.

@@ -2,56 +2,28 @@
 
 Thanks for helping improve The Stack.
 
-See `docs/ROADMAP.md` for current priorities and rollout phases.
-
-`just` is required for local development and contribution workflows.
-
-Install `just`:
-
-```bash
-# macOS
-brew install just
-
-# Linux
-cargo install just
-```
-
 ## Local setup
 
-1. Copy local env vars and set required values:
+Follow [Getting Started](src/content/docs/v1/welcome.md):
 
 ```bash
-cp .dev.vars.example .dev.vars
-just secret-auth
+pnpm install
+pnpm local:setup
+pnpm dev
 ```
 
-Set these in `.dev.vars` before `just setup`:
+Setup initializes local configuration, migrates both local databases, and creates
+a verified administrator. It preserves existing data and credentials. Sign in
+using `.wrangler/.admin-password`, create an organization, and open Projects.
 
-- `BETTER_AUTH_SECRET`
+[Build your first feature](src/content/docs/v1/first-feature.md) walks through a
+persisted field. [The extension reference](src/content/docs/v1/extend.md) explains
+feature ownership and permissions.
 
-Local `APP_URL` and `ADMIN_EMAIL` defaults come from `wrangler.json` vars.
-Shell variables or `.dev.vars` can override those defaults.
-
-2. Bootstrap local environment:
-
-```bash
-just setup
-```
-
-3. Run the app:
-
-```bash
-just dev
-```
-
-Optional helpers:
-
-```bash
-just doctor
-just status
-just seed
-just new-route _public/example
-```
+`just` is optional for local development. Install it with `brew install just`
+(macOS) or `cargo install just` (Linux) to use maintenance recipes such as
+`just seed`, `just new-route _public/example`, and `just preflight`.
+`just seed` populates observability demos; it does not create organizations or projects.
 
 ## Validation
 
@@ -60,7 +32,8 @@ Pre-commit formatting runs automatically on staged files via `lint-staged` + Hus
 Before opening a PR, run:
 
 ```bash
-just check-fast
+pnpm lint
+pnpm test
 pnpm run format:check
 ```
 
@@ -83,7 +56,7 @@ TypeScript 6 API required by framework tools and lint plugins.
 For full local verification:
 
 ```bash
-just check-full
+pnpm verify
 ```
 
 To reset local state from scratch:
