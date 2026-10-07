@@ -28,8 +28,9 @@ just secret-auth
 Set these in `.dev.vars` before `just setup`:
 
 - `BETTER_AUTH_SECRET`
-- `APP_URL` (use `http://localhost:4321` for local)
-- `ADMIN_EMAIL`
+
+Local `APP_URL` and `ADMIN_EMAIL` defaults come from `wrangler.json` vars.
+Shell variables or `.dev.vars` can override those defaults.
 
 2. Bootstrap local environment:
 

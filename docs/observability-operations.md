@@ -22,24 +22,24 @@ Start with the [deployment guide](DEPLOYMENT_GUIDE.md), then complete the accept
 
 Metrics are independent of D1 breadcrumb persistence, replay mode, and console log sampling. They are best-effort writes, not a billing ledger or an uptime guarantee. A failed write emits `observability.metrics_failed` without changing the application response. Runtime termination can prevent emission; inspect native Workers metrics and external checks for those failures.
 
-| Column  | Meaning                                                   |
-| ------- | --------------------------------------------------------- |
-| index1  | Environment; Analytics Engine sampling index              |
-| blob1   | Schema version `v1`                                       |
-| blob2   | Environment                                               |
-| blob3   | Worker deployment ID, or `unknown`                        |
-| blob4   | `api` or `page`                                           |
-| blob5   | HTTP method                                               |
-| blob6   | Normalized API path, or bounded Astro boundary `/astro/*` |
-| blob7   | `application`, `auth`, `ingest`, `admin`, or `health`     |
-| blob8   | Cloudflare colo, or `unknown`                             |
-| double1 | Response duration in milliseconds                         |
-| double2 | HTTP status                                               |
-| double3 | 1 for 5xx; otherwise 0                                    |
-| double4 | 1 for duration over 1000 ms; otherwise 0                  |
-| double5 | 1                                                         |
+| Column  | Meaning                                                  |
+| ------- | -------------------------------------------------------- |
+| index1  | Environment; Analytics Engine sampling index             |
+| blob1   | Schema version `v1`                                      |
+| blob2   | Environment                                              |
+| blob3   | Worker deployment ID, or `unknown`                       |
+| blob4   | `api` or `page`                                          |
+| blob5   | HTTP method                                              |
+| blob6   | Declared API route, or bounded Astro boundary `/astro/*` |
+| blob7   | `application`, `auth`, `ingest`, `admin`, or `health`    |
+| blob8   | Cloudflare colo, or `unknown`                            |
+| double1 | Response duration in milliseconds                        |
+| double2 | HTTP status                                              |
+| double3 | 1 for 5xx; otherwise 0                                   |
+| double4 | 1 for duration over 1000 ms; otherwise 0                 |
+| double5 | 1                                                        |
 
-Do not add raw URLs, cookies, user/session identifiers, query strings, SQL, or error text to this dataset. API paths use the existing Turret normalization; they are not guaranteed to be resolved framework route patterns. Avoid routes with sensitive values in path segments. Astro uses a bounded label because the Worker entry point does not know the resolved Astro route. Duration measures response creation, not completion of a streamed body or background work.
+Do not add raw URLs, cookies, user/session identifiers, query strings, SQL, or error text to this dataset. API labels come from Hono's registered route patterns, including bounded wildcard endpoints such as `/api/auth/*`. Requests without a matched endpoint use `/api/*`. The request shares this label with logs, traces, breadcrumbs, and error fingerprints. Astro uses `/astro/*` because the Worker entry point does not know the resolved Astro route. Duration measures response creation, not completion of a streamed body or background work.
 
 ## Backend health and replay totals
 

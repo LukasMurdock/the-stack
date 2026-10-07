@@ -3,6 +3,7 @@ import { createRequestLogger } from "evlog";
 import "./evlog";
 import { recordOperation, type OperationEnvironment } from "./metrics";
 import { resolveRequestId } from "./request";
+import { PAGE_ROUTE_LABEL } from "./route-label";
 import { traceOperation, type ObservabilityContext } from "./tracing";
 
 // The Worker boundary does not know Astro's resolved route pattern. Use a
@@ -14,7 +15,7 @@ export async function observePageRequest(
 	handle: () => Promise<Response>
 ): Promise<Response> {
 	const requestId = resolveRequestId(request.headers.get("x-request-id"));
-	const route = "/astro/*";
+	const route = PAGE_ROUTE_LABEL;
 	const started = Date.now();
 	const colo = getRequestLocation(request).colo;
 	const log = createRequestLogger({

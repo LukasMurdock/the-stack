@@ -271,6 +271,64 @@ test("lists paginate without losing records and operation inputs are validated",
 	);
 });
 
+test("member and invitation pages use ID tie-breakers for equal sort values", async (t) => {
+	const f = productFixture();
+	t.after(() => f.sqlite.close());
+	const organization = await organizations.createOrganization(
+		f.actor("owner"),
+		{ name: "Tied pages" }
+	);
+	f.sqlite.exec("UPDATE auth_user SET name='Repeated' WHERE id='owner'");
+	const ids = Array.from(
+		{ length: 51 },
+		(_, index) =>
+			`00000000-0000-4000-8000-${String(index).padStart(12, "0")}`
+	);
+	const expiry = Date.now() + 60_000;
+	for (const id of [...ids].reverse()) {
+		f.sqlite
+			.prepare(
+				"INSERT INTO auth_user (id, name, email, email_verified) VALUES (?, 'Repeated', ?, 1)"
+			)
+			.run(id, `${id}@example.test`);
+		f.sqlite
+			.prepare(
+				"INSERT INTO memberships (organization_id, user_id, role) VALUES (?, ?, 'viewer')"
+			)
+			.run(organization.id, id);
+		f.sqlite
+			.prepare(
+				"INSERT INTO invitations (id, organization_id, email, role, token_hash, expires_at) VALUES (?, ?, ?, 'viewer', ?, ?)"
+			)
+			.run(id, organization.id, `${id}@invited.test`, id, expiry);
+	}
+	const memberPages = [
+		...(await members.listMembers(f.actor("owner"), organization.id)),
+		...(await members.listMembers(f.actor("owner"), organization.id, {
+			offset: 50,
+		})),
+	];
+	assert.deepEqual(
+		memberPages.map((member) => member.userId),
+		[...ids, "owner"]
+	);
+	const invitationPages = [
+		...(await invitations.listInvitations(
+			f.actor("owner"),
+			organization.id
+		)),
+		...(await invitations.listInvitations(
+			f.actor("owner"),
+			organization.id,
+			{ offset: 50 }
+		)),
+	];
+	assert.deepEqual(
+		invitationPages.map((invitation) => invitation.id),
+		ids
+	);
+});
+
 test("membership revoked between the access check and insert prevents the write", async (t) => {
 	const f = await fixture();
 	t.after(() => f.sqlite.close());

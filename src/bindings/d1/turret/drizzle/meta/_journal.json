@@ -64,6 +64,13 @@
 			"when": 1791342798890,
 			"tag": "0008_real_doctor_faustus",
 			"breakpoints": true
+		},
+		{
+			"idx": 9,
+			"version": "6",
+			"when": 1791350277193,
+			"tag": "0009_span_breadcrumb_identity",
+			"breakpoints": true
 		}
 	]
 }

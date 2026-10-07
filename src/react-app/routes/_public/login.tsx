@@ -8,6 +8,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { authClient, safeRedirectTarget } from "../../auth";
+import { passwordSchema } from "../../../contracts/auth";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -235,6 +236,16 @@ function LoginPage() {
 						</div>
 						<Input
 							id="password"
+							minLength={
+								mode === "sign-up"
+									? (passwordSchema.minLength ?? undefined)
+									: undefined
+							}
+							maxLength={
+								mode === "sign-up"
+									? (passwordSchema.maxLength ?? undefined)
+									: undefined
+							}
 							type="password"
 							autoComplete={
 								mode === "sign-up"

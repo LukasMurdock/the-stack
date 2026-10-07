@@ -56,7 +56,7 @@ export async function listInvitations(
 				membershipPredicate(context, organizationId, "manage")
 			)
 		)
-		.orderBy(invitations.expiresAt)
+		.orderBy(invitations.expiresAt, invitations.id)
 		.limit(PAGE_SIZE)
 		.offset(offset);
 }

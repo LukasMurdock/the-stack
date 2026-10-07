@@ -39,7 +39,7 @@ export const turretFeedbackBodySchema = z.object({
 
 const turretRequestSpanSchema = z.object({
 	id: z.string(),
-	requestId: z.string(),
+	breadcrumbId: z.string(),
 	ts: z.string(),
 	kind: z.string(),
 	db: z.string().nullable(),
@@ -54,7 +54,7 @@ const turretRequestSpanSchema = z.object({
 });
 
 const turretReplaySessionSpansGroupedResponseSchema = z.object({
-	spansByRequestId: z.record(z.string(), z.array(turretRequestSpanSchema)),
+	spansByBreadcrumbId: z.record(z.string(), z.array(turretRequestSpanSchema)),
 	limit: z.number().optional(),
 	offset: z.number().optional(),
 	hasMore: z.boolean().optional(),

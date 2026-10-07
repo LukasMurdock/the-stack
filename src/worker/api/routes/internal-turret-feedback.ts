@@ -1,3 +1,4 @@
+import { literalContains } from "../../../bindings/d1/literal-search";
 import { and, desc, eq, gte, lt, sql, type SQL } from "drizzle-orm";
 import { turretUserFeedback } from "../../../bindings/d1/turret/schema";
 import { readRetainedReplay } from "../../turret/retention";
@@ -89,11 +90,6 @@ internalTurretFeedbackApp.get(
 	}
 );
 
-const SAFE_LIKE = /[%_\\]/g;
-function escapeLike(input: string): string {
-	return input.replace(SAFE_LIKE, (m) => `\\${m}`);
-}
-
 export { internalTurretFeedbackApp };
 
 export const routes = internalTurretFeedbackApp
@@ -142,7 +138,6 @@ export const routes = internalTurretFeedbackApp
 			const sessionId = qv.sessionId;
 			const userId = qv.userId;
 			const q = (qv.q ?? "").trim();
-			const like = q ? `%${escapeLike(q)}%` : "";
 
 			const table = turretUserFeedback;
 			const filters: SQL[] = [
@@ -155,7 +150,7 @@ export const routes = internalTurretFeedbackApp
 			if (userId) filters.push(eq(table.userId, userId));
 			if (q)
 				filters.push(
-					sql`(${table.message} LIKE ${like} ESCAPE '\\' OR ${table.url} LIKE ${like} ESCAPE '\\')`
+					sql`(${literalContains(table.message, q)} OR ${literalContains(table.url, q)})`
 				);
 			const rows = FeedbackItemSchema.array().parse(
 				await makeTurretDb(env.TURRET_DB)

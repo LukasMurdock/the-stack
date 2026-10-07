@@ -34,7 +34,7 @@ export type TurretRequestBreadcrumb = InferResponseType<
 export type TurretRequestSpan = InferResponseType<
 	typeof replaySession.spans.$get,
 	200
->["spansByRequestId"][string][number];
+>["spansByBreadcrumbId"][string][number];
 
 const turretKeys = {
 	issues: ["turret", "issues"] as const,

@@ -204,7 +204,11 @@ export const turretRequestSpans = sqliteTable(
 	"turret_request_spans",
 	{
 		id: text("id").primaryKey(),
-		requestId: text("request_id").notNull(),
+		breadcrumbId: text("breadcrumb_id")
+			.notNull()
+			.references(() => turretRequestBreadcrumbs.id, {
+				onDelete: "cascade",
+			}),
 		ts: integer("ts", { mode: "timestamp_ms" }).notNull(),
 		kind: text("kind").notNull(),
 		db: text("db"),
@@ -218,7 +222,7 @@ export const turretRequestSpans = sqliteTable(
 		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 	},
 	(table) => [
-		index("turret_spans_requestId_idx").on(table.requestId),
+		index("turret_spans_breadcrumbId_idx").on(table.breadcrumbId),
 		index("turret_spans_kind_idx").on(table.kind),
 		index("turret_spans_db_idx").on(table.db),
 		index("turret_spans_expiresAt_idx").on(table.expiresAt),

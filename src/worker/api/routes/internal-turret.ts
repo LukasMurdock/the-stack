@@ -18,19 +18,11 @@ import {
 	turretHasErrorSchema,
 	turretReplayChunkSchema,
 } from "../../../contracts/turret";
-import {
-	and,
-	eq,
-	or,
-	like,
-	gte,
-	lt,
-	countDistinct,
-	type SQL,
-} from "drizzle-orm";
+import { and, eq, or, gte, lt, countDistinct, type SQL } from "drizzle-orm";
 import { turretSessions } from "../../../bindings/d1/turret/schema";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { makeTurretDb } from "../../../bindings/d1/turret/db";
+import { literalContains } from "../../../bindings/d1/literal-search";
 import {
 	turretRequestSpanSchema,
 	turretReplaySessionSpansGroupedResponseSchema,
@@ -50,11 +42,6 @@ function pctDelta(current: number, previous: number): number | null {
 	if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
 	if (previous === 0) return null;
 	return ((current - previous) / previous) * 100;
-}
-
-const SAFE_LIKE = /[%_\\]/g;
-function escapeLike(input: string): string {
-	return input.replace(SAFE_LIKE, (m) => `\\${m}`);
 }
 
 const replayErrorResponses = {
@@ -248,11 +235,10 @@ export const routes = internalTurretApp
 			if (hasError) filters.push(eq(table.hasError, true));
 			if (journeyId) filters.push(eq(table.journeyId, journeyId));
 			if (q) {
-				const pattern = `%${escapeLike(q.trim())}%`;
 				filters.push(
 					or(
-						like(table.initialUrl, pattern),
-						like(table.lastUrl, pattern)
+						literalContains(table.initialUrl, q.trim()),
+						literalContains(table.lastUrl, q.trim())
 					)
 				);
 			}
@@ -713,7 +699,7 @@ export const routes = internalTurretApp
 
 			return c.json(
 				{
-					spansByRequestId: spansResult.spansByRequestId,
+					spansByBreadcrumbId: spansResult.spansByBreadcrumbId,
 					limit,
 					offset,
 					hasMore: spansResult.hasMore,
@@ -725,11 +711,13 @@ export const routes = internalTurretApp
 	.openapi(
 		createRoute({
 			method: "get",
-			path: "/internal/turret/request/{requestId}/spans",
+			path: "/internal/turret/breadcrumb/{breadcrumbId}/spans",
 			middleware: [requireInternalTurretAdmin] as const,
 			request: {
 				params: z.object({
-					requestId: z.string().openapi({ example: "<request-id>" }),
+					breadcrumbId: z
+						.string()
+						.openapi({ example: "<breadcrumb-id>" }),
 				}),
 			},
 			responses: {
@@ -749,10 +737,10 @@ export const routes = internalTurretApp
 			},
 		}),
 		async (c) => {
-			const { requestId } = c.req.valid("param");
+			const { breadcrumbId } = c.req.valid("param");
 			const db = makeTurretDb(c.env.TURRET_DB);
 			const rows = await db.query.turretRequestSpans.findMany({
-				where: (t, ops) => ops.eq(t.requestId, requestId),
+				where: (t, ops) => ops.eq(t.breadcrumbId, breadcrumbId),
 				orderBy: (t, ops) => [ops.asc(t.createdAt)],
 			});
 			return c.json({ spans: rows }, 200);

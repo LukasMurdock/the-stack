@@ -5,6 +5,10 @@
 		"types": ["vite/client", "node", "./worker-configuration.d.ts"],
 		"lib": ["ES2024", "DOM", "DOM.Iterable"]
 	},
-	"include": ["tests/**/*.ts", "src/react-app/routeTree.gen.ts"],
+	"include": [
+		"tests/**/*.ts",
+		"scripts/testing/**/*.ts",
+		"src/react-app/routeTree.gen.ts"
+	],
 	"exclude": []
 }

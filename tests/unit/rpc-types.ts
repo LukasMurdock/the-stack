@@ -3,6 +3,11 @@ import { organizationResponseSchema } from "../../src/contracts/organizations";
 import { projectsResponseSchema } from "../../src/features/projects/contracts";
 import type { InferRequestType } from "hono/client";
 import { apiClient, jsonOrThrow } from "../../src/react-app/api";
+import type { RouteLabel } from "../../src/worker/observability/route-label";
+
+// @ts-expect-error Raw request paths are not authoritative route labels.
+const rawRoute: RouteLabel = "/api/users/private-id";
+void rawRoute;
 
 // These compile-only checks protect route inference and success/error narrowing.
 // An unused @ts-expect-error fails the test type check if a boundary becomes untyped.

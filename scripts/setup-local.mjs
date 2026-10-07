@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import dotenv from "dotenv";
+import { loadLocalEnv } from "./local-env.mjs";
 
 function log(message) {
 	process.stdout.write(`${message}\n`);
@@ -32,7 +32,7 @@ if (!fs.existsSync(devVarsPath)) {
 	log("Created .dev.vars from .dev.vars.example");
 }
 
-const parsed = dotenv.config({ path: devVarsPath, quiet: true });
+const parsed = loadLocalEnv();
 if (parsed.error) {
 	throw parsed.error;
 }

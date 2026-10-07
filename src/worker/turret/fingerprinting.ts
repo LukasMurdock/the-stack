@@ -6,14 +6,6 @@ const LONG_HEX_RE = /\b[0-9a-fA-F]{16,}\b/g;
 const LONG_NUM_RE = /\b\d{5,}\b/g;
 const WS_RE = /\s+/g;
 
-function normalizeApiPath(p: string): string {
-	let out = p;
-	out = out.replace(/\b\d+\b/g, ":id");
-	out = out.replace(UUID_RE, ":id");
-	out = out.replace(LONG_HEX_RE, ":id");
-	return out;
-}
-
 function normalizeMessage(input: string): string {
 	let out = input.trim();
 	out = out.replace(WS_RE, " ");
@@ -83,4 +75,4 @@ async function fingerprintException(input: {
 	return `v1:${await sha256Hex(signature)}`;
 }
 
-export { normalizeApiPath, fingerprintHttp5xx, fingerprintException };
+export { fingerprintHttp5xx, fingerprintException };

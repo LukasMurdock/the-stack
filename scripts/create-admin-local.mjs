@@ -4,8 +4,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 
-import { scryptAsync } from "@noble/hashes/scrypt.js";
-import dotenv from "dotenv";
+import { hashPassword } from "better-auth/crypto";
+import { loadLocalEnv } from "./local-env.mjs";
 
 const require = createRequire(import.meta.url);
 const SqliteDatabase = require("better-sqlite3");
@@ -13,10 +13,6 @@ const SqliteDatabase = require("better-sqlite3");
 function die(message) {
 	process.stderr.write(`${message}\n`);
 	process.exit(1);
-}
-
-function bytesToHex(bytes) {
-	return Buffer.from(bytes).toString("hex");
 }
 
 function randomPassword(length = 32) {
@@ -28,24 +24,6 @@ function randomPassword(length = 32) {
 		out += alphabet[bytes[i] % alphabet.length];
 	}
 	return out;
-}
-
-async function hashPassword(password) {
-	const saltHex = bytesToHex(crypto.randomBytes(16));
-	const key = await scryptAsync(password.normalize("NFKC"), saltHex, {
-		N: 16384,
-		r: 16,
-		p: 1,
-		dkLen: 64,
-		maxmem: 128 * 16384 * 16 * 2,
-	});
-	return `${saltHex}:${bytesToHex(key)}`;
-}
-
-function loadDevVars() {
-	// Wrangler uses `.dev.vars`; dotenv can parse it fine.
-	// We load it here so this script works even without running `wrangler dev`.
-	dotenv.config({ path: ".dev.vars" });
 }
 
 function parseArgs(argv) {
@@ -106,12 +84,13 @@ function writeAdminPasswordFile({ email, password }) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-loadDevVars();
+const loaded = loadLocalEnv();
+if (loaded.error) throw loaded.error;
 
 const email = (args.email ?? process.env.ADMIN_EMAIL ?? "").trim();
 if (!email) {
 	die(
-		"Missing admin email. Set ADMIN_EMAIL in .dev.vars or pass --email you@example.com"
+		"Missing admin email. Set ADMIN_EMAIL in wrangler.json vars or pass --email you@example.com"
 	);
 }
 

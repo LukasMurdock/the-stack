@@ -13,7 +13,7 @@ import type { Bindings } from "../index";
 import { wrapD1Database, type D1Span } from "./d1Proxy";
 import { createApiRequestLogger } from "./evlog";
 import { traceOperation } from "./tracing";
-import { normalizeApiPath } from "../turret/fingerprinting";
+import { apiRouteLabel } from "./route-label";
 import { recordWorkerError, recordBreadcrumb } from "./turret";
 
 const MAX_REPLAY_D1_SPANS = 100;
@@ -34,7 +34,7 @@ export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 		c.set("requestId", requestId);
 		const path = url.pathname;
 
-		const pathTemplate = normalizeApiPath(path);
+		const pathTemplate = apiRouteLabel(c);
 
 		const correlation = readTurretCorrelation(request.headers, Date.now());
 		const { sessionId, replayTs, ts } = correlation;
@@ -154,6 +154,7 @@ export const observeRequest = createMiddleware<{ Bindings: Bindings }>(
 						env: originalEnv,
 						request,
 						requestId,
+						pathTemplate,
 						status,
 						kind: hasException ? "exception" : "http_5xx",
 						correlation,

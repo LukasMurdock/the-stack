@@ -27,10 +27,5 @@
 		}
 	},
 	"include": ["src/react-app", "src/components", "src/lib", "src/contracts"],
-	"exclude": [
-		"src/worker",
-		"src/bindings",
-		"src/edge-errors",
-		"src/error-tracker/sdk.old.ts"
-	]
+	"exclude": ["src/worker", "src/bindings"]
 }

@@ -1,21 +1,31 @@
-import { execFileSync } from "node:child_process";
-import { readdirSync } from "node:fs";
+import { readdirSync, statSync } from "node:fs";
 import path from "node:path";
+import Database from "better-sqlite3";
 
 function die(message) {
 	process.stderr.write(`${message}\n`);
 	process.exit(1);
 }
 
-function sqliteQuery(dbPath, sql) {
+function containsTable(dbPath, tableName) {
 	try {
-		const out = execFileSync("sqlite3", [dbPath, sql], {
-			encoding: "utf8",
-			stdio: ["ignore", "pipe", "pipe"],
+		const db = new Database(dbPath, {
+			readonly: true,
+			fileMustExist: true,
 		});
-		return out.trim();
-	} catch (err) {
-		return "";
+		try {
+			return Boolean(
+				db
+					.prepare(
+						"select 1 from sqlite_master where type='table' and name=? limit 1"
+					)
+					.get(tableName)
+			);
+		} finally {
+			db.close();
+		}
+	} catch {
+		return false;
 	}
 }
 
@@ -45,11 +55,7 @@ const sqliteFiles = entries
 const matches = [];
 
 for (const file of sqliteFiles) {
-	const hit = sqliteQuery(
-		file,
-		`select 1 from sqlite_master where type='table' and name='${needle}' limit 1;`
-	);
-	if (hit === "1") {
+	if (containsTable(file, needle)) {
 		matches.push(file);
 	}
 }
@@ -67,11 +73,7 @@ if (matches.length > 1) {
 	const otherNeedle = prefersCore ? "turret_sessions" : "core_users";
 
 	for (const file of matches) {
-		const otherHit = sqliteQuery(
-			file,
-			`select 1 from sqlite_master where type='table' and name='${otherNeedle}' limit 1;`
-		);
-		if (otherHit !== "1") {
+		if (!containsTable(file, otherNeedle)) {
 			process.stdout.write(file);
 			process.exit(0);
 		}
@@ -79,13 +81,7 @@ if (matches.length > 1) {
 
 	// Fall back to the newest file.
 	matches.sort((a, b) => {
-		const aTime = execFileSync("stat", ["-f", "%m", a], {
-			encoding: "utf8",
-		}).trim();
-		const bTime = execFileSync("stat", ["-f", "%m", b], {
-			encoding: "utf8",
-		}).trim();
-		return Number(bTime) - Number(aTime);
+		return statSync(b).mtimeMs - statSync(a).mtimeMs;
 	});
 
 	process.stdout.write(matches[0]);

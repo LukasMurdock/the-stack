@@ -1,3 +1,5 @@
+import { testRouteLabel } from "../helpers/route-label";
+import { fingerprintHttp5xx } from "../../src/worker/turret/fingerprinting";
 import { recordWorkerError } from "../../src/worker/observability/turret";
 import { fingerprintException } from "../../src/worker/turret/fingerprinting";
 import { readSqlRow } from "../helpers/sqlite-d1";
@@ -6,70 +8,16 @@ import { testBindings } from "../helpers/worker";
 import { isRecord } from "../../src/lib/isRecord";
 import { createSqliteD1 } from "../helpers/sqlite-d1";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
 import test, { type TestContext } from "node:test";
-import Database from "better-sqlite3";
+import { migratedSqlite } from "../helpers/migrations";
 import { Hono } from "hono";
 import worker, { type Bindings } from "../../src/worker/index";
 import { observeRequest } from "../../src/worker/observability/request";
 import { observePageRequest } from "../../src/worker/observability/page";
 
 function fixture() {
-	const sqlite = new Database(":memory:");
-	const initial = readFileSync(
-		new URL(
-			"../../src/bindings/d1/turret/drizzle/0000_numerous_blackheart.sql",
-			import.meta.url
-		),
-		"utf8"
-	);
-	const breadcrumbs = readFileSync(
-		new URL(
-			"../../src/bindings/d1/turret/drizzle/0003_sturdy_scorpion.sql",
-			import.meta.url
-		),
-		"utf8"
-	);
-	for (const [source, table] of [
-		[initial, "turret_session_errors"],
-		[initial, "turret_sessions"],
-		[breadcrumbs, "turret_request_breadcrumbs"],
-		[breadcrumbs, "turret_request_spans"],
-	]) {
-		const definition = source.match(
-			new RegExp("CREATE TABLE `" + table + "` \\([\\s\\S]*?\\);")
-		);
-		assert.ok(definition);
-		sqlite.exec(definition[0]);
-	}
-	sqlite.exec(
-		"ALTER TABLE turret_session_errors ADD COLUMN expires_at integer"
-	);
-	const migrations = new URL(
-		"../../src/bindings/d1/turret/drizzle/",
-		import.meta.url
-	);
-	for (const file of readdirSync(migrations).filter((file) =>
-		file.endsWith(".sql")
-	)) {
-		const source = readFileSync(new URL(file, migrations), "utf8");
-		for (const table of ["turret_session_chunks", "turret_user_feedback"]) {
-			const definition = source.match(
-				new RegExp("CREATE TABLE `" + table + "` \\([\\s\\S]*?\\);")
-			);
-			if (definition) sqlite.exec(definition[0]);
-		}
-	}
+	const sqlite = migratedSqlite("core", "turret");
 	const db = createSqliteD1(sqlite);
-	sqlite.exec(
-		readFileSync(
-			new URL(
-				"../../src/bindings/d1/core/drizzle/0001_auth-secondary-storage.sql",
-				import.meta.url
-			),
-			"utf8"
-		)
-	);
 	const background: Promise<unknown>[] = [];
 	const spans: {
 		name: string;
@@ -616,6 +564,7 @@ test("worker capture bounds stored diagnostics without changing fingerprint inpu
 	const error = new Error(" ".repeat(2000) + "failure");
 	error.stack = " ".repeat(20000) + "at example()";
 	await recordWorkerError({
+		pathTemplate: testRouteLabel("/api/example"),
 		env: f.env,
 		request: new Request("http://localhost:4321/api/example"),
 		requestId: "long-error",
@@ -728,4 +677,74 @@ test("request policy keeps metrics, trace names, breadcrumbs, and errors distinc
 			path
 		);
 	}
+});
+
+test("declared route labels group resource IDs and bound unmatched paths across telemetry", async (t) => {
+	const logs = captureLogs(t);
+	const f = fixture();
+	t.after(() => f.sqlite.close());
+	const labels: string[] = [];
+	f.env.TURRET_METRICS = {
+		writeDataPoint(point) {
+			labels.push(z.string().parse(point?.blobs?.[5]));
+		},
+	};
+	const app = new Hono<{ Bindings: Bindings }>();
+	app.use("*", observeRequest);
+	app.get("/api/organizations/:organizationId/projects", (c) =>
+		c.json({ error: "failure" }, 500)
+	);
+	app.get("/api/auth/*", (c) => c.json({ ok: true }));
+	for (const path of [
+		"/api/organizations/550e8400-e29b-41d4-a716-446655440000/projects?token=secret",
+		"/api/organizations/12345678-1234-4123-8123-123456789012/projects",
+		"/api/unmatched/private-user-id",
+		"/api/auth/reset-password/private-token",
+	])
+		await app.fetch(
+			new Request(`http://localhost:4321${path}`),
+			{ ...f.env },
+			f.ctx
+		);
+	await f.flush();
+	assert.deepEqual(labels, [
+		"/api/organizations/:organizationId/projects",
+		"/api/organizations/:organizationId/projects",
+		"/api/*",
+		"/api/auth/*",
+	]);
+	const errors = z
+		.array(z.object({ fingerprint: z.string(), extra_json: z.string() }))
+		.parse(
+			f.sqlite
+				.prepare(
+					"SELECT fingerprint, extra_json FROM turret_session_errors ORDER BY created_at"
+				)
+				.all()
+		);
+	assert.equal(errors.length, 2);
+	assert.equal(errors[0].fingerprint, errors[1].fingerprint);
+	assert.equal(
+		errors[0].fingerprint,
+		await fingerprintHttp5xx({
+			method: "GET",
+			pathTemplate: testRouteLabel(labels[0]),
+			status: 500,
+		})
+	);
+	assert.deepEqual(
+		f.spans.map((span) => span.attributes["http.route"]),
+		labels
+	);
+	const events = wideEvents(logs).filter(
+		(event) => event.action === "api.request"
+	);
+	assert.deepEqual(
+		events.map((event) =>
+			isRecord(event.route) ? event.route.pathTemplate : null
+		),
+		labels
+	);
+	assert.ok(!JSON.stringify(errors).includes("550e8400"));
+	assert.ok(!JSON.stringify(errors).includes("token=secret"));
 });

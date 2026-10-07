@@ -37,7 +37,7 @@ export async function listMembers(
 				membershipPredicate(context, organizationId, "read")
 			)
 		)
-		.orderBy(auth_user.name)
+		.orderBy(auth_user.name, auth_user.id)
 		.limit(PAGE_SIZE)
 		.offset(offset);
 }

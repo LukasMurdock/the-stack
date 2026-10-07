@@ -1,3 +1,4 @@
+import { testRouteLabel } from "../helpers/route-label";
 import { recordOperation } from "../../src/worker/observability/metrics";
 import { testBindings, unavailableD1 } from "../helpers/worker";
 import { createSqliteD1 } from "../helpers/sqlite-d1";
@@ -31,7 +32,7 @@ test("operational metrics retain the persisted v1 layout", () => {
 			requestId: "request-1",
 			surface: "api",
 			method: "GET",
-			route: "/api/example/:id",
+			route: testRouteLabel("/api/example/:id"),
 			category: "application",
 			colo: "IAD",
 			status,
@@ -134,7 +135,7 @@ test("operational queries are fixed, bounded, parameterized and coalesced", asyn
 								...totals,
 								surface: "api",
 								method: "GET",
-								route: "/api/example/:id",
+								route: testRouteLabel("/api/example/:id"),
 								category: "application",
 								version: "release-1",
 							}

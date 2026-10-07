@@ -1,3 +1,5 @@
+import type { RouteLabel } from "./route-label";
+
 export type MetricsBinding = {
 	writeDataPoint(point: {
 		indexes: string[];
@@ -50,7 +52,7 @@ export function recordOperation(args: {
 	requestId: string;
 	surface: "api" | "page";
 	method: string;
-	route: string;
+	route: RouteLabel;
 	category: string;
 	colo?: string | null;
 	status: number;

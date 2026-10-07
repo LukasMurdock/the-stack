@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
+import { migratedSqlite } from "../helpers/migrations";
 import { z } from "zod";
 import { hashPassword } from "better-auth/crypto";
 import { productFixture } from "../helpers/product";
@@ -29,32 +29,8 @@ const issueResponse = z.object({
 });
 
 test("issue triage and readers preserve partial edits and sample semantics", async (t) => {
-	const f = productFixture();
+	const f = productFixture(migratedSqlite("core", "turret"));
 	t.after(() => f.sqlite.close());
-	const migration = readFileSync(
-		new URL(
-			"../../src/bindings/d1/turret/drizzle/0000_numerous_blackheart.sql",
-			import.meta.url
-		),
-		"utf8"
-	);
-	const definition = migration.match(
-		/CREATE TABLE `turret_session_errors` \([\s\S]*?\);/
-	);
-	assert.ok(definition);
-	f.sqlite.exec(definition[0]);
-	f.sqlite.exec(
-		"ALTER TABLE turret_session_errors ADD COLUMN expires_at integer"
-	);
-	f.sqlite.exec(
-		readFileSync(
-			new URL(
-				"../../src/bindings/d1/turret/drizzle/0006_magical_dragon_man.sql",
-				import.meta.url
-			),
-			"utf8"
-		)
-	);
 	const insert = f.sqlite.prepare(
 		"INSERT INTO turret_session_errors (id, session_id, ts, source, message, fingerprint, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
 	);

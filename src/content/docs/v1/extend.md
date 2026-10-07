@@ -107,6 +107,11 @@ supplied. Identity changes clear client caches and stop the previous replay capt
 
 `pnpm test` runs the behavior suite without generating files or rebuilding.
 `pnpm test:types` checks test types, including compile-only RPC guarantees.
+The behavior suite checks declared dependencies and browser runtime import boundaries.
+Database fixtures execute complete migrations, including historical SQLite compatibility,
+and compare their columns, indexes, and foreign keys with the Drizzle schemas.
+`pnpm test:migrations` applies both migration chains to isolated local D1 databases
+and checks that their schemas match the test fixtures. CI and `pnpm verify` require it.
 `pnpm test:tooling` checks lint configuration and plugin integration when changing
 template tooling. `pnpm verify` runs lint, formatting, the build, test type checks,
 and the behavior suite.
@@ -209,3 +214,13 @@ with it before persistence. Long page URLs are shortened without rejecting feedb
 `contracts/turret-correlation.ts` owns correlation header encoding and decoding.
 The Worker takes one correlation snapshot at request entry for logs, breadcrumbs,
 and errors. Invalid timestamps fall back to that request's entry time.
+
+Caller-supplied request IDs are correlation metadata. Replay spans reference the
+server-generated breadcrumb ID, and readers group by that identity. Migration
+`0009_span_breadcrumb_identity` discards old diagnostic spans and requires the new
+relationship; it provides no compatibility reader or historical backfill.
+`worker/observability/route-label.ts` produces route labels from Hono's declared
+endpoints, with bounded labels for unmatched requests and Astro. Raw request paths
+cannot be supplied to operational metrics.
+`bindings/d1/literal-search.ts` owns SQLite literal-substring search, including
+pattern escaping and the SQL escape declaration. Use it for comparable searches.

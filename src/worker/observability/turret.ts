@@ -6,10 +6,10 @@ import { makeTurretDb } from "../../bindings/d1/turret/db";
 import * as turretSchema from "../../bindings/d1/turret/schema";
 import type { Bindings } from "../index";
 import type { D1Span } from "./d1Proxy";
+import type { RouteLabel } from "./route-label";
 import {
 	fingerprintException,
 	fingerprintHttp5xx,
-	normalizeApiPath,
 } from "../turret/fingerprinting";
 export async function recordWorkerError(args: {
 	env: Bindings & {
@@ -20,6 +20,7 @@ export async function recordWorkerError(args: {
 	};
 	request: Request;
 	requestId: string;
+	pathTemplate: RouteLabel;
 	correlation: TurretCorrelation;
 	kind: "exception" | "http_5xx";
 	status?: number;
@@ -47,8 +48,7 @@ export async function recordWorkerError(args: {
 		const now = Date.now();
 		const turretDb = makeTurretDb(dbBinding);
 
-		const url = new URL(args.request.url);
-		const pathTemplate = normalizeApiPath(url.pathname);
+		const pathTemplate = args.pathTemplate;
 		let fp: string | null = null;
 		try {
 			fp =
@@ -113,7 +113,7 @@ export type BreadcrumbObservation = {
 	requestId: string;
 	sessionId: string | null;
 	ts: number;
-	pathTemplate: string;
+	pathTemplate: RouteLabel;
 	status: number;
 	durationMs: number;
 	rayId: string | null;
@@ -157,9 +157,10 @@ export async function recordBreadcrumb(
 	try {
 		const turretDb = makeTurretDb(turretDbBinding);
 		const expiresAt = await readTelemetryExpiry(turretDb, sessionId, now);
+		const breadcrumbId = crypto.randomUUID();
 
 		await turretDb.insert(turretSchema.turretRequestBreadcrumbs).values({
-			id: crypto.randomUUID(),
+			id: breadcrumbId,
 			requestId,
 			sessionId: sessionId ?? null,
 			ts: new Date(ts),
@@ -190,7 +191,7 @@ export async function recordBreadcrumb(
 			// determines how many spans fit D1's 100-parameter statement limit.
 			const rows = d1Spans.map((s) => ({
 				id: crypto.randomUUID(),
-				requestId,
+				breadcrumbId,
 				ts: new Date(s.ts),
 				kind: s.kind,
 				db: s.db,

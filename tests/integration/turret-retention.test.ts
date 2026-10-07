@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
-import Database from "better-sqlite3";
+import { migratedSqlite } from "../helpers/migrations";
 import { makeTurretDb } from "../../src/bindings/d1/turret/db";
 import {
 	cleanupTurretStorage,
@@ -46,38 +45,7 @@ function listObjects(
 }
 
 function fixture() {
-	const sqlite = new Database(":memory:");
-	// Historical rebuild migrations rely on permissive double-quoted SQL. Load the
-	// final table definitions, as the ingestion tests do, with SQLite's strict mode.
-	for (const [migration, table] of [
-		["0000_numerous_blackheart.sql", "turret_session_chunks"],
-		["0000_numerous_blackheart.sql", "turret_session_errors"],
-		["0003_gigantic_millenium_guard.sql", "__new_turret_sessions"],
-		["0003_sturdy_scorpion.sql", "turret_request_spans"],
-		["0003_sturdy_scorpion.sql", "turret_request_breadcrumbs"],
-		["0007_known_jamie_braddock.sql", "turret_user_feedback"],
-	]) {
-		const source = readFileSync(
-			new URL(
-				`../../src/bindings/d1/turret/drizzle/${migration}`,
-				import.meta.url
-			),
-			"utf8"
-		);
-		const definition = source.match(
-			new RegExp("CREATE TABLE `" + table + "` \\([\\s\\S]*?\\);")
-		);
-		assert.ok(definition);
-		sqlite.exec(
-			definition[0].replace(
-				"`__new_turret_sessions`",
-				"`turret_sessions`"
-			)
-		);
-	}
-	sqlite.exec(
-		"ALTER TABLE turret_session_errors ADD COLUMN expires_at integer"
-	);
+	const sqlite = migratedSqlite("turret");
 	const db = makeTurretDb(createSqliteD1(sqlite));
 	function session(id: string, expiry: number, chunks: number) {
 		sqlite
@@ -342,16 +310,16 @@ test("replay-backed readers preserve authorization, expiry and response contract
 	assert.equal(r2Reads, 1);
 
 	await t.test(
-		"grouped spans match request spans without duplicate breadcrumb joins",
+		"grouped spans isolate observations sharing a correlation ID across sessions",
 		async () => {
 			f.sqlite.exec(`
 			INSERT INTO turret_request_breadcrumbs (id, request_id, session_id, ts, method, path, status, duration_ms, expires_at, created_at)
 			VALUES ('b1', 'request-a', 'live', 1000, 'GET', '/', 200, 5, 5000, 1000),
-			('b2', 'request-a', 'live', 1000, 'GET', '/', 200, 5, 5000, 1000);
-			INSERT INTO turret_request_spans (id, request_id, ts, kind, duration_ms, expires_at, created_at)
-			VALUES ('s1', 'request-a', 1000, 'd1', 5, 5000, 1000),
-			('s2', 'request-a', 1001, 'd1', 7, 5000, 1001),
-			('other', 'unrelated', 1002, 'd1', 9, 5000, 1002);
+			('b2', 'request-a', 'expired', 1000, 'GET', '/', 200, 5, 5000, 1000);
+			INSERT INTO turret_request_spans (id, breadcrumb_id, ts, kind, duration_ms, expires_at, created_at)
+			VALUES ('s1', 'b1', 1000, 'd1', 5, 5000, 1000),
+			('s2', 'b1', 1001, 'd1', 7, 5000, 1001),
+			('other', 'b2', 1002, 'd1', 9, 5000, 1002);
 		`);
 			const span = z
 				.object({
@@ -364,18 +332,16 @@ test("replay-backed readers preserve authorization, expiry and response contract
 				})
 				.passthrough();
 			const groupedSchema = z.object({
-				spansByRequestId: z.record(z.string(), span.array()),
+				spansByBreadcrumbId: z.record(z.string(), span.array()),
 				hasMore: z.boolean(),
 			});
 			const grouped = await request("replay-session/live/spans?limit=1");
 			assert.equal(grouped.status, 200, await grouped.clone().text());
 			const first = groupedSchema.parse(await grouped.json());
 			assert.equal(first.hasMore, true);
-			assert.deepEqual(Object.keys(first.spansByRequestId), [
-				"request-a",
-			]);
+			assert.deepEqual(Object.keys(first.spansByBreadcrumbId), ["b1"]);
 			assert.equal(
-				first.spansByRequestId["request-a"][0].ts,
+				first.spansByBreadcrumbId["b1"][0].ts,
 				new Date(1000).toISOString()
 			);
 			const second = groupedSchema.parse(
@@ -386,11 +352,11 @@ test("replay-backed readers preserve authorization, expiry and response contract
 			assert.equal(second.hasMore, false);
 			const direct = z
 				.object({ spans: span.array() })
-				.parse(await (await request("request/request-a/spans")).json());
+				.parse(await (await request("breadcrumb/b1/spans")).json());
 			assert.deepEqual(
 				[
-					...first.spansByRequestId["request-a"],
-					...second.spansByRequestId["request-a"],
+					...first.spansByBreadcrumbId["b1"],
+					...second.spansByBreadcrumbId["b1"],
 				],
 				direct.spans
 			);
@@ -467,15 +433,6 @@ test("replay-backed readers preserve authorization, expiry and response contract
 	await t.test(
 		"replay-user count excludes expired evidence before physical cleanup",
 		async () => {
-			f.sqlite.exec(
-				readFileSync(
-					new URL(
-						"../../src/bindings/d1/turret/drizzle/0004_confused_metal_master.sql",
-						import.meta.url
-					),
-					"utf8"
-				)
-			);
 			const now = Date.now();
 			f.sqlite
 				.prepare(
@@ -511,6 +468,63 @@ test("replay-backed readers preserve authorization, expiry and response contract
 					.usersWithRetainedReplays24h,
 				1
 			);
+		}
+	);
+
+	await t.test(
+		"replay, issue and feedback search share literal wildcard semantics",
+		async () => {
+			const now = Date.now();
+			const pairs = [
+				["path_with_under", "pathXwithXunder"],
+				["95%complete", "95percentcomplete"],
+				["path\\nested", "path/nested"],
+			];
+			for (const [index, pair] of pairs.entries()) {
+				for (const [variant, message] of pair.entries()) {
+					const id = `literal-${index}-${variant}`;
+					f.session(id, now + 60_000, 0);
+					f.sqlite
+						.prepare(
+							"UPDATE turret_sessions SET initial_url=? WHERE session_id=?"
+						)
+						.run(`https://example.test/${message}`, id);
+					f.sqlite
+						.prepare(
+							"INSERT INTO turret_session_errors (id, session_id, ts, source, message, fingerprint, created_at) VALUES (?, ?, ?, 'client', ?, ?, ?)"
+						)
+						.run(id, id, now, message, id, now);
+					f.sqlite
+						.prepare(
+							"INSERT INTO turret_user_feedback (id, session_id, user_id, ts, kind, message, created_at, updated_at) VALUES (?, ?, 'user', ?, 'bug', ?, ?, ?)"
+						)
+						.run(id, id, now, message, now, now);
+				}
+				const query = encodeURIComponent(pair[0]);
+				for (const [endpoint, key, idKey] of [
+					["replay-sessions", "sessions", "sessionId"],
+					["issues", "issues", "fingerprint"],
+					["feedback", "feedback", "id"],
+				]) {
+					const response = await request(`${endpoint}?q=${query}`);
+					assert.equal(
+						response.status,
+						200,
+						await response.clone().text()
+					);
+					const payload = z
+						.record(z.string(), z.unknown())
+						.parse(await response.json());
+					const rows = z
+						.array(z.record(z.string(), z.unknown()))
+						.parse(payload[key]);
+					assert.deepEqual(
+						rows.map((row) => row[idKey]),
+						[`literal-${index}-0`],
+						endpoint
+					);
+				}
+			}
 		}
 	);
 });

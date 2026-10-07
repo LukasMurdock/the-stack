@@ -9,13 +9,6 @@
 			"@/*": ["./src/*"]
 		}
 	},
-	"include": [
-		"src/worker",
-		"src/worker.ts",
-		"src/contracts",
-		"src/bindings",
-		"src/error-tracker/index.ts",
-		"src/edge-errors"
-	],
+	"include": ["src/worker", "src/worker.ts", "src/contracts", "src/bindings"],
 	"exclude": ["src/bindings/d1/**/drizzle.studio.local.config.ts"]
 }

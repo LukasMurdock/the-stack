@@ -1,3 +1,6 @@
+import { sql } from "drizzle-orm";
+import { makeTurretDb } from "../../../bindings/d1/turret/db";
+import { literalContains } from "../../../bindings/d1/literal-search";
 import {
 	turretTimeRangeSchema,
 	resolveTurretTimeRange,
@@ -106,11 +109,6 @@ async function readIssue(db: D1Database, fingerprint: string) {
 		: null;
 }
 
-const SAFE_LIKE = /[%_\\]/g;
-function escapeLike(input: string): string {
-	return input.replace(SAFE_LIKE, (m) => `\\${m}`);
-}
-
 export { internalTurretIssuesApp };
 
 export const routes = internalTurretIssuesApp
@@ -183,9 +181,8 @@ export const routes = internalTurretIssuesApp
 			);
 			const status = statusRaw ?? "open";
 			const q = (qRaw ?? "").trim();
-			const like = q ? `%${escapeLike(q)}%` : "";
 
-			const sqlText = `
+			const sqlText = sql`
 		WITH base AS (
 			SELECT
 				e.fingerprint AS fingerprint,
@@ -195,7 +192,7 @@ export const routes = internalTurretIssuesApp
 				COUNT(DISTINCT e.session_id) AS sessionsAffected
 			FROM turret_session_errors e
 			WHERE e.fingerprint IS NOT NULL
-				AND e.ts >= ? AND e.ts < ?
+				AND e.ts >= ${fromMs} AND e.ts < ${toMs}
 			GROUP BY e.fingerprint
 		),
 		filtered AS (
@@ -209,18 +206,18 @@ export const routes = internalTurretIssuesApp
 				s.title AS stateTitle
 			FROM base b
 			LEFT JOIN turret_issue_state s ON s.fingerprint = b.fingerprint
-			WHERE COALESCE(s.status, 'open') = ?
+			WHERE COALESCE(s.status, 'open') = ${status}
 				AND (
-					? = ''
-					OR COALESCE(s.title, '') LIKE ? ESCAPE '\\'
+					${q} = ''
+					OR ${literalContains(sql`COALESCE(s.title, '')`, q)}
 					OR EXISTS (
 						SELECT 1
 						FROM turret_session_errors e3
 						WHERE e3.fingerprint = b.fingerprint
-							AND e3.ts >= ? AND e3.ts < ?
+							AND e3.ts >= ${fromMs} AND e3.ts < ${toMs}
 							AND (
-								COALESCE(e3.message,'') LIKE ? ESCAPE '\\'
-								OR COALESCE(e3.stack,'') LIKE ? ESCAPE '\\'
+								${literalContains(sql`COALESCE(e3.message, '')`, q)}
+								OR ${literalContains(sql`COALESCE(e3.stack, '')`, q)}
 							)
 						LIMIT 1
 					)
@@ -234,37 +231,20 @@ export const routes = internalTurretIssuesApp
 			f.lastSeenAt AS lastSeenAt,
 			f.occurrences AS occurrences,
 			f.sessionsAffected AS sessionsAffected,
-			${issueSampleColumns}
+			${sql.raw(issueSampleColumns)}
 		FROM filtered f
 		JOIN turret_session_errors sample ON sample.id = (
 			SELECT e2.id FROM turret_session_errors e2
-			WHERE e2.fingerprint = f.fingerprint AND e2.ts >= ? AND e2.ts < ?
-			ORDER BY ${latestIssueErrorOrder} LIMIT 1
+			WHERE e2.fingerprint = f.fingerprint AND e2.ts >= ${fromMs} AND e2.ts < ${toMs}
+			ORDER BY ${sql.raw(latestIssueErrorOrder)} LIMIT 1
 		)
 		ORDER BY f.lastSeenAt DESC, f.fingerprint DESC
-		LIMIT ? OFFSET ?;
+		LIMIT ${limit} OFFSET ${offset};
 	`;
 
-			const binds = [
-				fromMs,
-				toMs,
-				status,
-				q,
-				like,
-				fromMs,
-				toMs,
-				like,
-				like,
-				fromMs,
-				toMs,
-				limit,
-				offset,
-			];
-
-			const res = await env.TURRET_DB.prepare(sqlText)
-				.bind(...binds)
-				.all();
-			const rows = res.results;
+			const rows = await makeTurretDb(env.TURRET_DB).all<
+				Record<string, unknown>
+			>(sqlText);
 
 			const issues = rows.map((r) => {
 				return {

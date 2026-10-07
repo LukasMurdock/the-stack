@@ -48,6 +48,9 @@ jobs:
             - name: Template tooling checks
               run: pnpm test:tooling
 
+            - name: D1 migration parity
+              run: pnpm test:migrations
+
     full:
         if: github.event_name != 'pull_request'
         runs-on: ubuntu-latest

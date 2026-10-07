@@ -24,8 +24,8 @@ export async function loadReplaySessionSpansGrouped(input: {
 						and(
 							eq(turretRequestBreadcrumbs.sessionId, sessionId),
 							eq(
-								turretRequestBreadcrumbs.requestId,
-								turretRequestSpans.requestId
+								turretRequestBreadcrumbs.id,
+								turretRequestSpans.breadcrumbId
 							)
 						)
 					)
@@ -35,9 +35,9 @@ export async function loadReplaySessionSpansGrouped(input: {
 		.limit(limit + 1)
 		.offset(offset);
 	const hasMore = rows.length > limit;
-	const spansByRequestId: Record<string, typeof rows> = {};
+	const spansByBreadcrumbId: Record<string, typeof rows> = {};
 	for (const span of rows.slice(0, limit)) {
-		(spansByRequestId[span.requestId] ??= []).push(span);
+		(spansByBreadcrumbId[span.breadcrumbId] ??= []).push(span);
 	}
-	return { spansByRequestId, hasMore };
+	return { spansByBreadcrumbId, hasMore };
 }

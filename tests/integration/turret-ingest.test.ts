@@ -1,9 +1,10 @@
+import { testRouteLabel } from "../helpers/route-label";
 import { recordWorkerError } from "../../src/worker/observability/turret";
 import { readSqlRow } from "../helpers/sqlite-d1";
 import assert from "node:assert/strict";
 import { z } from "zod";
 import test, { type TestContext } from "node:test";
-import Database from "better-sqlite3";
+import { migratedSqlite } from "../helpers/migrations";
 import { readFileSync } from "node:fs";
 import { api } from "../../src/worker/api";
 import { signUploadToken } from "../../src/worker/api/routes/_shared/turret-upload-token";
@@ -13,37 +14,8 @@ import { createSqliteD1 } from "../helpers/sqlite-d1";
 import { testBindings } from "../helpers/worker";
 
 async function ingestFixture(t: TestContext) {
-	const sqlite = new Database(":memory:");
+	const sqlite = migratedSqlite("turret");
 	t.after(() => sqlite.close());
-	// Load the two table definitions exercised here. Historical Turret rebuild
-	// migrations depend on SQLite's permissive double-quoted string handling.
-	for (const [migration, table] of [
-		["0000_numerous_blackheart.sql", "turret_session_chunks"],
-		["0000_numerous_blackheart.sql", "turret_session_errors"],
-		["0003_gigantic_millenium_guard.sql", "__new_turret_sessions"],
-		["0007_known_jamie_braddock.sql", "turret_user_feedback"],
-	]) {
-		const source = readFileSync(
-			new URL(
-				`../../src/bindings/d1/turret/drizzle/${migration}`,
-				import.meta.url
-			),
-			"utf8"
-		);
-		const definition = source.match(
-			new RegExp("CREATE TABLE `" + table + "` \\([\\s\\S]*?\\);")
-		);
-		assert.ok(definition);
-		sqlite.exec(
-			definition[0].replace(
-				"`__new_turret_sessions`",
-				"`turret_sessions`"
-			)
-		);
-	}
-	sqlite.exec(
-		"ALTER TABLE turret_session_errors ADD COLUMN expires_at integer"
-	);
 	const now = Date.now();
 	sqlite
 		.prepare(
@@ -77,15 +49,6 @@ async function ingestFixture(t: TestContext) {
 			} as R2ObjectBody;
 		},
 	};
-	sqlite.exec(
-		readFileSync(
-			new URL(
-				"../../src/bindings/d1/turret/drizzle/0008_real_doctor_faustus.sql",
-				import.meta.url
-			),
-			"utf8"
-		)
-	);
 	const key = "test-upload-signing-key";
 	const env = testBindings({
 		APP_URL: "http://localhost:4321",
@@ -528,6 +491,7 @@ test("client and worker error persistence rolls back failed session updates and 
 		);
 	const worker = (sessionId: string | null) =>
 		recordWorkerError({
+			pathTemplate: testRouteLabel("/api/example"),
 			env: f.env,
 			request: new Request("http://localhost:4321/api/example"),
 			requestId: "worker-failure",

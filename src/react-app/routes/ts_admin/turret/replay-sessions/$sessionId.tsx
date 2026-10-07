@@ -793,8 +793,8 @@ function TurretReplaySessionPage() {
 											const ts = new Date(b.ts).getTime();
 											const spans =
 												sessionSpansQuery.data
-													?.spansByRequestId[
-													b.requestId
+													?.spansByBreadcrumbId[
+													b.id
 												] ?? [];
 											return (
 												<RequestBreadcrumbRow

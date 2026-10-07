@@ -1,13 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import dotenv from "dotenv";
+import { loadLocalEnv } from "./local-env.mjs";
 
 const cwd = process.cwd();
-const devVarsPath = path.resolve(cwd, ".dev.vars");
-if (fs.existsSync(devVarsPath)) {
-	dotenv.config({ path: devVarsPath, quiet: true });
-}
+const loaded = loadLocalEnv();
+if (loaded.error) throw loaded.error;
 
 function line(label, value) {
 	process.stdout.write(`${label.padEnd(18)} ${value}\n`);
