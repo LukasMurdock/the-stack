@@ -10,6 +10,8 @@ import { routes as internalTurretRoutes } from "./routes/internal-turret";
 import { routes as internalTurretFeaturesRoutes } from "./routes/internal-turret-features";
 import { routes as internalTurretComplianceRoutes } from "./routes/internal-turret-compliance";
 import { routes as internalTurretIssuesRoutes } from "./routes/internal-turret-issues";
+import { routes as internalTurretIssueResolutionRoutes } from "./routes/internal-turret-issue-resolution";
+import { routes as internalTurretOutcomesRoutes } from "./routes/internal-turret-outcomes";
 import { routes as internalTurretFeedbackRoutes } from "./routes/internal-turret-feedback";
 import { routes as turretRoutes } from "./routes/turret";
 import { isAdminRole } from "../../features/auth/policy";
@@ -36,6 +38,8 @@ const apiRoutes = api
 	.route("/", internalTurretFeaturesRoutes)
 	.route("/", internalTurretComplianceRoutes)
 	.route("/", internalTurretIssuesRoutes)
+	.route("/", internalTurretIssueResolutionRoutes)
+	.route("/", internalTurretOutcomesRoutes)
 	.route("/", internalTurretFeedbackRoutes);
 
 type OpenApiDoc = { paths?: Record<string, unknown> };

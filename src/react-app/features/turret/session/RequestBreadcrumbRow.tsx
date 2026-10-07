@@ -1,28 +1,18 @@
-import { useId, type RefObject } from "react";
+import { useId } from "react";
 import { ExternalLink } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 
+import { CLOUDFLARE_TRACES_URL, TRACE_LINK_HINT } from "../cloudflareTraces";
 import { CopyButton } from "../CopyButton";
 import type { TurretRequestBreadcrumb, TurretRequestSpan } from "../queries";
-import {
-	jumpReplayToTimestamp,
-	type RrwebPlayerInstance,
-} from "./replayPlayer";
-
-const CLOUDFLARE_TRACES_URL =
-	"https://dash.cloudflare.com/?to=/:account/workers-and-pages/observability/traces";
-
-// The dashboard link can't be pre-filtered, and traces are head-sampled.
-const TRACE_LINK_HINT =
-	"Opens Cloudflare Workers traces in a new tab. Search there for the Ray ID or request ID. Traces are sampled, so this request may not have one.";
 
 export function RequestBreadcrumbRow(props: {
 	breadcrumb: TurretRequestBreadcrumb;
 	ts: number;
 	spans: TurretRequestSpan[];
-	replayReady: boolean;
-	playerRef: RefObject<RrwebPlayerInstance | null>;
+	// Omit to render the request without replay controls.
+	replay?: { ready: boolean; onJump: (ts: number) => void };
 }) {
 	const b = props.breadcrumb;
 	const traceHintId = useId();
@@ -119,20 +109,17 @@ export function RequestBreadcrumbRow(props: {
 							</div>
 						)}
 					</details>
-					<Button
-						type="button"
-						variant="outline"
-						size="xs"
-						disabled={!props.replayReady}
-						onClick={() =>
-							jumpReplayToTimestamp(
-								props.playerRef.current,
-								props.ts
-							)
-						}
-					>
-						Jump
-					</Button>
+					{props.replay ? (
+						<Button
+							type="button"
+							variant="outline"
+							size="xs"
+							disabled={!props.replay.ready}
+							onClick={() => props.replay?.onJump(props.ts)}
+						>
+							Jump
+						</Button>
+					) : null}
 				</div>
 			</div>
 		</div>

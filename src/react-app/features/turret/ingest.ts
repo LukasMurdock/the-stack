@@ -122,3 +122,17 @@ export async function turretSubmitFeedback(
 		)
 	);
 }
+
+export async function turretRecordOutcome(
+	input: UploadSession & {
+		payload: InferRequestType<typeof session.outcome.$post>["json"];
+	}
+): Promise<void> {
+	await jsonOrThrow(
+		await session.outcome.$post({
+			param: { id: encodeURIComponent(input.sessionId) },
+			header: { authorization: `Bearer ${input.uploadToken}` },
+			json: input.payload,
+		})
+	);
+}

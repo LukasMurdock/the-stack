@@ -31,6 +31,33 @@ export type TurretRequestBreadcrumb = InferResponseType<
 	typeof replaySession.breadcrumbs.$get,
 	200
 >["breadcrumbs"][number];
+export type TurretIssueOccurrence = InferResponseType<
+	(typeof issue.event)[":errorId"]["$get"],
+	200
+>;
+export type TurretReplaySessionError = InferResponseType<
+	typeof replaySession.errors.$get,
+	200
+>["errors"][number];
+export type TurretReplaySessionFeedback = InferResponseType<
+	typeof replaySession.feedback.$get,
+	200
+>["feedback"][number];
+export type TurretIssueReport = InferResponseType<
+	typeof issue.reports.$get,
+	200
+>["reports"][number];
+export type TurretIssueActivity = InferResponseType<
+	typeof issue.activity.$get,
+	200
+>["activity"][number];
+export type TurretIssueRecovery = NonNullable<
+	InferResponseType<typeof issue.recovery.$get, 200>["recovery"]
+>;
+export type TurretAssignee = InferResponseType<
+	typeof turret.assignees.$get,
+	200
+>["assignees"][number];
 export type TurretRequestSpan = InferResponseType<
 	typeof replaySession.spans.$get,
 	200
@@ -275,6 +302,174 @@ const turretIssueEventsQueryOptions = (
 		retry: false,
 	});
 
+const turretIssueOccurrenceQueryOptions = (
+	fingerprint: string,
+	errorId: string
+) =>
+	queryOptions({
+		queryKey: [...turretKeys.issue(fingerprint), "event", errorId],
+		queryFn: async ({ signal }) =>
+			jsonOrThrow(
+				await issue.event[":errorId"].$get(
+					{
+						param: {
+							fingerprint: encodeURIComponent(fingerprint),
+							errorId: encodeURIComponent(errorId),
+						},
+					},
+					{ init: { signal } }
+				)
+			),
+		retry: false,
+	});
+
+const turretIssueReportsQueryOptions = (fingerprint: string) =>
+	queryOptions({
+		queryKey: [...turretKeys.issue(fingerprint), "reports"],
+		queryFn: async ({ signal }) =>
+			jsonOrThrow(
+				await issue.reports.$get(
+					{
+						param: { fingerprint: encodeURIComponent(fingerprint) },
+					},
+					{ init: { signal } }
+				)
+			),
+		retry: false,
+	});
+
+const turretOutcomesQueryOptions = (
+	input: InferRequestType<typeof turret.outcomes.$get>["query"]
+) =>
+	queryOptions({
+		queryKey: ["turret", "outcomes", input],
+		queryFn: async ({ signal }) =>
+			jsonOrThrow(
+				await turret.outcomes.$get(
+					{ query: input },
+					{ init: { signal } }
+				)
+			),
+		retry: false,
+	});
+
+const turretWorkflowAttemptsQueryOptions = (
+	workflow: InferRequestType<
+		(typeof turret.outcomes)[":workflow"]["attempts"]["$get"]
+	>["param"]["workflow"],
+	input: InferRequestType<
+		(typeof turret.outcomes)[":workflow"]["attempts"]["$get"]
+	>["query"]
+) =>
+	queryOptions({
+		queryKey: ["turret", "outcomes", workflow, "attempts", input],
+		queryFn: async ({ signal }) =>
+			jsonOrThrow(
+				await turret.outcomes[":workflow"].attempts.$get(
+					{ param: { workflow }, query: input },
+					{ init: { signal } }
+				)
+			),
+		retry: false,
+	});
+
+const turretAssigneesQueryOptions = queryOptions({
+	queryKey: ["turret", "assignees"],
+	queryFn: async ({ signal }) =>
+		jsonOrThrow(await turret.assignees.$get({}, { init: { signal } })),
+	retry: false,
+	staleTime: 5 * 60_000,
+});
+
+const turretIssueActivityQueryOptions = (fingerprint: string) =>
+	queryOptions({
+		queryKey: [...turretKeys.issue(fingerprint), "activity"],
+		queryFn: async ({ signal }) =>
+			jsonOrThrow(
+				await issue.activity.$get(
+					{
+						param: { fingerprint: encodeURIComponent(fingerprint) },
+					},
+					{ init: { signal } }
+				)
+			),
+		retry: false,
+	});
+
+const turretIssueRecoveryQueryOptions = (fingerprint: string) =>
+	queryOptions({
+		queryKey: [...turretKeys.issue(fingerprint), "recovery"],
+		queryFn: async ({ signal }) =>
+			jsonOrThrow(
+				await issue.recovery.$get(
+					{
+						param: { fingerprint: encodeURIComponent(fingerprint) },
+					},
+					{ init: { signal } }
+				)
+			),
+		retry: false,
+	});
+
+// Notes and links change the issue's activity and detail.
+function turretIssueTrackingMutation(
+	queryClient: QueryClient,
+	fingerprint: string
+) {
+	const param = { fingerprint: encodeURIComponent(fingerprint) };
+	return mutationOptions({
+		mutationFn: async (
+			input:
+				| { action: "note"; body: string }
+				| { action: "addLink"; url: string }
+				| { action: "removeLink"; linkId: string }
+		) => {
+			switch (input.action) {
+				case "note":
+					return jsonOrThrow(
+						await issue.notes.$post({
+							param,
+							json: { body: input.body },
+						})
+					);
+				case "addLink":
+					return jsonOrThrow(
+						await issue.links.$post({
+							param,
+							json: { url: input.url },
+						})
+					);
+				case "removeLink":
+					return jsonOrThrow(
+						await issue.links[":linkId"].$delete({
+							param: {
+								...param,
+								linkId: encodeURIComponent(input.linkId),
+							},
+						})
+					);
+			}
+		},
+		onSuccess: () =>
+			queryClient.invalidateQueries({
+				queryKey: turretKeys.issue(fingerprint),
+			}),
+	});
+}
+
+// Fetched on demand: an export is a snapshot, not a view to keep fresh.
+async function fetchInvestigationExport(
+	fingerprint: string,
+	focus: { event?: string; report?: string }
+) {
+	return jsonOrThrow(
+		await issue.export.$get({
+			param: { fingerprint: encodeURIComponent(fingerprint) },
+			query: focus,
+		})
+	);
+}
+
 const turretFeedbackQueryOptions = (
 	input: InferRequestType<typeof turret.feedback.$get>["query"]
 ) =>
@@ -335,6 +530,51 @@ function turretFeedbackStatusMutation(queryClient: QueryClient) {
 	});
 }
 
+// Linking changes a report, the issue it leaves, and the issue it joins, so
+// every issue and feedback reader refreshes.
+async function invalidateFeedbackLinks(queryClient: QueryClient) {
+	await Promise.all([
+		queryClient.invalidateQueries({ queryKey: turretKeys.feedback }),
+		queryClient.invalidateQueries({ queryKey: turretKeys.issues }),
+		queryClient.invalidateQueries({ queryKey: ["turret", "issue"] }),
+		queryClient.invalidateQueries({ queryKey: turretKeys.sessions }),
+	]);
+}
+
+const feedbackIssue = turret.feedback[":id"].issue;
+
+function turretFeedbackIssueMutation(queryClient: QueryClient) {
+	return mutationOptions({
+		mutationFn: async (
+			input:
+				| { action: "promote"; feedbackId: string }
+				| {
+						action: "link";
+						feedbackId: string;
+						issueFingerprint: string;
+				  }
+				| { action: "unlink"; feedbackId: string }
+		) => {
+			const param = { id: encodeURIComponent(input.feedbackId) };
+			switch (input.action) {
+				case "promote":
+					return jsonOrThrow(await feedbackIssue.$post({ param }));
+				case "link":
+					return jsonOrThrow(
+						await feedbackIssue.$put({
+							param,
+							json: { issueFingerprint: input.issueFingerprint },
+						})
+					);
+				case "unlink":
+					await jsonOrThrow(await feedbackIssue.$delete({ param }));
+					return { issueFingerprint: null };
+			}
+		},
+		onSuccess: () => invalidateFeedbackLinks(queryClient),
+	});
+}
+
 function turretIssueMutation(queryClient: QueryClient, fingerprint: string) {
 	return mutationOptions({
 		mutationFn: async (
@@ -376,6 +616,16 @@ export {
 	turretIssueQueryOptions,
 	turretIssueTrendQueryOptions,
 	turretIssueEventsQueryOptions,
+	turretIssueOccurrenceQueryOptions,
+	turretIssueReportsQueryOptions,
+	fetchInvestigationExport,
+	turretAssigneesQueryOptions,
+	turretOutcomesQueryOptions,
+	turretWorkflowAttemptsQueryOptions,
+	turretIssueActivityQueryOptions,
+	turretIssueRecoveryQueryOptions,
+	turretIssueTrackingMutation,
+	turretFeedbackIssueMutation,
 	turretFeedbackQueryOptions,
 	turretReplaySessionFeedbackQueryOptions,
 	turretFeedbackStatusMutation,

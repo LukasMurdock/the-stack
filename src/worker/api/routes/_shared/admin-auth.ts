@@ -22,9 +22,16 @@ export const adminErrorResponses = {
 	},
 } as const;
 
-const requireInternalTurretAdmin: MiddlewareHandler<{
+// Handlers behind the admin check can attribute changes to the administrator.
+export type TurretAdminEnv = {
 	Bindings: Bindings;
-}> = async (c, next) => {
+	Variables: { turretAdminId: string };
+};
+
+const requireInternalTurretAdmin: MiddlewareHandler<TurretAdminEnv> = async (
+	c,
+	next
+) => {
 	const env = c.env;
 	const auth = createAuth(env, c.executionCtx);
 	const session = await auth.api.getSession({ headers: c.req.raw.headers });
@@ -37,6 +44,7 @@ const requireInternalTurretAdmin: MiddlewareHandler<{
 	if (!isAdminRole(user.role)) {
 		return c.json(forbiddenError, 403);
 	}
+	c.set("turretAdminId", user.id);
 
 	await next();
 };

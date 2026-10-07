@@ -2,6 +2,8 @@ import { invitationLink } from "./invitationToken";
 import { InvitationRegistration } from "./InvitationRegistration";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useWorkflowOutcome } from "../turret/outcomes";
 import { Button } from "@/components/ui/button";
 import { acceptInvitationMutation } from "./queries";
 import { MutationFeedback } from "../../forms/feedback";
@@ -19,6 +21,11 @@ function AcceptInvitation({
 	const accept = useMutation(
 		acceptInvitationMutation(queryClient, userId, token)
 	);
+	// Arriving with an invitation starts an attempt to accept it.
+	const outcome = useWorkflowOutcome("invitation.accept");
+	useEffect(() => {
+		if (token) outcome.start();
+	}, [outcome, token]);
 	const verify = useMutation({
 		mutationFn: async () => {
 			const result = await authClient.sendVerificationEmail({
@@ -60,7 +67,12 @@ function AcceptInvitation({
 						<Button
 							type="button"
 							disabled={accept.isPending}
-							onClick={() => accept.mutate()}
+							onClick={() =>
+								accept.mutate(undefined, {
+									onSuccess: outcome.succeeded,
+									onError: outcome.failed,
+								})
+							}
 						>
 							Accept invitation
 						</Button>

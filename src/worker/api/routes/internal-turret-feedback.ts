@@ -1,6 +1,13 @@
 import { literalContains } from "../../../bindings/d1/literal-search";
 import { and, desc, eq, gte, lt, sql, type SQL } from "drizzle-orm";
-import { turretUserFeedback } from "../../../bindings/d1/turret/schema";
+import {
+	turretIssueFeedback,
+	turretUserFeedback,
+} from "../../../bindings/d1/turret/schema";
+import {
+	linkFeedbackToIssue,
+	reportIssueFingerprint,
+} from "../../turret/issues";
 import { readRetainedReplay } from "../../turret/retention";
 import { makeTurretDb } from "../../../bindings/d1/turret/db";
 import {
@@ -48,6 +55,8 @@ const FeedbackItemSchema = z
 		message: z.string(),
 		contact: z.string().nullable(),
 		status: FeedbackStatusSchema,
+		// The issue this report is evidence for, if any.
+		issueFingerprint: z.string().nullable(),
 		createdAt: z.number(),
 		updatedAt: z.number(),
 	})
@@ -66,9 +75,29 @@ const feedbackProjection = {
 	message: turretUserFeedback.message,
 	contact: turretUserFeedback.contact,
 	status: turretUserFeedback.status,
+	issueFingerprint: sql<string | null>`(
+		SELECT ${turretIssueFeedback.fingerprint} FROM ${turretIssueFeedback}
+		WHERE ${turretIssueFeedback.feedbackId} = ${turretUserFeedback.id}
+	)`,
 	createdAt: sql<number>`${turretUserFeedback.createdAt}`,
 	updatedAt: sql<number>`${turretUserFeedback.updatedAt}`,
 } satisfies Record<keyof z.infer<typeof FeedbackItemSchema>, unknown>;
+
+// Bounds the reports listed on one issue page; links beyond it still count.
+const ISSUE_REPORTS_MAX = 200;
+
+const FeedbackIssueLinkResponseSchema = z
+	.object({ issueFingerprint: z.string() })
+	.openapi("TurretFeedbackIssueLink");
+
+const feedbackNotFound = {
+	404: {
+		description: "Feedback or issue not found",
+		content: {
+			"application/json": { schema: adminErrorResponseSchema },
+		},
+	},
+};
 
 const FeedbackListResponseSchema = z
 	.object({
@@ -301,5 +330,181 @@ export const routes = internalTurretFeedbackApp
 			}
 
 			return c.json({ ok: true as const }, 200);
+		}
+	)
+	.openapi(
+		createRoute({
+			method: "post",
+			path: "/internal/turret/feedback/{id}/issue",
+			middleware: [requireInternalTurretAdmin] as const,
+			request: {
+				params: z.object({
+					id: z.string().openapi({ example: "<feedback-id>" }),
+				}),
+			},
+			responses: {
+				200: {
+					description:
+						"Promote a report to its own tracked issue, moving it from any other issue",
+					content: {
+						"application/json": {
+							schema: FeedbackIssueLinkResponseSchema,
+						},
+					},
+				},
+				...adminErrorResponses,
+				...feedbackNotFound,
+			},
+		}),
+		async (c) => {
+			const { id } = c.req.valid("param");
+			const fingerprint = reportIssueFingerprint(id);
+			const linked = await linkFeedbackToIssue(
+				makeTurretDb(c.env.TURRET_DB),
+				{ feedbackId: id, fingerprint, promote: true, now: Date.now() }
+			);
+			if (!linked) return c.json({ error: "Not Found" }, 404);
+			return c.json({ issueFingerprint: fingerprint }, 200);
+		}
+	)
+	.openapi(
+		createRoute({
+			method: "put",
+			path: "/internal/turret/feedback/{id}/issue",
+			middleware: [requireInternalTurretAdmin] as const,
+			request: {
+				params: z.object({
+					id: z.string().openapi({ example: "<feedback-id>" }),
+				}),
+				body: {
+					required: true,
+					content: {
+						"application/json": {
+							schema: z
+								.object({ issueFingerprint: z.string().min(1) })
+								.openapi("TurretFeedbackIssueLinkUpdate"),
+						},
+					},
+				},
+			},
+			responses: {
+				200: {
+					description:
+						"Link a report to an existing issue, moving it from any other issue",
+					content: {
+						"application/json": {
+							schema: FeedbackIssueLinkResponseSchema,
+						},
+					},
+				},
+				...adminErrorResponses,
+				...feedbackNotFound,
+			},
+		}),
+		async (c) => {
+			const { id } = c.req.valid("param");
+			const { issueFingerprint } = c.req.valid("json");
+			const linked = await linkFeedbackToIssue(
+				makeTurretDb(c.env.TURRET_DB),
+				{
+					feedbackId: id,
+					fingerprint: issueFingerprint,
+					promote: false,
+					now: Date.now(),
+				}
+			);
+			if (!linked) return c.json({ error: "Not Found" }, 404);
+			return c.json({ issueFingerprint }, 200);
+		}
+	)
+	.openapi(
+		createRoute({
+			method: "delete",
+			path: "/internal/turret/feedback/{id}/issue",
+			middleware: [requireInternalTurretAdmin] as const,
+			request: {
+				params: z.object({
+					id: z.string().openapi({ example: "<feedback-id>" }),
+				}),
+			},
+			responses: {
+				200: {
+					description:
+						"Unlink a report from its issue. An issue left without evidence no longer appears.",
+					content: {
+						"application/json": {
+							schema: z
+								.object({ ok: z.literal(true) })
+								.openapi("TurretFeedbackIssueUnlink"),
+						},
+					},
+				},
+				...adminErrorResponses,
+			},
+		}),
+		async (c) => {
+			const { id } = c.req.valid("param");
+			await makeTurretDb(c.env.TURRET_DB)
+				.delete(turretIssueFeedback)
+				.where(eq(turretIssueFeedback.feedbackId, id));
+			return c.json({ ok: true as const }, 200);
+		}
+	)
+	.openapi(
+		createRoute({
+			method: "get",
+			path: "/internal/turret/issue/{fingerprint}/reports",
+			middleware: [requireInternalTurretAdmin] as const,
+			request: {
+				params: z.object({ fingerprint: z.string() }),
+			},
+			responses: {
+				200: {
+					description: "List feedback reports linked to an issue",
+					content: {
+						"application/json": {
+							schema: z
+								.object({
+									reports: z.array(
+										FeedbackItemSchema.extend({
+											replayAvailable: z.boolean(),
+										})
+									),
+								})
+								.openapi("TurretIssueReportsResponse"),
+						},
+					},
+				},
+				...adminErrorResponses,
+			},
+		}),
+		async (c) => {
+			const { fingerprint } = c.req.valid("param");
+			const now = Date.now();
+			const rows = await makeTurretDb(c.env.TURRET_DB)
+				.select({
+					...feedbackProjection,
+					replayAvailable: sql<number>`EXISTS (
+						SELECT 1 FROM turret_sessions s
+						WHERE s.session_id = ${turretUserFeedback.sessionId}
+							AND s.chunk_count > 0 AND s.retention_expires_at > ${now}
+					)`,
+				})
+				.from(turretUserFeedback)
+				.innerJoin(
+					turretIssueFeedback,
+					eq(turretIssueFeedback.feedbackId, turretUserFeedback.id)
+				)
+				.where(eq(turretIssueFeedback.fingerprint, fingerprint))
+				.orderBy(
+					desc(turretUserFeedback.ts),
+					desc(turretUserFeedback.id)
+				)
+				.limit(ISSUE_REPORTS_MAX);
+			const reports = rows.map(({ replayAvailable, ...report }) => ({
+				...FeedbackItemSchema.parse(report),
+				replayAvailable: Boolean(replayAvailable),
+			}));
+			return c.json({ reports }, 200);
 		}
 	);

@@ -241,6 +241,18 @@ function TurretDashboardPage() {
 						type="button"
 						variant="outline"
 						onClick={() =>
+							navigate({
+								to: "/ts_admin/turret/outcomes",
+								search: {},
+							})
+						}
+					>
+						Outcomes
+					</Button>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() =>
 							navigate({ to: "/ts_admin/turret/settings" })
 						}
 					>

@@ -78,6 +78,7 @@ export async function recordWorkerError(args: {
 				message,
 				stack,
 				fingerprint: fp,
+				deploymentId: args.env.CF_VERSION_METADATA?.id || null,
 				extraJson: JSON.stringify({
 					kind: args.kind,
 					status: args.status,

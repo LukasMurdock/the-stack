@@ -3,12 +3,10 @@ import {
 	turretBreadcrumbPageDefaults,
 	turretSpanPageDefaults,
 } from "@/contracts/turret-pagination";
-import { isRecord } from "@/lib/isRecord";
 import { z } from "zod";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { eventWithTime } from "@rrweb/types";
+import { useState } from "react";
 
 import {
 	Empty,
@@ -22,19 +20,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
 	turretReplaySessionBreadcrumbsQueryOptions,
-	turretReplaySessionChunksQueryOptions,
 	turretReplaySessionErrorsQueryOptions,
 	turretReplaySessionFeedbackQueryOptions,
 	turretReplaySessionMetaQueryOptions,
 	turretReplaySessionSpansQueryOptions,
 } from "../../../../features/turret/queries";
 
+import { CLOUDFLARE_TRACES_URL } from "../../../../features/turret/cloudflareTraces";
 import { RequestBreadcrumbRow } from "../../../../features/turret/session/RequestBreadcrumbRow";
-import { loadReplayEvents } from "../../../../features/turret/session/replayLoader";
+import { replaySessionSearchSchema } from "../../../../features/turret/session/replaySearch";
 import {
-	jumpReplayToTimestamp,
-	type RrwebPlayerInstance,
-} from "../../../../features/turret/session/replayPlayer";
+	formatConsolePayload,
+	useReplayPlayer,
+} from "../../../../features/turret/session/useReplayPlayer";
 
 function parseJsonObject(input: string | null): Record<string, unknown> | null {
 	if (!input) return null;
@@ -46,20 +44,16 @@ function parseJsonObject(input: string | null): Record<string, unknown> | null {
 	}
 }
 
-const CLOUDFLARE_TRACES_URL =
-	"https://dash.cloudflare.com/?to=/:account/workers-and-pages/observability/traces";
-
 const Route = createFileRoute("/ts_admin/turret/replay-sessions/$sessionId")({
+	validateSearch: replaySessionSearchSchema,
 	component: TurretReplaySessionPage,
 });
 
 function TurretReplaySessionPage() {
 	const navigate = useNavigate();
 	const { sessionId } = Route.useParams();
+	const { t } = Route.useSearch();
 	const metaQuery = useQuery(turretReplaySessionMetaQueryOptions(sessionId));
-	const chunksQuery = useQuery(
-		turretReplaySessionChunksQueryOptions(sessionId)
-	);
 	const errorsQuery = useQuery(
 		turretReplaySessionErrorsQueryOptions(sessionId)
 	);
@@ -84,166 +78,18 @@ function TurretReplaySessionPage() {
 		})
 	);
 
-	const playerHostRef = useRef<HTMLDivElement | null>(null);
-	const playerRef = useRef<RrwebPlayerInstance | null>(null);
-
-	const sortedSeqs = useMemo(() => {
-		const chunks = chunksQuery.data?.chunks ?? [];
-		return chunks
-			.map((c) => c.seq)
-			.filter((s) => Number.isFinite(s))
-			.sort((a, b) => a - b);
-	}, [chunksQuery.data?.chunks]);
-
-	const [replayStatus, setReplayStatus] = useState<
-		| { state: "idle" }
-		| { state: "loading"; loaded: number; total: number }
-		| {
-				state: "ready";
-				sessionId: string;
-				seqs: number[];
-				events: eventWithTime[];
-		  }
-		| { state: "error"; message: string }
-	>({ state: "idle" });
-
-	// A previous session or chunk set cannot enable controls before its effect cleans up.
-	const replayReady =
-		replayStatus.state === "ready" &&
-		replayStatus.sessionId === sessionId &&
-		replayStatus.seqs === sortedSeqs;
-
-	type ConsoleItem = {
-		timestamp: number;
-		level: string;
-		payload: unknown[];
-		trace: string[];
-	};
-
-	const consoleItems = useMemo(() => {
-		if (!replayReady || replayStatus.state !== "ready") return [];
-		const items: ConsoleItem[] = [];
-		for (const ev of replayStatus.events) {
-			// Inspect plugin payloads structurally without loading rrweb at runtime.
-			const data: unknown = "data" in ev ? ev.data : undefined;
-			if (
-				!data ||
-				typeof data !== "object" ||
-				!("plugin" in data) ||
-				data.plugin !== "rrweb/console@1" ||
-				!("payload" in data)
-			)
-				continue;
-			const candidate: unknown = data.payload;
-			if (!isRecord(candidate)) continue;
-			const logData = candidate;
-
-			const ts = typeof ev.timestamp === "number" ? ev.timestamp : NaN;
-			if (!Number.isFinite(ts)) continue;
-
-			const payload = Array.isArray(logData.payload)
-				? logData.payload.map((s: unknown) => {
-						if (typeof s === "string") {
-							try {
-								return JSON.parse(s);
-							} catch {
-								return s;
-							}
-						}
-						return s;
-					})
-				: [];
-
-			items.push({
-				timestamp: ts,
-				level: String(logData.level ?? "log"),
-				payload,
-				trace: Array.isArray(logData.trace)
-					? logData.trace.map(String)
-					: [],
-			});
-		}
-
-		items.sort((a, b) => a.timestamp - b.timestamp);
-		return items;
-	}, [replayStatus, replayReady]);
-
-	useEffect(() => {
-		const controller = new AbortController();
-		const currentHost = playerHostRef.current;
-		if (!currentHost) return;
-		const host = currentHost;
-		let active = true;
-		let player: RrwebPlayerInstance | null = null;
-
-		function clearPlayer() {
-			const previous = player;
-			player = null;
-			if (playerRef.current === previous) playerRef.current = null;
-			try {
-				previous?.$destroy?.();
-			} catch (error) {
-				if (import.meta.env.DEV)
-					console.warn("Replay player cleanup failed", error);
-			} finally {
-				host.replaceChildren();
-			}
-		}
-
-		async function loadAndMount() {
-			// Empty sessions never load the playback library.
-			if (sortedSeqs.length === 0) {
-				setReplayStatus({ state: "idle" });
-				return;
-			}
-			setReplayStatus({
-				state: "loading",
-				loaded: 0,
-				total: sortedSeqs.length,
-			});
-			await import("rrweb-player/dist/style.css");
-			const { default: ReplayPlayer } = await import("rrweb-player");
-			if (!active || controller.signal.aborted) return;
-			const events = await loadReplayEvents({
-				sessionId,
-				seqs: sortedSeqs,
-				signal: controller.signal,
-				onProgress: (loaded, total) => {
-					if (active && !controller.signal.aborted)
-						setReplayStatus({ state: "loading", loaded, total });
-				},
-			});
-			if (!active || controller.signal.aborted) return;
-			player = new ReplayPlayer({
-				target: host,
-				props: { events, autoPlay: false, showController: true },
-			});
-			playerRef.current = player;
-			setReplayStatus({
-				state: "ready",
-				sessionId,
-				seqs: sortedSeqs,
-				events,
-			});
-		}
-
-		void loadAndMount().catch((error: unknown) => {
-			if (!active || controller.signal.aborted) return;
-			clearPlayer();
-			setReplayStatus({
-				state: "error",
-				message:
-					error instanceof Error
-						? error.message
-						: "Failed to load replay",
-			});
-		});
-		return () => {
-			active = false;
-			controller.abort();
-			clearPlayer();
-		};
-	}, [sessionId, sortedSeqs]);
+	const {
+		chunksQuery,
+		playerHostRef,
+		sortedSeqs,
+		status: replayStatus,
+		ready: replayReady,
+		consoleItems,
+		seek,
+	} = useReplayPlayer(sessionId, {
+		startAt:
+			t === undefined ? undefined : { key: `${sessionId}:${t}`, ts: t },
+	});
 
 	return (
 		<section className="space-y-4">
@@ -525,10 +371,7 @@ function TurretReplaySessionPage() {
 																!replayReady
 															}
 															onClick={() =>
-																jumpReplayToTimestamp(
-																	playerRef.current,
-																	ts
-																)
+																seek(ts)
 															}
 														>
 															Jump
@@ -611,10 +454,7 @@ function TurretReplaySessionPage() {
 														className="rounded-md border px-2.5 py-1 text-xs"
 														disabled={!replayReady}
 														onClick={() =>
-															jumpReplayToTimestamp(
-																playerRef.current,
-																f.ts
-															)
+															seek(f.ts)
 														}
 													>
 														Jump
@@ -669,24 +509,9 @@ function TurretReplaySessionPage() {
 															<span className="mr-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
 																{item.level}
 															</span>
-															{item.payload
-																.map((p) => {
-																	if (
-																		typeof p ===
-																		"string"
-																	)
-																		return p;
-																	try {
-																		return JSON.stringify(
-																			p
-																		);
-																	} catch {
-																		return String(
-																			p
-																		);
-																	}
-																})
-																.join(" ")}
+															{formatConsolePayload(
+																item.payload
+															)}
 														</div>
 														<div className="mt-1 text-xs text-muted-foreground">
 															{new Date(
@@ -719,10 +544,7 @@ function TurretReplaySessionPage() {
 																!replayReady
 															}
 															onClick={() =>
-																jumpReplayToTimestamp(
-																	playerRef.current,
-																	ts
-																)
+																seek(ts)
 															}
 														>
 															Jump
@@ -802,8 +624,10 @@ function TurretReplaySessionPage() {
 													breadcrumb={b}
 													ts={ts}
 													spans={spans}
-													replayReady={replayReady}
-													playerRef={playerRef}
+													replay={{
+														ready: replayReady,
+														onJump: seek,
+													}}
 												/>
 											);
 										}

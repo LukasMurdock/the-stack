@@ -1,8 +1,17 @@
-import { turretIssueStatusSchema } from "@/contracts/turret";
+import {
+	turretIssueSortSchema,
+	turretIssueViewSchema,
+	type TurretIssueSort,
+	type TurretIssueView,
+} from "@/contracts/turret";
 import {
 	issuesSearchSchema,
 	issuePresetSchema,
-	issueStatusLabels,
+	issueViewLabels,
+	issueSortLabels,
+	issueAssigneeFilterLabels,
+	issuePriorityLabels,
+	formatOccurrenceChange,
 	type IssueRangePreset as RangePreset,
 } from "../../../../features/turret/issueSearch";
 import {
@@ -36,8 +45,10 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 
-import { turretIssuesQueryOptions } from "../../../../features/turret/queries";
-import type { TurretIssueStatus } from "../../../../features/turret/queries";
+import {
+	turretAssigneesQueryOptions,
+	turretIssuesQueryOptions,
+} from "../../../../features/turret/queries";
 
 const Route = createFileRoute("/ts_admin/turret/issues/")({
 	validateSearch: issuesSearchSchema,
@@ -58,6 +69,8 @@ function TurretIssuesPage() {
 	const issuesQuery = useQuery(
 		turretIssuesQueryOptions({
 			status: search.status,
+			sort: search.sort,
+			assignee: search.assignee,
 			q: search.q || undefined,
 			from: range.from,
 			to: range.to,
@@ -71,7 +84,7 @@ function TurretIssuesPage() {
 		search.q
 	);
 
-	function setStatus(status: TurretIssueStatus) {
+	function setStatus(status: TurretIssueView) {
 		navigate({
 			to: "/ts_admin/turret/issues",
 			search: {
@@ -79,6 +92,28 @@ function TurretIssuesPage() {
 				status,
 				offset: 0,
 			},
+		});
+	}
+
+	const assigneesQuery = useQuery(turretAssigneesQueryOptions);
+	const ownerNames = new Map(
+		(assigneesQuery.data?.assignees ?? []).map((user) => [
+			user.id,
+			user.name || user.email,
+		])
+	);
+
+	function setAssignee(assignee: "me" | "none" | undefined) {
+		navigate({
+			to: "/ts_admin/turret/issues",
+			search: { ...search, assignee, offset: 0 },
+		});
+	}
+
+	function setSort(sort: TurretIssueSort) {
+		navigate({
+			to: "/ts_admin/turret/issues",
+			search: { ...search, sort, offset: 0 },
 		});
 	}
 
@@ -125,7 +160,8 @@ function TurretIssuesPage() {
 						Issues
 					</h1>
 					<p className="text-sm text-muted-foreground">
-						Grouped errors by fingerprint (time-windowed).
+						Grouped errors by fingerprint. Counts cover the selected
+						window; changes compare it with the window before.
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
@@ -166,7 +202,7 @@ function TurretIssuesPage() {
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="flex flex-wrap items-center gap-2">
-						{turretIssueStatusSchema.options.map((status) => (
+						{turretIssueViewSchema.options.map((status) => (
 							<Button
 								key={status}
 								variant={
@@ -177,7 +213,7 @@ function TurretIssuesPage() {
 								type="button"
 								onClick={() => setStatus(status)}
 							>
-								{issueStatusLabels[status]}
+								{issueViewLabels[status]}
 							</Button>
 						))}
 						<div className="mx-2 hidden h-6 w-px bg-border sm:block" />
@@ -243,6 +279,50 @@ function TurretIssuesPage() {
 					) : null}
 
 					<div className="flex flex-wrap items-center gap-2">
+						<span className="text-sm text-muted-foreground">
+							Owner
+						</span>
+						{(["anyone", "me", "none"] as const).map((filter) => {
+							const value =
+								filter === "anyone" ? undefined : filter;
+							return (
+								<Button
+									key={filter}
+									size="sm"
+									variant={
+										search.assignee === value
+											? "default"
+											: "outline"
+									}
+									type="button"
+									onClick={() => setAssignee(value)}
+								>
+									{issueAssigneeFilterLabels[filter]}
+								</Button>
+							);
+						})}
+					</div>
+
+					<div className="flex flex-wrap items-center gap-2">
+						<span className="text-sm text-muted-foreground">
+							Sort by
+						</span>
+						{turretIssueSortSchema.options.map((sort) => (
+							<Button
+								key={sort}
+								size="sm"
+								variant={
+									search.sort === sort ? "default" : "outline"
+								}
+								type="button"
+								onClick={() => setSort(sort)}
+							>
+								{issueSortLabels[sort]}
+							</Button>
+						))}
+					</div>
+
+					<div className="flex flex-wrap items-center gap-2">
 						<div className="flex min-w-[240px] flex-1 flex-wrap items-center gap-2">
 							<Input
 								className="min-w-[220px] flex-1"
@@ -291,9 +371,18 @@ function TurretIssuesPage() {
 								<TableRow>
 									<TableHead>Title</TableHead>
 									<TableHead>Status</TableHead>
+									<TableHead>Owner</TableHead>
+									<TableHead className="text-right">
+										Users
+									</TableHead>
+									<TableHead className="text-right">
+										Replay sessions
+									</TableHead>
+									<TableHead className="text-right">
+										Occurrences
+									</TableHead>
+									<TableHead>First seen</TableHead>
 									<TableHead>Last seen</TableHead>
-									<TableHead>Occurrences</TableHead>
-									<TableHead>Replay sessions</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -301,6 +390,9 @@ function TurretIssuesPage() {
 									const last = new Date(
 										i.lastSeenAt
 									).toLocaleString();
+									const firstSeenInWindow =
+										range.from !== undefined &&
+										i.firstSeenAt >= range.from;
 									return (
 										<TableRow
 											key={i.fingerprint}
@@ -327,23 +419,86 @@ function TurretIssuesPage() {
 												</div>
 											</TableCell>
 											<TableCell>
-												<Badge
-													variant={
-														i.status === "open"
-															? "destructive"
-															: "secondary"
-													}
-												>
-													{i.status}
-												</Badge>
+												<div className="flex flex-wrap gap-1">
+													<Badge
+														variant={
+															i.status === "open"
+																? "destructive"
+																: "secondary"
+														}
+													>
+														{i.status}
+													</Badge>
+													{i.status === "open" &&
+													i.regressedAt !== null ? (
+														<Badge
+															variant="destructive"
+															title={`Occurred again at ${new Date(i.regressedAt).toLocaleString()} after resolution`}
+														>
+															regressed
+														</Badge>
+													) : null}
+													{i.priority !== "medium" ? (
+														<Badge
+															variant={
+																i.priority ===
+																"high"
+																	? "default"
+																	: "outline"
+															}
+														>
+															{issuePriorityLabels[
+																i.priority
+															].toLowerCase()}{" "}
+															priority
+														</Badge>
+													) : null}
+												</div>
 											</TableCell>
-											<TableCell>{last}</TableCell>
-											<TableCell>
-												{i.occurrences.toLocaleString()}
+											<TableCell className="max-w-[160px] truncate text-sm">
+												{i.assigneeId ? (
+													(ownerNames.get(
+														i.assigneeId
+													) ?? i.assigneeId)
+												) : (
+													<span className="text-muted-foreground">
+														—
+													</span>
+												)}
 											</TableCell>
-											<TableCell>
+											<TableCell className="text-right tabular-nums">
+												{i.usersAffected.toLocaleString()}
+											</TableCell>
+											<TableCell className="text-right tabular-nums">
 												{i.sessionsAffected.toLocaleString()}
 											</TableCell>
+											<TableCell className="text-right tabular-nums">
+												<div>
+													{i.occurrences.toLocaleString()}
+												</div>
+												<div
+													className="text-xs text-muted-foreground"
+													title={`${i.previousOccurrences.toLocaleString()} in the previous window`}
+												>
+													{formatOccurrenceChange(
+														i.occurrences,
+														i.previousOccurrences
+													)}
+												</div>
+											</TableCell>
+											<TableCell>
+												<div>
+													{new Date(
+														i.firstSeenAt
+													).toLocaleString()}
+												</div>
+												{firstSeenInWindow ? (
+													<div className="text-xs text-muted-foreground">
+														new in this window
+													</div>
+												) : null}
+											</TableCell>
+											<TableCell>{last}</TableCell>
 										</TableRow>
 									);
 								})}

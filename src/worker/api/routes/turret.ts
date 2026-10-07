@@ -20,6 +20,8 @@ import { eq } from "drizzle-orm";
 import { makeTurretDb } from "../../../bindings/d1/turret/db";
 import * as schema from "../../../bindings/d1/turret/schema";
 import { turretFeedbackBodySchema } from "../../../contracts/turret";
+import { turretOutcomeBodySchema } from "../../../contracts/turret-outcomes";
+import { recordOutcomeEvent } from "../../turret/outcomes";
 import { createAuth } from "../../auth";
 import { readTurretFeatures } from "../../turret/features";
 import {
@@ -807,6 +809,70 @@ export const routes = turretApp
 				doubles: [1],
 			});
 
+			return c.json({ ok: true as const }, 200);
+		}
+	)
+	.openapi(
+		createRoute({
+			method: "post",
+			path: "/turret/replay-session/{id}/outcome",
+			middleware: [requireTurretOrigin, requireUpload] as const,
+			request: {
+				params: z.object({
+					id: z.string().openapi({ example: "<session-id>" }),
+				}),
+				headers: z.object({
+					authorization: z
+						.string()
+						.openapi({ example: "Bearer <token>" }),
+				}),
+				body: {
+					required: true,
+					content: {
+						"application/json": {
+							schema: z
+								.object(turretOutcomeBodySchema.shape)
+								.openapi("TurretOutcomeBody"),
+						},
+					},
+				},
+			},
+			responses: {
+				200: {
+					description:
+						"Record a product workflow event for a replay session",
+					content: {
+						"application/json": { schema: OkResponseSchema },
+					},
+				},
+				401: {
+					description: "Unauthorized",
+					content: {
+						"application/json": { schema: ErrorResponseSchema },
+					},
+				},
+				503: {
+					description: "Turret ingestion unavailable",
+					content: {
+						"application/json": { schema: ErrorResponseSchema },
+					},
+				},
+			},
+		}),
+		async (c) => {
+			const payload = c.get("upload");
+			const body = c.req.valid("json");
+			// A missing session or an attempt owned by another session records
+			// nothing; acknowledge so clients don't retry telemetry.
+			await recordOutcomeEvent(
+				makeTurretDb(c.env.TURRET_DB),
+				payload.sid,
+				body
+			);
+			c.env.TURRET_ANALYTICS?.writeDataPoint({
+				blobs: ["workflow_outcome", body.workflow, body.event],
+				doubles: [1],
+			});
 			return c.json({ ok: true as const }, 200);
 		}
 	);

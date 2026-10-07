@@ -3,11 +3,13 @@ import {
 	turretFeedbackKindSchema,
 	turretFeedbackStatusSchema,
 } from "@/contracts/turret";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { REPLAY_LEAD_MS } from "../../../../features/turret/investigation/timeline";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import {
+	turretFeedbackIssueMutation,
 	turretFeedbackQueryOptions,
 	turretFeedbackStatusMutation,
 } from "../../../../features/turret/queries";
@@ -76,6 +78,24 @@ function TurretFeedbackPage() {
 	const feedbackQuery = useQuery(turretFeedbackQueryOptions(queryInput));
 
 	const updateStatusMutation = useMutation(turretFeedbackStatusMutation(qc));
+	const issueMutation = useMutation(turretFeedbackIssueMutation(qc));
+
+	// A promoted report opens its new issue for investigation.
+	function createIssue(feedbackId: string) {
+		issueMutation.mutate(
+			{ action: "promote", feedbackId },
+			{
+				onSuccess: ({ issueFingerprint }) => {
+					if (!issueFingerprint) return;
+					void navigate({
+						to: "/ts_admin/turret/issues/$fingerprint",
+						params: { fingerprint: issueFingerprint },
+						search: { report: feedbackId },
+					});
+				},
+			}
+		);
+	}
 
 	const rows = feedbackQuery.data?.feedback ?? [];
 
@@ -181,6 +201,12 @@ function TurretFeedbackPage() {
 					<CardTitle>Feedback</CardTitle>
 				</CardHeader>
 				<CardContent>
+					{issueMutation.isError ? (
+						<div className="mb-3 text-sm text-destructive">
+							Couldn't create the issue:{" "}
+							{issueMutation.error.message}
+						</div>
+					) : null}
 					{feedbackQuery.isLoading ? (
 						<div className="text-sm text-muted-foreground">
 							Loading…
@@ -201,6 +227,7 @@ function TurretFeedbackPage() {
 									<TableHead>Kind</TableHead>
 									<TableHead>Status</TableHead>
 									<TableHead>Message</TableHead>
+									<TableHead>Issue</TableHead>
 									<TableHead className="text-right">
 										Actions
 									</TableHead>
@@ -232,6 +259,35 @@ function TurretFeedbackPage() {
 												{r.url ? ` · ${r.url}` : ""}
 											</div>
 										</TableCell>
+										<TableCell>
+											{r.issueFingerprint ? (
+												<Link
+													to="/ts_admin/turret/issues/$fingerprint"
+													params={{
+														fingerprint:
+															r.issueFingerprint,
+													}}
+													search={{ report: r.id }}
+													className="text-sm underline underline-offset-4"
+												>
+													View issue
+												</Link>
+											) : (
+												<Button
+													type="button"
+													variant="outline"
+													size="sm"
+													disabled={
+														issueMutation.isPending
+													}
+													onClick={() =>
+														createIssue(r.id)
+													}
+												>
+													Create issue
+												</Button>
+											)}
+										</TableCell>
 										<TableCell className="text-right">
 											<div className="inline-flex flex-wrap justify-end gap-2">
 												<Button
@@ -243,6 +299,13 @@ function TurretFeedbackPage() {
 															params: {
 																sessionId:
 																	r.sessionId,
+															},
+															search: {
+																t: Math.max(
+																	0,
+																	r.ts -
+																		REPLAY_LEAD_MS
+																),
 															},
 														})
 													}

@@ -34,3 +34,8 @@ export const replaySearchSchema = timeRangeSearchSchema
 				? "user"
 				: "none"),
 	}));
+
+// A replay link may open playback at an epoch-millisecond moment.
+export const replaySessionSearchSchema = z.object({
+	t: z.coerce.number().int().nonnegative().optional().catch(undefined),
+});

@@ -133,6 +133,9 @@ export const turretSessionErrors = sqliteTable(
 		message: text("message"),
 		stack: text("stack"),
 		fingerprint: text("fingerprint"),
+		// The deployment that served the failing code: the Worker version for
+		// worker errors, the replay session's version for client errors.
+		deploymentId: text("deployment_id"),
 		extraJson: text("extra_json"),
 		expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
 		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
@@ -153,6 +156,16 @@ export const turretIssueState = sqliteTable(
 		fingerprint: text("fingerprint").primaryKey(),
 		status: text("status").notNull().default("open"),
 		title: text("title"),
+		// When the issue was last marked resolved. A later occurrence reopens it.
+		resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
+		// Occurrence time that reopened a resolved issue; cleared by manual triage.
+		regressedAt: integer("regressed_at", { mode: "timestamp_ms" }),
+		// The deployment still serving the bug when resolved for the next
+		// deployment. Its own later occurrences are expected, not regressions.
+		resolvedInVersionId: text("resolved_in_version_id"),
+		priority: text("priority").notNull().default("medium"),
+		// An administrator's user ID from the core database.
+		assigneeId: text("assignee_id"),
 		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 	},
@@ -255,5 +268,89 @@ export const turretUserFeedback = sqliteTable(
 		),
 		index("turret_feedback_userId_idx").on(table.userId),
 		index("turret_feedback_expiresAt_idx").on(table.expiresAt),
+	]
+);
+
+// A feedback report is evidence for at most one issue. Reports promoted to
+// their own issue use the fingerprint `report:<feedback id>`.
+export const turretIssueFeedback = sqliteTable(
+	"turret_issue_feedback",
+	{
+		feedbackId: text("feedback_id")
+			.primaryKey()
+			.references(() => turretUserFeedback.id, { onDelete: "cascade" }),
+		fingerprint: text("fingerprint").notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		index("turret_issue_feedback_fingerprint_idx").on(table.fingerprint),
+	]
+);
+
+// External tracking for an issue's fix: tickets, pull requests, incidents.
+export const turretIssueLinks = sqliteTable(
+	"turret_issue_links",
+	{
+		id: text("id").primaryKey(),
+		fingerprint: text("fingerprint").notNull(),
+		url: text("url").notNull(),
+		createdBy: text("created_by").notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("turret_issue_links_fingerprint_url_unique").on(
+			table.fingerprint,
+			table.url
+		),
+	]
+);
+
+// Append-only record of an investigation: notes and who changed what.
+export const turretIssueActivity = sqliteTable(
+	"turret_issue_activity",
+	{
+		id: text("id").primaryKey(),
+		fingerprint: text("fingerprint").notNull(),
+		actorId: text("actor_id").notNull(),
+		kind: text("kind").notNull(),
+		// The note body, or the new value for a change, as JSON.
+		detailJson: text("detail_json").notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		index("turret_issue_activity_fingerprint_createdAt_idx").on(
+			table.fingerprint,
+			table.createdAt
+		),
+	]
+);
+
+// One attempt at a product workflow within a replay session. Status is derived
+// at read time: succeeded, failed or abandoned after going idle, or in progress.
+export const turretOutcomeAttempts = sqliteTable(
+	"turret_outcome_attempts",
+	{
+		id: text("id").primaryKey(),
+		workflow: text("workflow").notNull(),
+		sessionId: text("session_id").notNull(),
+		userId: text("user_id").notNull(),
+		startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
+		lastEventAt: integer("last_event_at", {
+			mode: "timestamp_ms",
+		}).notNull(),
+		succeededAt: integer("succeeded_at", { mode: "timestamp_ms" }),
+		failures: integer("failures").default(0).notNull(),
+		lastFailureAt: integer("last_failure_at", { mode: "timestamp_ms" }),
+		lastFailureReason: text("last_failure_reason"),
+		expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		index("turret_outcomes_workflow_startedAt_idx").on(
+			table.workflow,
+			table.startedAt
+		),
+		index("turret_outcomes_sessionId_idx").on(table.sessionId),
+		index("turret_outcomes_expiresAt_idx").on(table.expiresAt),
 	]
 );

@@ -71,6 +71,41 @@
 			"when": 1791350277193,
 			"tag": "0009_span_breadcrumb_identity",
 			"breakpoints": true
+		},
+		{
+			"idx": 10,
+			"version": "6",
+			"when": 1791378915884,
+			"tag": "0010_issue_regression",
+			"breakpoints": true
+		},
+		{
+			"idx": 11,
+			"version": "6",
+			"when": 1791378916465,
+			"tag": "0011_issue_impact",
+			"breakpoints": true
+		},
+		{
+			"idx": 12,
+			"version": "6",
+			"when": 1791379946522,
+			"tag": "0012_issue_feedback",
+			"breakpoints": true
+		},
+		{
+			"idx": 13,
+			"version": "6",
+			"when": 1791381407815,
+			"tag": "0013_issue_resolution_loop",
+			"breakpoints": true
+		},
+		{
+			"idx": 14,
+			"version": "6",
+			"when": 1791382194732,
+			"tag": "0014_outcome_attempts",
+			"breakpoints": true
 		}
 	]
 }

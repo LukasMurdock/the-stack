@@ -4,6 +4,7 @@ import {
 	turretSessionErrors,
 	turretSessions,
 } from "../../bindings/d1/turret/schema";
+import { reopenResolvedIssue, sessionDeployment } from "./issues";
 import { readTelemetryExpiry } from "./retention";
 
 // Both client ingestion and worker capture persist the same error fields.
@@ -20,8 +21,10 @@ function normalizeErrorRecord(input: {
 	};
 }
 
-// An error and its existing session's flags/count must commit together. Unlinked
-// worker errors remain valid telemetry and do not require a replay session.
+// An error, its existing session's flags/count, and any regression it causes
+// commit together. Unlinked worker errors remain valid telemetry and do not
+// require a replay session. Callers that know the serving deployment pass
+// deploymentId; otherwise the replay session's deployment applies.
 export async function persistError(
 	db: TurretDb,
 	input: Omit<
@@ -32,28 +35,43 @@ export async function persistError(
 ) {
 	const sessionId = input.sessionId ?? null;
 	const expiresAt = await readTelemetryExpiry(db, sessionId, now);
+	const record = normalizeErrorRecord(input);
+	const deployment =
+		input.deploymentId !== undefined || !sessionId
+			? sql`${input.deploymentId ?? null}`
+			: sessionDeployment(sessionId);
 	const insert = db.insert(turretSessionErrors).values({
 		...input,
-		...normalizeErrorRecord(input),
+		...record,
+		deploymentId: deployment,
 		id: crypto.randomUUID(),
 		sessionId,
 		source: input.source.slice(0, 64),
 		expiresAt: new Date(expiresAt),
 		createdAt: new Date(now),
 	});
-	if (!sessionId) {
-		await insert;
-		return;
-	}
-	await db.batch([
-		insert,
-		db
-			.update(turretSessions)
-			.set({
-				hasError: true,
-				errorCount: sql`${turretSessions.errorCount} + 1`,
-				updatedAt: new Date(now),
-			})
-			.where(eq(turretSessions.sessionId, sessionId)),
-	]);
+	const regression = record.fingerprint
+		? [
+				reopenResolvedIssue(
+					db,
+					record.fingerprint,
+					input.ts,
+					deployment,
+					now
+				),
+			]
+		: [];
+	const session = sessionId
+		? [
+				db
+					.update(turretSessions)
+					.set({
+						hasError: true,
+						errorCount: sql`${turretSessions.errorCount} + 1`,
+						updatedAt: new Date(now),
+					})
+					.where(eq(turretSessions.sessionId, sessionId)),
+			]
+		: [];
+	await db.batch([insert, ...regression, ...session]);
 }

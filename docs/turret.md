@@ -204,6 +204,115 @@ Replay bounds:
 
 - `turret_sessions.rrweb_start_ts_ms` and `turret_sessions.rrweb_last_ts_ms` are updated during chunk ingest.
 
+## Issue Investigation
+
+An issue page opens one occurrence for investigation. By default it uses the representative occurrence: the most recent occurrence with a playable replay, or the most recent occurrence when none has one. The page shows:
+
+- The occurrence's message, stack, and correlation fields (request ID, Ray ID, deployment, route, and status) for worker errors.
+- The failing request and its D1 spans, matched by request ID. Request IDs can repeat, so Turret prefers the same replay session, then the closest timestamp.
+- The replay, positioned 5 seconds before the occurrence.
+- A timeline of requests, console output, errors, and feedback from that replay session. It shows 2 minutes before to 30 seconds after the occurrence by default, or the whole replay session.
+
+The URL keeps `event` (the selected occurrence) and `t` (the replay position in epoch milliseconds), so a link reopens the same moment. Replay session pages also accept `t`. `GET /api/internal/turret/issue/{fingerprint}/event/{errorId}` returns the occurrence's context, including its newer and older neighbors.
+
+## Feedback and Issues
+
+Feedback can describe broken behavior that never raises an error, so reports are issue evidence alongside error occurrences. A report links to at most one issue, through `turret_issue_feedback`.
+
+- **Create issue** promotes a report to its own issue, with the fingerprint `report:<feedback id>`. The issue title is the report's first line, and promoting the same report again opens the same issue.
+- **Link to this issue** appears on reports in an investigation's timeline. It attaches a report from the same replay session to the issue under investigation, moving it from any other issue. `PUT /api/internal/turret/feedback/{id}/issue` does the same by fingerprint, and `DELETE` unlinks.
+- Linking marks an open report as triaged. A report made after the issue was resolved reopens it as regressed, under the same rule as error occurrences. The report's deployment is the one that served its replay session.
+- An issue exists while it has retained occurrences or linked reports. Issue counts include reports: the issue list has a reports count, and users and replay sessions include reporters. Links are deleted with their reports when feedback expires.
+- The issue page lists linked reports. Selecting one (`report` in the URL) opens it like an occurrence, with its replay positioned 5 seconds before the report and the session timeline around it.
+
+Error occurrences are still grouped only by fingerprint. Turret cannot yet attach an occurrence to a different issue or merge issues.
+
+## Issue Triage
+
+The issues list counts occurrences, replay sessions, and distinct users within the selected window. These are separate impact measures: a refresh starts a new replay session, so users are counted as distinct replay-session owners. Errors captured outside a replay session have no user. Organization impact is not counted, because membership lives in the core database.
+
+First seen is the earliest retained occurrence, not the earliest in the window. Each row also compares the window's occurrences with the preceding window of equal length.
+
+Views:
+
+- **Open**: every open issue.
+- **New**: open issues first seen in the window.
+- **Escalating**: open issues with at least 10 occurrences in the window, and at least twice as many as in the preceding window.
+- **Regressed**: open issues reopened by an occurrence after resolution.
+- **Resolved** and **Ignored**.
+
+Sort by last seen, users affected, occurrences, or explicit priority (high, medium, or low; medium by default).
+
+## Issue Lifecycle
+
+Issues are `open`, `resolved`, or `ignored`. Resolving an issue records `resolved_at`. A later occurrence of the same fingerprint reopens it with `regressed_at` set. That occurrence commits in the same batch as the error itself. The occurrence's timestamp decides recurrence, not when it arrives, so an error captured before the resolution and delivered afterward does not reopen the issue. Ignored issues stay ignored.
+
+Each occurrence records the deployment that served the failing code in `deployment_id`. For worker errors, that's the Worker version. For client errors, it's the version that served their replay session. The issue page breaks occurrences down by deployment.
+
+**Resolved in next deployment** records the current deployment in `resolved_in_version_id`. Later occurrences from that deployment are expected until the fix ships. An occurrence from any other deployment, or from an unknown one, reopens the issue. This option is unavailable when the runtime doesn't report a deployment, as in local development without version metadata.
+
+A status change clears `regressed_at`, and repeating the current status changes nothing. Resolving again sets the resolution mode, so you can switch between resolving now and resolving in the next deployment. An absence of new occurrences does not confirm a fix unless the affected flow has been used since.
+
+## Tracking a Fix
+
+- **Owner:** each issue can have an owner chosen from administrators, with an **Assign to me** shortcut. The inbox filters by owner: anyone, assigned to me, or unassigned.
+- **Links:** ticket and pull request URLs (http or https only) are kept on the issue. GitHub pull requests and issues display as `owner/repo#123`.
+- **Activity:** the issue's activity lists investigation notes plus who changed the status, priority, owner, or links. Each change is recorded in the same D1 batch as the change itself, and only when the value actually changed, so repeating a status adds nothing.
+
+### Recovery
+
+A resolved issue shows whether replay traffic since resolution supports the fix. Turret compares the share of replay sessions with issue evidence (an occurrence or a linked report):
+
+- **Before:** the 7 days before resolution.
+- **After:** sessions started since resolution.
+
+For an issue resolved in the next deployment, sessions the old deployment served don't count toward the after period. The verdicts are:
+
+- **Likely fixed**: the earlier rate predicts at least 3 affected sessions since resolution, and none were affected. With no real change, that happens by chance about 5% of the time or less.
+- **Not confirmed yet**: too little traffic to tell. An absence of new occurrences alone does not establish recovery.
+- **Still occurring**: affected sessions since resolution.
+- **Can't be measured**: no replay sessions before resolution showed the issue, such as worker errors outside replay sessions.
+
+## Investigation Export
+
+**Copy for coding agent** and **Download JSON** on an issue page export the current investigation, centered on the selected occurrence or report. The JSON comes from `GET /api/internal/turret/issue/{fingerprint}/export?event=…|report=…` and follows `turretInvestigationExportSchema`. The Markdown is rendered from the same export.
+
+The export holds observed facts, never conclusions:
+
+- the issue's impact and lifecycle, and occurrences by deployment
+- the focused occurrence's message, stack, correlation IDs, and failing request with its D1 queries, or the focused report
+- a timeline of the replay session's requests, errors, and reports, from 2 minutes before to 30 seconds after the focus
+- linked reports, notes, ticket and pull request links, and the recovery verdict
+- absolute links to the issue and the replay
+
+A **Not captured** list names what it lacks, such as console output, sampled traces, a missing replay, or unmatched requests. That way an agent doesn't read absence as health.
+
+The export omits who was affected: no user IDs, emails, or contact details. Report messages are included because they describe the problem. They're quoted in the Markdown and bounded in length, so they read as user-provided evidence rather than instructions.
+
+## Product Outcomes
+
+Errors and feedback miss tasks that fail quietly. Outcomes measure whether people complete a small set of important workflows. They're listed in `turretWorkflowSchema` (`src/contracts/turret-outcomes.ts`), currently creating a project and accepting an invitation.
+
+An attempt starts, may fail any number of times, and ends at its first success. Events are recorded per attempt in `turret_outcome_attempts`, tied to the replay session that started it. Events can arrive out of order or more than once. Events from another replay session never change an attempt, and nothing changes after the first success.
+
+Status is derived when read:
+
+- **Succeeded**: reached success. Attempts that failed first are also counted as "after a failure", a sign of friction.
+- **Failed**: one or more failures and no success, idle for 30 minutes.
+- **Abandoned**: no failure and no success, idle for 30 minutes.
+- **In progress**: otherwise.
+
+A failure carries a short reason code: the API error code (`invalid_input`), the HTTP status (`http_503`), `network`, or `error`. It never includes the error message, which can contain user content. Attempts expire with their replay session.
+
+The **Outcomes** page (`/ts_admin/turret/outcomes`) shows each workflow's attempts, success rate among finished attempts, failures, abandonment, and top failure reasons. It lists attempts by status, and **Watch replay** opens each at its last failure, its success, or where the user went quiet.
+
+To measure another workflow:
+
+1. Add it to `turretWorkflowSchema` and `turretWorkflowLabels`.
+2. Call `useWorkflowOutcome(workflow)` where the task lives. Call `start()` where the user begins: first focus on a form, or arriving on a page with intent. Call `failed(error)` when an attempt to finish fails, and `succeeded()` when the task is done.
+
+Recording is best effort and does nothing without an active Turret session.
+
 ## Debugging
 
 Use these endpoints to validate worker error capture end-to-end:

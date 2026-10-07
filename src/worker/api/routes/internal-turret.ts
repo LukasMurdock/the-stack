@@ -24,6 +24,7 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { makeTurretDb } from "../../../bindings/d1/turret/db";
 import { literalContains } from "../../../bindings/d1/literal-search";
 import {
+	turretRequestBreadcrumbSchema,
 	turretRequestSpanSchema,
 	turretReplaySessionSpansGroupedResponseSchema,
 } from "../../../contracts/turret";
@@ -580,7 +581,7 @@ export const routes = internalTurretApp
 				params: z.object({
 					id: z.string().openapi({ example: "<session-id>" }),
 				}),
-				query: z.object({
+				query: turretTimeRangeSchema.safeExtend({
 					...turretBreadcrumbPageSchema.shape,
 				}),
 			},
@@ -595,28 +596,7 @@ export const routes = internalTurretApp
 							schema: z
 								.object({
 									breadcrumbs: z.array(
-										z.object({
-											id: z.string(),
-											requestId: z.string(),
-											sessionId: z.string().nullable(),
-											ts: z.string(),
-											method: z.string(),
-											path: z.string(),
-											status: z.number(),
-											durationMs: z.number(),
-											rayId: z.string().nullable(),
-											colo: z.string().nullable(),
-											d1QueriesCount: z.number(),
-											d1QueriesTimeMs: z.number(),
-											d1RowsRead: z.number(),
-											d1RowsWritten: z.number(),
-											d1ErrorsCount: z.number(),
-											errorKind: z.string().nullable(),
-											errorMessage: z.string().nullable(),
-											extraJson: z.string().nullable(),
-											expiresAt: z.string(),
-											createdAt: z.string(),
-										})
+										turretRequestBreadcrumbSchema
 									),
 									limit: z.number().optional(),
 									offset: z.number().optional(),
@@ -630,12 +610,21 @@ export const routes = internalTurretApp
 		}),
 		async (c) => {
 			const { id: sessionId } = c.req.valid("param");
-			const { limit, offset } = c.req.valid("query");
+			const { from, to, limit, offset } = c.req.valid("query");
 			const db = makeTurretDb(c.env.TURRET_DB);
 			if (!(await readRetainedReplay(db, sessionId)))
 				return c.json({ error: "Not Found" }, 404);
 			const rows = await db.query.turretRequestBreadcrumbs.findMany({
-				where: (t, ops) => ops.eq(t.sessionId, sessionId),
+				where: (t, ops) =>
+					ops.and(
+						ops.eq(t.sessionId, sessionId),
+						from === undefined
+							? undefined
+							: ops.gte(t.ts, new Date(from)),
+						to === undefined
+							? undefined
+							: ops.lt(t.ts, new Date(to))
+					),
 				orderBy: (t, ops) => [ops.asc(t.ts)],
 				limit,
 				offset,

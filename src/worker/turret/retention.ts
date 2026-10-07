@@ -49,6 +49,9 @@ export async function cleanupTurretStorage(
 	await db
 		.delete(schema.turretUserFeedback)
 		.where(lte(schema.turretUserFeedback.expiresAt, expired));
+	await db
+		.delete(schema.turretOutcomeAttempts)
+		.where(lte(schema.turretOutcomeAttempts.expiresAt, expired));
 	const sessions = await db.query.turretSessions.findMany({
 		where: lte(schema.turretSessions.retentionExpiresAt, expired),
 		columns: { sessionId: true },
@@ -113,6 +116,9 @@ export async function cleanupTurretStorage(
 			await db
 				.delete(schema.turretUserFeedback)
 				.where(eq(schema.turretUserFeedback.sessionId, sessionId));
+			await db
+				.delete(schema.turretOutcomeAttempts)
+				.where(eq(schema.turretOutcomeAttempts.sessionId, sessionId));
 			await db
 				.delete(schema.turretSessions)
 				.where(

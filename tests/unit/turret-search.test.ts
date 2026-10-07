@@ -2,10 +2,14 @@ import { turretHasErrorSchema } from "../../src/contracts/turret";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+	formatOccurrenceChange,
 	issuesSearchSchema,
 	issueDetailSearchSchema,
 } from "../../src/react-app/features/turret/issueSearch";
-import { replaySearchSchema } from "../../src/react-app/features/turret/session/replaySearch";
+import {
+	replaySearchSchema,
+	replaySessionSearchSchema,
+} from "../../src/react-app/features/turret/session/replaySearch";
 import {
 	turretTrendQuerySchema,
 	resolveTurretTimeRange,
@@ -114,4 +118,52 @@ test("destination defaults preserve distinct windows, explicit filters, and old 
 			.status,
 		"open"
 	);
+});
+
+test("investigation links restore the occurrence and replay moment and drop malformed positions", () => {
+	assert.deepEqual(
+		(({ event, t }) => ({ event, t }))(
+			issueDetailSearchSchema.parse({
+				event: "error-1",
+				t: "1700000000123",
+			})
+		),
+		{ event: "error-1", t: 1_700_000_000_123 }
+	);
+	assert.equal(replaySessionSearchSchema.parse({ t: "1500" }).t, 1500);
+	for (const t of ["soon", "-1", "1.5"]) {
+		assert.equal(issueDetailSearchSchema.parse({ t }).t, undefined);
+		assert.equal(replaySessionSearchSchema.parse({ t }).t, undefined);
+	}
+	assert.equal(issueDetailSearchSchema.parse({ event: "" }).event, undefined);
+	assert.equal(
+		issueDetailSearchSchema.parse({ report: "feedback-1" }).report,
+		"feedback-1"
+	);
+	assert.equal(
+		issuesSearchSchema.parse({ status: "regressed" }).status,
+		"regressed"
+	);
+});
+
+test("inbox links keep impact views and sorts, and describe change against the previous window", () => {
+	assert.deepEqual(
+		(({ status, sort }) => ({ status, sort }))(
+			issuesSearchSchema.parse({ status: "escalating", sort: "users" })
+		),
+		{ status: "escalating", sort: "users" }
+	);
+	assert.equal(
+		issuesSearchSchema.parse({ sort: "loudest" }).sort,
+		"lastSeen"
+	);
+	assert.equal(issuesSearchSchema.parse({ assignee: "me" }).assignee, "me");
+	assert.equal(
+		issuesSearchSchema.parse({ assignee: "someone" }).assignee,
+		undefined
+	);
+	assert.equal(formatOccurrenceChange(10, 1), "+900%");
+	assert.equal(formatOccurrenceChange(5, 10), "−50%");
+	assert.equal(formatOccurrenceChange(10, 10), "no change");
+	assert.equal(formatOccurrenceChange(3, 0), "none before");
 });

@@ -13,6 +13,7 @@ import { projectsQuery, createProjectMutation } from "./queries";
 import { organizationQuery } from "../organizations/queries";
 import { Pagination } from "../organizations/Pagination";
 import { MutationFeedback } from "../../forms/feedback";
+import { useWorkflowOutcome } from "../turret/outcomes";
 export function ProjectsPage({
 	userId,
 	organizationId,
@@ -70,11 +71,14 @@ function CreateProject({
 	const create = useMutation(
 		createProjectMutation(queryClient, userId, organizationId)
 	);
+	// An attempt starts when someone begins filling in the form.
+	const outcome = useWorkflowOutcome("project.create");
 
 	return (
 		<form
 			ref={form}
 			className="max-w-lg space-y-3"
+			onFocus={outcome.start}
 			onSubmit={(event) => {
 				event.preventDefault();
 				const fields = new FormData(event.currentTarget);
@@ -85,9 +89,11 @@ function CreateProject({
 					},
 					{
 						onSuccess: () => {
+							outcome.succeeded();
 							form.current?.reset();
 							onCreated();
 						},
+						onError: outcome.failed,
 					}
 				);
 			}}

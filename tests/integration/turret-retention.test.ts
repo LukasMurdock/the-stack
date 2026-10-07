@@ -186,6 +186,12 @@ test("cleanup limits session batches and removes legacy linked telemetry and fee
 	f.sqlite.exec(
 		"INSERT INTO turret_user_feedback (id, session_id, user_id, ts, kind, message, created_at, updated_at) VALUES ('legacy', 'expired-0', 'user', 0, 'bug', 'Legacy feedback', 0, 0)"
 	);
+	f.sqlite.exec(
+		"INSERT INTO turret_issue_feedback (feedback_id, fingerprint, created_at) VALUES ('legacy', 'report:legacy', 0)"
+	);
+	f.sqlite.exec(
+		"INSERT INTO turret_outcome_attempts (id, workflow, session_id, user_id, started_at, last_event_at, expires_at, created_at) VALUES ('attempt', 'project.create', 'expired-0', 'user', 0, 0, 5000, 0)"
+	);
 	const bucket = {
 		list: (options?: R2ListOptions) => listObjects(new Set(), options),
 		async delete() {
@@ -207,6 +213,19 @@ test("cleanup limits session batches and removes legacy linked telemetry and fee
 	);
 	assert.equal(
 		readSqlRow(f.sqlite, "SELECT count(*) AS n FROM turret_user_feedback")
+			.n,
+		0
+	);
+	assert.equal(
+		readSqlRow(
+			f.sqlite,
+			"SELECT count(*) AS n FROM turret_outcome_attempts"
+		).n,
+		0
+	);
+	// A report's issue link is evidence that expires with the report.
+	assert.equal(
+		readSqlRow(f.sqlite, "SELECT count(*) AS n FROM turret_issue_feedback")
 			.n,
 		0
 	);
@@ -382,6 +401,39 @@ test("replay-backed readers preserve authorization, expiry and response contract
 					...second.spansByBreadcrumbId["b1"],
 				],
 				direct.spans
+			);
+		}
+	);
+
+	await t.test(
+		"request windows include the range start and exclude its end",
+		async () => {
+			f.sqlite.exec(`
+			INSERT INTO turret_request_breadcrumbs (id, request_id, session_id, ts, method, path, status, duration_ms, expires_at, created_at)
+			VALUES ('windowed', 'request-w', 'live', 3000, 'GET', '/', 200, 5, 5000, 3000);
+		`);
+			const ids = async (query: string) =>
+				z
+					.object({
+						breadcrumbs: z.array(z.object({ id: z.string() })),
+					})
+					.parse(
+						await (
+							await request(
+								`replay-session/live/breadcrumbs?${query}`
+							)
+						).json()
+					)
+					.breadcrumbs.map((row) => row.id);
+			assert.deepEqual(await ids("from=3000&to=3001"), ["windowed"]);
+			assert.deepEqual(await ids("from=2000&to=3000"), []);
+			assert.equal(
+				(
+					await request(
+						"replay-session/live/breadcrumbs?from=3000&to=3000"
+					)
+				).status,
+				400
 			);
 		}
 	);

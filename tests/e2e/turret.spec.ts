@@ -123,6 +123,25 @@ test("authenticated replay uploads survive a real Worker and R2 round trip", asy
 	expect(after.issue.status).toBe("resolved");
 	expect(after.issue.title).toBe("Investigate RPC");
 	expect(after.issue.sample).toEqual(before.issue.sample);
+	expect(after.issue.resolvedAt).not.toBeNull();
+	// Recurrence after resolution reopens the issue through the real Worker.
+	await jsonOrThrow(
+		await session.error.$post({
+			param,
+			header: { authorization: `Bearer ${initialized.upload_token}` },
+			json: {
+				ts: (after.issue.resolvedAt ?? 0) + 1,
+				source: "client",
+				message: "RPC triage round trip",
+				fingerprint,
+			},
+		})
+	);
+	const regressed = await jsonOrThrow(
+		await triage.$get({ param: issueParam })
+	);
+	expect(regressed.issue.status).toBe("open");
+	expect(regressed.issue.regressedAt).toBe((after.issue.resolvedAt ?? 0) + 1);
 
 	for (const seq of ["invalid", "-1", "0.5", "0x0", "0e0"]) {
 		const response = await reader.chunk[":seq"].$get({
@@ -406,6 +425,185 @@ test("the server-issued deadline ends capture and disables session-linked teleme
 		.click();
 	await page.clock.runFor(5000);
 	expect(writes).toEqual([]);
+});
+
+test("an issue investigation opens a recorded failure at its moment and keeps the position in the URL", async ({
+	page,
+	context,
+}) => {
+	await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+	await page.goto("/app/login");
+	await page.getByLabel("Email", { exact: true }).fill("admin@example.test");
+	await page
+		.getByLabel("Password", { exact: true })
+		.fill("Browser-test-password-123!");
+	const uploaded = page.waitForResponse(
+		(response) =>
+			new URL(response.url()).pathname.endsWith("/chunk") &&
+			response.request().method() === "POST"
+	);
+	await page.getByRole("button", { name: "Sign in", exact: true }).click();
+	expect((await uploaded).ok()).toBe(true);
+	await page.getByRole("link", { name: "Home", exact: true }).click();
+	// Two occurrences give the investigation another one to step to.
+	for (let attempt = 0; attempt < 2; attempt++) {
+		const reported = page.waitForResponse(
+			(response) =>
+				new URL(response.url()).pathname.endsWith("/error") &&
+				response.request().method() === "POST"
+		);
+		await page
+			.getByRole("button", { name: "Report UI error", exact: true })
+			.click();
+		expect((await reported).ok()).toBe(true);
+	}
+
+	await page.goto(
+		"/app/ts_admin/turret/issues?q=Intentional%20UI%20test%20error"
+	);
+	await page
+		.getByRole("cell", { name: /Intentional UI test error/ })
+		.first()
+		.click();
+	await expect(
+		page.getByText("Representative occurrence", { exact: true })
+	).toBeVisible();
+	await expect(
+		page.getByText("Positioned 5s before the occurrence", { exact: false })
+	).toBeVisible({ timeout: 15_000 });
+	await expect(
+		page.getByText("This occurrence", { exact: true })
+	).toBeVisible();
+
+	const timeline = page.locator("ol").filter({ hasText: "This occurrence" });
+	await timeline
+		.getByRole("button", { name: "Jump", exact: true })
+		.first()
+		.click();
+	await expect(page).toHaveURL(/[?&]t=\d+/);
+	await page
+		.getByRole("button", { name: "Investigate", exact: true })
+		.first()
+		.click();
+	await expect(page).toHaveURL(/[?&]event=/);
+	// A newly selected occurrence starts from its own moment.
+	await expect(page).not.toHaveURL(/[?&]t=/);
+	await expect(
+		page.getByText("Selected occurrence", { exact: true })
+	).toBeVisible();
+
+	// Track the fix: an owner, a note, and the pull request, attributed.
+	await page
+		.getByRole("button", { name: "Assign to me", exact: true })
+		.click();
+	await expect(
+		page.getByRole("button", { name: "Assign to me", exact: true })
+	).toHaveCount(0);
+	await page
+		.getByLabel("Investigation note", { exact: true })
+		.fill("Reproduced from the replay.");
+	await page.getByRole("button", { name: "Add note", exact: true }).click();
+	await page
+		.getByLabel("Ticket or pull request URL", { exact: true })
+		.fill("https://github.com/acme/app/pull/42");
+	await page.getByRole("button", { name: "Add link", exact: true }).click();
+	await expect(page.getByRole("link", { name: "acme/app#42" })).toBeVisible();
+	await expect(page.getByText("Reproduced from the replay.")).toBeVisible();
+	await expect(
+		page.getByText("linked acme/app#42", { exact: false })
+	).toBeVisible();
+	await expect(
+		page.getByText("assigned it to", { exact: false })
+	).toBeVisible();
+
+	// Hand the investigation to a ticket or coding agent.
+	await page
+		.getByRole("button", { name: "Copy for coding agent", exact: true })
+		.click();
+	await expect(
+		page.getByText("Copied the investigation as Markdown.")
+	).toBeVisible();
+	const markdown = await page.evaluate(() => navigator.clipboard.readText());
+	expect(markdown).toContain("# Intentional UI test error");
+	expect(markdown).toContain("## Focused evidence");
+	expect(markdown).toContain("Reproduced from the replay.");
+	expect(markdown).toContain("https://github.com/acme/app/pull/42");
+	expect(markdown).not.toContain("admin@example.test");
+});
+
+test("a feedback report promoted to an issue opens its replay and stays linked", async ({
+	page,
+}) => {
+	await page.goto("/app/login");
+	await page.getByLabel("Email", { exact: true }).fill("admin@example.test");
+	await page
+		.getByLabel("Password", { exact: true })
+		.fill("Browser-test-password-123!");
+	const uploaded = page.waitForResponse(
+		(response) =>
+			new URL(response.url()).pathname.endsWith("/chunk") &&
+			response.request().method() === "POST"
+	);
+	await page.getByRole("button", { name: "Sign in", exact: true }).click();
+	expect((await uploaded).ok()).toBe(true);
+	await page.getByRole("link", { name: "Home", exact: true }).click();
+	const message = `Checkout ignores my click ${crypto.randomUUID()}`;
+	await page.getByRole("button", { name: "Feedback", exact: true }).click();
+	await page
+		.getByPlaceholder("What happened? What did you expect?")
+		.fill(message);
+	const sent = page.waitForResponse(
+		(response) =>
+			new URL(response.url()).pathname.endsWith("/feedback") &&
+			response.request().method() === "POST"
+	);
+	await page.getByRole("button", { name: "Send", exact: true }).click();
+	expect((await sent).ok()).toBe(true);
+
+	await page.goto("/app/ts_admin/turret/feedback");
+	await page
+		.getByRole("row", { name: new RegExp(message) })
+		.getByRole("button", { name: "Create issue", exact: true })
+		.click();
+	await expect(page).toHaveURL(/\/issues\/report%3A|\/issues\/report:/);
+	await expect(
+		page.getByText("Selected report", { exact: true })
+	).toBeVisible();
+	await expect(
+		page.getByText("Positioned 5s before the report", { exact: false })
+	).toBeVisible({ timeout: 15_000 });
+	await expect(page.getByText("This report", { exact: true })).toBeVisible();
+	await expect(
+		page.getByRole("row", { name: new RegExp(message) })
+	).toContainText("Investigating");
+
+	// Linking triages the report, so it leaves the default open view.
+	await page.goto("/app/ts_admin/turret/feedback");
+	await page.getByRole("combobox").first().click();
+	await page.getByRole("option", { name: "triaged", exact: true }).click();
+	await expect(
+		page
+			.getByRole("row", { name: new RegExp(message) })
+			.getByRole("link", { name: "View issue", exact: true })
+	).toBeVisible();
+});
+
+test("outcomes list every instrumented workflow with the first selected", async ({
+	page,
+}) => {
+	await page.goto("/app/ts_admin/turret/outcomes");
+	await page.getByLabel("Email", { exact: true }).fill("admin@example.test");
+	await page
+		.getByLabel("Password", { exact: true })
+		.fill("Browser-test-password-123!");
+	await page.getByRole("button", { name: "Sign in", exact: true }).click();
+	for (const workflow of ["Create a project", "Accept an invitation"])
+		await expect(
+			page.getByRole("cell", { name: new RegExp(workflow) })
+		).toBeVisible();
+	await expect(
+		page.getByText("Create a project attempts", { exact: true })
+	).toBeVisible();
 });
 
 test("login returns to its destination and Turret links use destination search defaults", async ({
