@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { readDevServer } from "./lib/local-server.mjs";
 import { loadLocalEnv } from "./local-env.mjs";
 
 const cwd = process.cwd();
@@ -34,6 +35,13 @@ process.stdout.write("Local dev status\n\n");
 line("APP_URL", appOrigin);
 line("ADMIN_EMAIL", process.env.ADMIN_EMAIL || "(not set)");
 line("Turret mode", `${configuredTurretMode} -> ${effectiveTurretMode}`);
+const devServer = readDevServer();
+line(
+	"Dev server",
+	devServer?.alive
+		? `${devServer.url} (pid ${devServer.pid}${devServer.background ? ", background" : ""}; stop: pnpm dev:stop)`
+		: "not running (start: pnpm dev)"
+);
 process.stdout.write("\n");
 
 line("Marketing", `${appOrigin}/`);
