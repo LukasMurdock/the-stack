@@ -56,6 +56,12 @@ try {
 	entries = readdirSync(absPersistDir);
 } catch (error) {
 	const code = error instanceof Error && "code" in error ? error.code : error;
+	// A fresh clone or worktree has no local state until setup has run.
+	if (code === "ENOENT")
+		die(
+			`No local D1 state at ${absPersistDir}.\n` +
+				"Tip: run `pnpm local:setup` to create and migrate the local databases."
+		);
 	die(`Could not read persistence dir: ${absPersistDir} (${String(code)})`);
 }
 

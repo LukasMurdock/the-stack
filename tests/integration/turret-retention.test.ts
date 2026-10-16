@@ -10,38 +10,23 @@ import {
 import { createSqliteD1, readSqlRow } from "../helpers/sqlite-d1";
 import { productFixture } from "../helpers/product";
 import { testBindings } from "../helpers/worker";
+import { FakeR2Bucket } from "../helpers/fake-r2";
 import { createAuth } from "../../src/worker/auth";
 import { api } from "../../src/worker/api";
 import { z } from "zod";
 import { hashPassword } from "better-auth/crypto";
 
-function listObjects(
-	objects: Set<string>,
-	options?: R2ListOptions
-): Promise<R2Objects> {
-	return Promise.resolve({
-		objects: [...objects]
-			.filter((key) => key.startsWith(options?.prefix ?? ""))
-			.sort()
-			.slice(0, options?.limit ?? 1000)
-			.map((key) => ({
-				key,
-				version: "fixture",
-				size: 1,
-				etag: "fixture",
-				httpEtag: '"fixture"',
-				uploaded: new Date(0),
-				checksums: {
-					toJSON() {
-						return {};
-					},
-				},
-				storageClass: "Standard",
-				writeHttpMetadata() {},
-			})),
-		truncated: false,
-		delimitedPrefixes: [],
-	});
+async function bucketWith(
+	keys: Iterable<string>,
+	beforeDelete?: (key: string) => void
+) {
+	const bucket = new FakeR2Bucket(beforeDelete);
+	for (const key of keys) await bucket.put(key, "{}");
+	return bucket;
+}
+
+function storedKeys(bucket: FakeR2Bucket) {
+	return new Set(bucket.objects.keys());
 }
 
 function fixture() {
@@ -68,29 +53,26 @@ test("expiry hides replay immediately; cleanup is bounded and preserves live dat
 	t.after(() => f.sqlite.close());
 	f.session("expired", 1000, 103);
 	f.session("live", 1001, 1);
-	const objects = new Set(
-		Array.from({ length: 103 }, (_, seq) => replayChunkKey("expired", seq))
+	const bucket = await bucketWith(
+		[
+			...Array.from({ length: 103 }, (_, seq) =>
+				replayChunkKey("expired", seq)
+			),
+			replayChunkKey("live", 0),
+		],
+		(key) => {
+			// References must still exist when deletion starts.
+			assert.equal(
+				f.sqlite
+					.prepare(
+						"SELECT count(*) FROM turret_session_chunks WHERE r2_key = ?"
+					)
+					.pluck()
+					.get(key),
+				1
+			);
+		}
 	);
-	objects.add(replayChunkKey("live", 0));
-	const bucket = {
-		list: (options?: R2ListOptions) => listObjects(objects, options),
-		async delete(keys: string | string[]) {
-			for (const key of typeof keys === "string" ? [keys] : keys) {
-				// References must still exist when deletion starts.
-				assert.equal(
-					f.sqlite
-						.prepare(
-							"SELECT count(*) FROM turret_session_chunks WHERE r2_key = ?"
-						)
-						.pluck()
-						.get(key),
-					1
-				);
-				// oxlint-disable-next-line drizzle/enforce-delete-with-where -- Removes a fixture R2 key from a Set.
-				objects.delete(key);
-			}
-		},
-	};
 	assert.equal(await readRetainedReplay(f.db, "expired", 1000), undefined);
 	assert.equal(
 		(await readRetainedReplay(f.db, "live", 1000))?.sessionId,
@@ -108,7 +90,7 @@ test("expiry hides replay immediately; cleanup is bounded and preserves live dat
 		deletedSessions: 1,
 		deletedChunks: 4,
 	});
-	assert.deepEqual(objects, new Set([replayChunkKey("live", 0)]));
+	assert.deepEqual(storedKeys(bucket), new Set([replayChunkKey("live", 0)]));
 	assert.equal(
 		readSqlRow(f.sqlite, "SELECT count(*) AS n FROM turret_session_chunks")
 			.n,
@@ -124,39 +106,28 @@ test("R2 and database failures preserve enough metadata to retry", async (t) => 
 	const f = fixture();
 	t.after(() => f.sqlite.close());
 	f.session("expired", 1000, 2);
-	const objects = new Set([
-		replayChunkKey("expired", 0),
-		replayChunkKey("expired", 1),
-	]);
+	let r2Available = false;
+	const bucket = await bucketWith(
+		[replayChunkKey("expired", 0), replayChunkKey("expired", 1)],
+		(key) => {
+			if (!r2Available && key === replayChunkKey("expired", 1))
+				throw new Error("R2 unavailable after partial deletion");
+		}
+	);
 	await assert.rejects(
-		cleanupTurretStorage(
-			f.db,
-			{
-				list: (options?: R2ListOptions) =>
-					listObjects(objects, options),
-				async delete() {
-					// oxlint-disable-next-line drizzle/enforce-delete-with-where -- Removes a fixture R2 key from a Set.
-					objects.delete(replayChunkKey("expired", 0));
-					throw new Error("R2 unavailable after partial deletion");
-				},
-			},
-			1000
-		),
+		cleanupTurretStorage(f.db, bucket, 1000),
 		/R2 unavailable/
+	);
+	assert.deepEqual(
+		storedKeys(bucket),
+		new Set([replayChunkKey("expired", 1)])
 	);
 	assert.equal(
 		readSqlRow(f.sqlite, "SELECT count(*) AS n FROM turret_session_chunks")
 			.n,
 		2
 	);
-	const bucket = {
-		list: (options?: R2ListOptions) => listObjects(objects, options),
-		async delete(keys: string | string[]) {
-			for (const key of typeof keys === "string" ? [keys] : keys)
-				// oxlint-disable-next-line drizzle/enforce-delete-with-where -- Removes a fixture R2 key from a Set.
-				objects.delete(key);
-		},
-	};
+	r2Available = true;
 	f.sqlite.exec(
 		"CREATE TRIGGER fail_chunk_delete BEFORE DELETE ON turret_session_chunks BEGIN SELECT RAISE(ABORT, 'storage unavailable'); END"
 	);
@@ -164,7 +135,7 @@ test("R2 and database failures preserve enough metadata to retry", async (t) => 
 		cleanupTurretStorage(f.db, bucket, 1000),
 		/Failed query/
 	);
-	assert.equal(objects.size, 0);
+	assert.equal(bucket.objects.size, 0);
 	assert.equal(
 		readSqlRow(f.sqlite, "SELECT count(*) AS n FROM turret_sessions").n,
 		1
@@ -192,12 +163,9 @@ test("cleanup limits session batches and removes legacy linked telemetry and fee
 	f.sqlite.exec(
 		"INSERT INTO turret_outcome_attempts (id, workflow, session_id, user_id, started_at, last_event_at, expires_at, created_at) VALUES ('attempt', 'project.create', 'expired-0', 'user', 0, 0, 5000, 0)"
 	);
-	const bucket = {
-		list: (options?: R2ListOptions) => listObjects(new Set(), options),
-		async delete() {
-			assert.fail("No replay objects to delete");
-		},
-	};
+	const bucket = new FakeR2Bucket(() =>
+		assert.fail("No replay objects to delete")
+	);
 	assert.equal(
 		(await cleanupTurretStorage(f.db, bucket, 1000)).deletedSessions,
 		10
@@ -245,21 +213,12 @@ test("replay-backed readers preserve authorization, expiry and response contract
 	f.session("expired", 0, 1);
 	f.session("live", Date.now() + 60_000, 1);
 	const origin = "http://localhost:4321";
-	let r2Reads = 0;
-	const bucket: Pick<R2Bucket, "get"> = {
-		async get() {
-			r2Reads++;
-			const body = Response.json({
-				seq: 0,
-				events: [],
-				ts_start: 0,
-				ts_end: 0,
-			}).body;
-			assert.ok(body);
-			// SAFETY: the replay reader consumes only the platform object's body stream.
-			return { body } as R2ObjectBody;
-		},
-	};
+	const bucket = new FakeR2Bucket();
+	for (const sessionId of ["expired", "live"])
+		await bucket.put(
+			replayChunkKey(sessionId, 0),
+			JSON.stringify({ seq: 0, events: [], ts_start: 0, ts_end: 0 })
+		);
 	const env = testBindings({
 		CORE_DB: core.binding,
 		TURRET_DB: createSqliteD1(f.sqlite),
@@ -269,8 +228,7 @@ test("replay-backed readers preserve authorization, expiry and response contract
 		PRODUCT_NAME: "Test",
 		EMAIL_TRANSPORT: "log",
 		AUTH_SIGNUP_MODE: "open",
-		// SAFETY: replay reads exercise only get() and stream the returned body.
-		TURRET_REPLAY_BUCKET: bucket as R2Bucket,
+		TURRET_REPLAY_BUCKET: bucket,
 	});
 	core.sqlite.exec("UPDATE auth_user SET role = 'admin' WHERE id = 'owner'");
 	const password = "Valid-test-password-123!";
@@ -326,7 +284,7 @@ test("replay-backed readers preserve authorization, expiry and response contract
 			suffix
 		);
 	}
-	assert.equal(r2Reads, 1);
+	assert.deepEqual(bucket.readKeys, [replayChunkKey("live", 0)]);
 
 	await t.test(
 		"replay lists include the range start and exclude its end",
@@ -529,15 +487,7 @@ test("replay-backed readers preserve authorization, expiry and response contract
 			assert.equal(data.usersWithRetainedReplays24h, 1);
 			assert.equal("activeUsersDeltaPct" in data, false);
 			assert.equal("activeUsersPrev24h" in data, false);
-			const emptyObjects = new Set<string>();
-			await cleanupTurretStorage(
-				f.db,
-				{
-					list: (options) => listObjects(emptyObjects, options),
-					async delete() {},
-				},
-				now
-			);
+			await cleanupTurretStorage(f.db, new FakeR2Bucket(), now);
 			assert.equal(
 				dashboardSchema.parse(await (await request("dashboard")).json())
 					.usersWithRetainedReplays24h,
@@ -612,23 +562,14 @@ test("prefix cleanup resumes orphaned objects without chunk metadata", async (t)
 	const f = fixture();
 	t.after(() => f.sqlite.close());
 	f.session("expired", 1000, 0);
-	const objects = new Set(
+	const bucket = await bucketWith(
 		Array.from({ length: 100 }, (_, seq) => replayChunkKey("expired", seq))
 	);
-	const bucket = {
-		list: (options?: R2ListOptions) => listObjects(objects, options),
-		async delete(keys: string | string[]) {
-			for (const key of typeof keys === "string" ? [keys] : keys) {
-				// oxlint-disable-next-line drizzle/enforce-delete-with-where -- Removes a fixture R2 key from a Set.
-				objects.delete(key);
-			}
-		},
-	};
 	assert.equal(
 		(await cleanupTurretStorage(f.db, bucket, 1000)).deletedSessions,
 		0
 	);
-	assert.equal(objects.size, 1);
+	assert.equal(bucket.objects.size, 1);
 	assert.equal(
 		readSqlRow(f.sqlite, "SELECT count(*) AS n FROM turret_sessions").n,
 		1
@@ -637,5 +578,5 @@ test("prefix cleanup resumes orphaned objects without chunk metadata", async (t)
 		(await cleanupTurretStorage(f.db, bucket, 1000)).deletedSessions,
 		1
 	);
-	assert.equal(objects.size, 0);
+	assert.equal(bucket.objects.size, 0);
 });

@@ -84,6 +84,9 @@ export function Component({ id }: { id: string }) {
 	];
 	for (const probe of probes)
 		writeFileSync(join(directory, probe.name), probe.source);
+	// TanStack's router plugin owns HMR for split route components, and shadcn
+	// files export variants beside components: the rule is noise in both.
+	const fastRefreshExempt = ["src/react-app/routes", "src/components/ui"];
 	const result = spawnSync(
 		"pnpm",
 		[
@@ -94,6 +97,7 @@ export function Component({ id }: { id: string }) {
 			"--format",
 			"json",
 			...probes.map((probe) => join(directory, probe.name)),
+			...fastRefreshExempt,
 		],
 		{ encoding: "utf8", timeout: 60_000 }
 	);
@@ -129,6 +133,14 @@ export function Component({ id }: { id: string }) {
 				1
 			);
 	}
+	const exemptHits = diagnostics.filter(
+		(diagnostic) =>
+			diagnostic.code === "react-refresh(only-export-components)" &&
+			fastRefreshExempt.some((exempt) =>
+				resolve(diagnostic.filename).startsWith(resolve(exempt))
+			)
+	);
+	assert.deepEqual(exemptHits, []);
 });
 
 test("precise types, local accumulator mutation, and justified assertions remain valid", (t) => {

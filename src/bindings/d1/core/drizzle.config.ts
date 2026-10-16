@@ -9,4 +9,5 @@ export default defineConfig({
 	out: "./src/bindings/d1/core/drizzle",
 	schema: "./src/bindings/d1/core/schema/index.ts",
 	dialect: "sqlite",
+	casing: "snake_case",
 });

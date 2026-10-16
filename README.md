@@ -172,10 +172,8 @@ Local non-sensitive defaults, including `APP_URL` and `ADMIN_EMAIL`, live in
 log-only locally; auth links appear in the dev terminal. Public signup is disabled
 by default; sign in with the setup administrator or use an organization invitation.
 
-`just` is an optional shortcut for maintenance tasks. Install it with
-`brew install just` on macOS or `cargo install just` on Linux, then run `just` to
-list recipes. `just setup` installs dependencies and runs `pnpm local:setup`;
-`just dev` runs `pnpm dev`. Deployment recipes below use `just`.
+Every command is a `package.json` script. The `justfile` holds optional aliases
+for them (`just --list`); nothing, including CI, requires `just`.
 
 ## Deployment with Void
 
@@ -198,7 +196,6 @@ pnpm run deploy
 The deployment command uses Void to provision both D1 databases, both KV
 namespaces, and the replay bucket, checks the build, applies both D1 migration
 chains, and runs `void deploy --platform cloudflare` against your app’s account.
-`just deploy` is an optional shortcut.
 
 Core and Turret keep separate databases and Drizzle migrations, with independent
 D1 limits. A small adapter reuses the pinned Void SDK's provisioning engine for
@@ -214,19 +211,20 @@ explains the agent workflows.
 Fast local checks while iterating:
 
 ```bash
-just check-fast
+pnpm verify:fast
 ```
 
 Full validation (used on main/nightly):
 
 ```bash
-just check-full
+pnpm verify
 ```
 
 Scaffold a new TanStack route file under `src/react-app/routes`:
 
 ```bash
-just new-route _public/reports
+pnpm routes:new _public/reports
+pnpm routes   # regenerate src/react-app/routeTree.gen.ts
 ```
 
 Check the deployable build:
@@ -237,11 +235,11 @@ pnpm check
 
 ## Gotchas
 
-- Re-run `just cf-typegen` after changing `config/cloudflare.mjs` bindings.
-- When you run the development server (`just dev`), the necessary route configuration and TypeScript types are automatically generated and updated in a file like `routeTree.gen.ts`.
+- Re-run `pnpm cf:typegen` after changing `config/cloudflare.mjs` bindings.
+- `pnpm dev`, `pnpm build` and `pnpm routes` regenerate `src/react-app/routeTree.gen.ts`. Run `pnpm routes` after adding, moving or deleting a route file when the dev server is not running; a stale tree shows up as route type errors.
 - Better Auth schema changes (eg. adding plugins) should be reflected in `src/bindings/d1/core/schema/better-auth.ts`, then migrated:
 
 ```bash
-just db-generate-core <your_migration_name>
+pnpm db:core:generate --name <your_migration_name>
 pnpm run deploy
 ```

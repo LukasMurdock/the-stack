@@ -28,6 +28,12 @@ test each CLI as a subprocess (`tests/tooling/cli-boundaries.test.ts`).
   state and build output in `.wrangler/e2e/<port>`, so parallel checkouts and
   agents do not collide. A build is reused while its inputs are unchanged;
   `STACK_E2E_REBUILD=1` forces a rebuild.
+- Commands are `package.json` scripts; `just` is optional and CI never uses it.
+- Routes: `pnpm routes:new <path>` scaffolds a file; `pnpm routes` (or the dev
+  server) regenerates `routeTree.gen.ts`. Route type errors after adding or
+  moving a route usually mean a stale tree.
+- Tests: fake R2 with `tests/helpers/fake-r2.ts`. Columns are snake_case in SQL
+  (`casing: "snake_case"`), so raw-SQL seeds use `organization_id`, not the key.
 - Feature conventions: read `src/content/docs/v1/first-feature.md` and `extend.md`.
 - Paged lists return `pagedResponse` with a `page.total` from `readPage`; never
   count a page's rows. Break `created_at` ties with `insertionOrder(table)`, not

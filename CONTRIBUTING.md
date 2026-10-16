@@ -20,10 +20,10 @@ using `.wrangler/.admin-password`, create an organization, and open Projects.
 persisted field. [The extension reference](src/content/docs/v1/extend.md) explains
 feature ownership and permissions.
 
-`just` is optional for local development. Install it with `brew install just`
-(macOS) or `cargo install just` (Linux) to use maintenance recipes such as
-`just seed`, `just new-route _public/example`, and `pnpm check`.
-`just seed` populates observability demos; it does not create organizations or projects.
+Maintenance commands are `package.json` scripts, such as `pnpm local:seed`,
+`pnpm routes:new _public/example` and `pnpm check`; the `justfile` only aliases
+them. `pnpm local:seed` populates observability demos; it does not create
+organizations or projects.
 
 ## Validation
 
@@ -66,7 +66,7 @@ pnpm verify
 To reset local state from scratch:
 
 ```bash
-just reset
+pnpm local:reset
 ```
 
 Before deploying an app created from this starter, run:

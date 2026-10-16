@@ -27,20 +27,17 @@ jobs:
                   node-version: "24.21.0"
                   cache: pnpm
 
-            - name: Setup just
-              uses: taiki-e/install-action@just
-
-            - name: Verify just
-              run: just --version
-
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
 
             - name: Format check
               run: pnpm run format:check
 
-            - name: Fast checks
-              run: just check-fast
+            - name: Lint
+              run: pnpm run lint
+
+            - name: Tests
+              run: pnpm test
 
             - name: Test type checks
               run: pnpm cf:typegen && pnpm exec astro sync && pnpm test:types
@@ -69,12 +66,6 @@ jobs:
                   node-version: "24.21.0"
                   cache: pnpm
 
-            - name: Setup just
-              uses: taiki-e/install-action@just
-
-            - name: Verify just
-              run: just --version
-
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
 
@@ -82,7 +73,7 @@ jobs:
               run: pnpm run format:check
 
             - name: Full checks
-              run: just check-full
+              run: pnpm verify
 
             - name: Template tooling checks
               run: pnpm test:tooling
