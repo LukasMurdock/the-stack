@@ -17,18 +17,18 @@ function fail(message) {
 }
 
 const cwd = process.cwd();
-const devVarsPath = path.resolve(cwd, ".dev.vars");
+const devVarsPath = path.resolve(cwd, ".env");
 
 let failed = false;
 
 if (!fs.existsSync(devVarsPath)) {
-	fail("Missing .dev.vars. Run: pnpm local:setup");
+	fail("Missing .env. Run: pnpm local:setup");
 	failed = true;
 } else {
-	ok("Found .dev.vars");
+	ok("Found .env");
 	const parsed = loadLocalEnv();
 	if (parsed.error) {
-		fail(`Could not parse .dev.vars: ${parsed.error.message}`);
+		fail(`Could not parse .env: ${parsed.error.message}`);
 		failed = true;
 	} else {
 		const required = ["BETTER_AUTH_SECRET", "APP_URL", "ADMIN_EMAIL"];
@@ -125,17 +125,13 @@ try {
 }
 
 try {
-	const wranglerVersion = execFileSync(
-		"pnpm",
-		["exec", "wrangler", "--version"],
-		{
-			encoding: "utf8",
-		}
-	).trim();
-	ok(`Wrangler available (${wranglerVersion})`);
+	const voidVersion = execFileSync("pnpm", ["exec", "void", "--version"], {
+		encoding: "utf8",
+	}).trim();
+	ok(`Void available (${voidVersion})`);
 } catch {
 	fail(
-		"Wrangler not available via pnpm exec (install dependencies with pnpm install)"
+		"Void not available via pnpm exec (install dependencies with pnpm install)"
 	);
 	failed = true;
 }

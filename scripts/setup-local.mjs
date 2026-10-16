@@ -34,7 +34,7 @@ const missing = requiredKeys.filter((key) => {
 });
 
 if (missing.length > 0) {
-	log("Please update .dev.vars before continuing.");
+	log("Please update .env before continuing.");
 	log("Required values: BETTER_AUTH_SECRET, APP_URL, ADMIN_EMAIL");
 	log(`Missing or placeholder values: ${missing.join(", ")}`);
 	process.exit(1);
@@ -42,24 +42,7 @@ if (missing.length > 0) {
 
 runNodeScript("scripts/dev-doctor.mjs");
 
-runCommand("pnpm", [
-	"exec",
-	"wrangler",
-	"d1",
-	"migrations",
-	"apply",
-	"CORE_DB",
-	"--local",
-]);
-runCommand("pnpm", [
-	"exec",
-	"wrangler",
-	"d1",
-	"migrations",
-	"apply",
-	"TURRET_DB",
-	"--local",
-]);
+runCommand("pnpm", ["run", "db:local:migrate"]);
 runNodeScript("scripts/create-admin-local.mjs");
 
 log("\nLocal setup complete.");

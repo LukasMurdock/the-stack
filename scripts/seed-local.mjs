@@ -1,3 +1,4 @@
+import { localConfigPath } from "./local-cloudflare.mjs";
 import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import { createRequire } from "node:module";
@@ -19,6 +20,10 @@ function runLocalMigration(databaseBinding) {
 			"apply",
 			databaseBinding,
 			"--local",
+			"--config",
+			localConfigPath,
+			"--persist-to",
+			".wrangler/state",
 		],
 		{ stdio: "inherit" }
 	);

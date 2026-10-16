@@ -1,28 +1,16 @@
 import { execFileSync } from "node:child_process";
-import {
-	mkdirSync,
-	readFileSync,
-	readdirSync,
-	writeFileSync,
-	rmSync,
-} from "node:fs";
+import { mkdirSync, readdirSync, writeFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { hashPassword } from "better-auth/crypto";
-import ts from "typescript";
+import { localCloudflare } from "../../config/cloudflare.mjs";
 
 // This directory is exclusively owned by the browser suite. Normal local D1
-// state, .dev.vars and production resources are never read or reset.
+// state, .env and production resources are never read or reset.
 const directory = path.resolve(".wrangler/e2e");
 rmSync(directory, { recursive: true, force: true });
 mkdirSync(directory, { recursive: true });
-const parsed = ts.parseConfigFileTextToJson(
-	"wrangler.json",
-	readFileSync("wrangler.json", "utf8")
-);
-if (parsed.error) throw new Error("Invalid Wrangler configuration.");
-const config = parsed.config;
-delete config.env;
+const config = structuredClone(localCloudflare);
 delete config.triggers;
 config.name = "the-stack-e2e";
 config.main = path.resolve("src/worker.ts");
@@ -30,7 +18,7 @@ config.assets.directory = path.resolve("dist");
 config.vars = {
 	PRODUCT_NAME: "The Stack",
 	APP_ENV: "test",
-	APP_URL: "http://localhost:4322",
+	APP_URL: `http://localhost:${process.env.STACK_E2E_PORT ?? 4322}`,
 	ADMIN_EMAIL: "owner@example.test",
 	EMAIL_FROM: "noreply@localhost.test",
 	EMAIL_TRANSPORT: "log",

@@ -11,7 +11,7 @@ export type EmailTransport = "cloudflare" | "resend" | "log";
 export type EmailEnvironment = {
 	APP_ENV?: string;
 	EMAIL_TRANSPORT?: string;
-	EMAIL?: Pick<SendEmail, "send">;
+	SEND_EMAIL?: Pick<SendEmail, "send">;
 	EMAIL_FROM: string;
 	EMAIL_FROM_NAME?: string;
 	RESEND_API_KEY?: string;
@@ -113,11 +113,11 @@ export async function sendEmail(args: {
 				const from = sender(env);
 				let messageId: string;
 				if (transport === "cloudflare") {
-					if (!env.EMAIL)
+					if (!env.SEND_EMAIL)
 						throw configurationError(
-							"Cloudflare email requires the EMAIL binding"
+							"Cloudflare email requires the SEND_EMAIL binding"
 						);
-					const result = await env.EMAIL.send({
+					const result = await env.SEND_EMAIL.send({
 						from,
 						to,
 						subject,

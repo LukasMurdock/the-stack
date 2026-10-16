@@ -24,7 +24,7 @@ jobs:
             - name: Setup Node
               uses: actions/setup-node@v7
               with:
-                  node-version: 22
+                  node-version: "24.21.0"
                   cache: pnpm
 
             - name: Setup just
@@ -43,7 +43,7 @@ jobs:
               run: just check-fast
 
             - name: Test type checks
-              run: pnpm exec astro sync && pnpm test:types
+              run: pnpm cf:typegen && pnpm exec astro sync && pnpm test:types
 
             - name: Template tooling checks
               run: pnpm test:tooling
@@ -66,7 +66,7 @@ jobs:
             - name: Setup Node
               uses: actions/setup-node@v7
               with:
-                  node-version: 22
+                  node-version: "24.21.0"
                   cache: pnpm
 
             - name: Setup just

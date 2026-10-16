@@ -68,7 +68,7 @@ test("Cloudflare sends composed email and records acceptance with correlation, n
 	const env: EmailEnvironment = {
 		...production,
 		CF_VERSION_METADATA: { id: "release-1" },
-		EMAIL: {
+		SEND_EMAIL: {
 			async send(input) {
 				calls++;
 				assert.deepEqual(input, {
@@ -106,7 +106,7 @@ test("local email is log-only even with credentials and log mode cannot reach pr
 		...production,
 		APP_ENV: "local",
 		RESEND_API_KEY: "configured-but-not-selected",
-		EMAIL: {
+		SEND_EMAIL: {
 			async send() {
 				sends++;
 				return { messageId: "unexpected" };
@@ -125,7 +125,7 @@ test("local email is log-only even with credentials and log mode cannot reach pr
 		);
 	await assert.rejects(
 		sendEmail({ ...message, env: production }),
-		/EMAIL binding/
+		/SEND_EMAIL binding/
 	);
 	await assert.rejects(
 		sendEmail({
@@ -152,7 +152,7 @@ test("Cloudflare suppression, quota and sender errors preserve codes and never f
 		const env: EmailEnvironment = {
 			...production,
 			RESEND_API_KEY: "unused",
-			EMAIL: {
+			SEND_EMAIL: {
 				async send() {
 					throw failure;
 				},
@@ -174,7 +174,7 @@ test("legacy sender display names remain supported and header injection is rejec
 		...production,
 		EMAIL_FROM: "Existing Project <sender@example.com>",
 		EMAIL_FROM_NAME: undefined,
-		EMAIL: {
+		SEND_EMAIL: {
 			async send(input) {
 				sends++;
 				assert.equal(input.from && typeof input.from, "object");
@@ -267,7 +267,7 @@ test("Better Auth callbacks render both email types, schedule delivery, and keep
 		CORE_DB: unavailableD1("Email callbacks must not query D1"),
 
 		CF_VERSION_METADATA: { id: "release-1", tag: "", timestamp: "" },
-		EMAIL: {
+		SEND_EMAIL: {
 			async send(input: EmailMessage | EmailMessageBuilder) {
 				if (!("subject" in input))
 					throw new Error("Expected email builder");
@@ -313,7 +313,7 @@ test("Better Auth callbacks render both email types, schedule delivery, and keep
 	const failure = Object.assign(new Error("Quota exceeded"), {
 		code: "E_DAILY_LIMIT_EXCEEDED",
 	});
-	env.EMAIL.send = async () => {
+	env.SEND_EMAIL.send = async () => {
 		throw failure;
 	};
 	await auth.options.emailAndPassword?.sendResetPassword?.(payload);

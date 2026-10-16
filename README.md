@@ -2,7 +2,7 @@
 
 API-first, type-safe template for building fast, interactive apps on Cloudflare Workers.
 
-Start locally with Node.js 22.22.1+ and pnpm 10.34.6 (see [Getting Started](src/content/docs/v1/welcome.md) for installation):
+Start locally with Node.js 24.21.0+ and pnpm 10.34.6 (see [Getting Started](src/content/docs/v1/welcome.md) for installation):
 
 ```bash
 pnpm install
@@ -10,7 +10,7 @@ pnpm local:setup
 pnpm dev
 ```
 
-Setup creates `.dev.vars`, initializes a local auth secret, applies both local D1
+Setup creates `.env`, initializes a local auth secret, applies both local D1
 migration chains, and creates a verified administrator. It preserves existing
 settings, records, and credentials on rerun. No Cloudflare account or external
 service credentials are needed locally.
@@ -56,6 +56,7 @@ explains the architecture and boundaries.
 - [Zod](https://zod.dev/) for schema validation
 - [Astro](https://astro.build/) for marketing + product docs
 - [Scalar](https://scalar.com/) for API docs
+- [Void](https://void.cloud/) for infrastructure and deployment automation
 - [Cloudflare Workers](https://workers.cloudflare.com/) for compute
 - [D1](https://developers.cloudflare.com/d1/) for database
 - [R2](https://developers.cloudflare.com/r2/) for object storage
@@ -150,7 +151,7 @@ Turret combines session replay, error monitoring, correlated request logs, nativ
 - [Turret architecture and behavior](docs/turret.md)
 - [Observability setup and operations](docs/observability-operations.md): included defaults, account setup, SQL recipes, alerts, domain tracing, and retention
 
-Local replay totals use local D1. Backend health queries require the deployed production Analytics SQL binding and display unavailable locally. Configure dashboards, alert destinations, domain tracing, and exports for each project using the operations checklist.
+Local replay totals use local D1. Backend health queries require the deployed Analytics SQL binding and display unavailable locally. Configure dashboards, alert destinations, domain tracing, and exports for each project using the operations checklist.
 
 ## Getting started
 
@@ -163,12 +164,11 @@ Useful local commands:
 ```bash
 pnpm doctor
 pnpm status
-pnpm exec wrangler d1 migrations apply CORE_DB --local
-pnpm exec wrangler d1 migrations apply TURRET_DB --local
+pnpm db:local:migrate
 ```
 
 Local non-sensitive defaults, including `APP_URL` and `ADMIN_EMAIL`, live in
-`wrangler.json` vars. Edit `.dev.vars` to override them before setup. Email is
+`localCloudflare.vars` in `config/cloudflare.mjs`. Edit `.env` to override them before setup. Email is
 log-only locally; auth links appear in the dev terminal. Public signup is disabled
 by default; sign in with the setup administrator or use an organization invitation.
 
@@ -177,110 +177,37 @@ by default; sign in with the setup administrator or use an organization invitati
 list recipes. `just setup` installs dependencies and runs `pnpm local:setup`;
 `just dev` runs `pnpm dev`. Deployment recipes below use `just`.
 
-## Production Deployment
+## Deployment with Void
 
-This repo deploys a single production worker.
+Void is the infrastructure and deployment foundation; Astro, Hono, Better Auth,
+Drizzle, and Turret retain their product architecture.
 
-- Worker name: `the-stack-production` (`wrangler.json`)
+`void.config.ts` imports example deployment bindings from `config/cloudflare.mjs`.
+Local defaults live in `localCloudflare` in the same module. Void generates
+`.void-wrangler.jsonc`; local tooling generates `.wrangler/local/wrangler.json`.
 
-Notes:
-
-- `wrangler.json` is the source of truth.
-- Bindings (KV, D1, R2, Durable Objects, Queues, etc.) are not inherited between environments. This repo configures both local defaults and `env.production` explicitly.
-
-### Production config
-
-Before your first deploy, edit `wrangler.json` and set:
-
-- `env.production.vars.APP_URL` (your public origin, no trailing slash)
-- `env.production.vars.ADMIN_EMAIL` (where bootstrap/reset emails are sent)
-- `env.production.vars.EMAIL_FROM` (mailbox on your onboarded sending domain)
-- `env.production.vars.EMAIL_FROM_NAME` (your product name)
-
-Complete [email provider setup](docs/email.md) before enabling verification/password-reset flows. The Cloudflare transport uses the production `EMAIL` binding and requires no email API-key secret.
-
-Then set these secrets:
+This is a starter with no existing deployment. After creating your app, configure
+its name, origin, sender, and secrets using
+[the first-deployment guide](docs/DEPLOYMENT_GUIDE.md), then run:
 
 ```bash
-wrangler secret put BETTER_AUTH_SECRET --env production
-wrangler secret put BOOTSTRAP_SECRET --env production
-
-# Turret (required if using Turret ingestion)
-wrangler secret put TURRET_SIGNING_KEY --env production
+pnpm verify
+pnpm run deploy
 ```
 
-To use Resend instead, explicitly select `EMAIL_TRANSPORT=resend` and set `RESEND_API_KEY`. Missing production email configuration is reported as a failure; log-only mode is limited to local/dev/test.
+The deployment command uses Void to provision both D1 databases, both KV
+namespaces, and the replay bucket, checks the build, applies both D1 migration
+chains, and runs `void deploy --platform cloudflare` against your app’s account.
+`just deploy` is an optional shortcut.
 
-Turret mode:
+Core and Turret keep separate databases and Drizzle migrations, with independent
+D1 limits. A small adapter reuses the pinned Void SDK's provisioning engine for
+both databases. Commit `void.lock.json` after provisioning; there is no manual
+resource creation or copying IDs. See the guide for SDK compatibility and retries.
 
-- `TURRET_MODE=full` (default): full ingest when signing key exists
-- `TURRET_MODE=basic`: no ingest, admin/read surfaces remain
-- `TURRET_MODE=off`: ingest disabled
-
-## Database (D1)
-
-This repo uses two D1 databases:
-
-- `core-production` (auth + app data)
-- `turret-production` (Turret: session replay index + events)
-
-Create the databases (once):
-
-```bash
-wrangler d1 create core-production
-wrangler d1 create turret-production
-```
-
-Then replace the placeholder `database_id` values for `CORE_DB` and `TURRET_DB` in `wrangler.json` with the UUIDs returned by the commands.
-
-Apply migrations locally:
-
-```bash
-just migrate-core
-```
-
-Apply migrations in production:
-
-```bash
-wrangler d1 migrations apply CORE_DB --env production
-wrangler d1 migrations apply TURRET_DB --env production
-```
-
-## Deploy
-
-Production deploy:
-
-```bash
-just deploy-production
-```
-
-Verify deployment:
-
-```bash
-curl -i "https://<your-domain>/api/health"
-curl -i "https://<your-domain>/api/scalar"
-```
-
-Complete the [per-project observability checks](docs/observability-operations.md#per-project-acceptance-checklist) to verify telemetry, backend health, and any account alerts or exports.
-
-After the first deploy, bootstrap the initial admin user (sends a password reset email to `ADMIN_EMAIL`):
-
-```bash
-curl -X POST "https://<your-domain>/api/internal/bootstrap-admin" \
-  -H "x-bootstrap-secret: <BOOTSTRAP_SECRET>"
-```
-
-`pnpm run deploy` intentionally fails to prevent accidental deploys. Use `just deploy-production` for explicit production deploys.
-
-## Logs
-
-Tail production logs:
-
-```bash
-pnpm exec wrangler tail --env production
-```
-
-Or use `just logs`.
+Validate changes with `pnpm verify`; run browser contracts with `pnpm test:e2e`.
+Version-matched Void docs ship in `node_modules/void/docs/`; [AGENTS.md](AGENTS.md)
+explains the agent workflows.
 
 ## Internal Velocity Commands
 
@@ -302,19 +229,19 @@ Scaffold a new TanStack route file under `src/react-app/routes`:
 just new-route _public/reports
 ```
 
-Production deploy preflight (Go/No-Go):
+Check the deployable build:
 
 ```bash
-just preflight
+pnpm check
 ```
 
 ## Gotchas
 
-- Re-run `just cf-typegen` after changing `wrangler.json` bindings.
+- Re-run `just cf-typegen` after changing `config/cloudflare.mjs` bindings.
 - When you run the development server (`just dev`), the necessary route configuration and TypeScript types are automatically generated and updated in a file like `routeTree.gen.ts`.
 - Better Auth schema changes (eg. adding plugins) should be reflected in `src/bindings/d1/core/schema/better-auth.ts`, then migrated:
 
 ```bash
 just db-generate-core <your_migration_name>
-wrangler d1 migrations apply CORE_DB --env production
+pnpm run deploy
 ```

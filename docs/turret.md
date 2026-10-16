@@ -49,7 +49,7 @@ Current behavior:
 
 Evlog is the structured logging substrate. Turret remains the product surface for replay, errors, request breadcrumbs, spans, feedback, and issues.
 
-Cloudflare configuration lives in `wrangler.json`:
+Cloudflare configuration lives in `config/cloudflare.mjs`:
 
 ```jsonc
 "observability": {

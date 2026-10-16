@@ -12,7 +12,7 @@ The Stack sends verification and password-reset emails using React Email templat
 | `EMAIL`           | Cloudflare `send_email` binding               |
 | `RESEND_API_KEY`  | Secret required only when selecting Resend    |
 
-Set non-sensitive values in `wrangler.json`: local defaults under `vars`, production values under `env.production.vars`. Existing single-mailbox `EMAIL_FROM` values such as `Example <noreply@example.com>` remain supported; prefer separate mailbox/name settings for new projects.
+Set non-sensitive values in `config/cloudflare.mjs`: local defaults under `localCloudflare.vars`, production values under `deploymentCloudflare.vars`. Existing single-mailbox `EMAIL_FROM` values such as `Example <noreply@example.com>` remain supported; prefer separate mailbox/name settings for new projects.
 
 If `EMAIL_TRANSPORT` is omitted, local/dev/test environments use `log` and other environments use `cloudflare`. Invalid settings, missing provider configuration, and production log mode fail with `E_EMAIL_CONFIGURATION`. Having a Resend key does not select Resend automatically. There is no automatic provider fallback or application retry: an uncertain send result could otherwise create duplicate auth emails.
 
@@ -20,9 +20,9 @@ If `EMAIL_TRANSPORT` is omitted, local/dev/test environments use `log` and other
 
 Cloudflare Email Sending requires Cloudflare DNS, an onboarded sending domain, and Workers Paid for arbitrary recipients. Verified account destinations have different eligibility and quota rules. Check current [pricing](https://developers.cloudflare.com/email-service/platform/pricing/) and [sending limits](https://developers.cloudflare.com/email-service/platform/limits/) for your project. Email Sending is currently beta and intended for transactional messages. [Getting started](https://developers.cloudflare.com/email-service/get-started/send-emails/), [FAQ](https://developers.cloudflare.com/email-service/reference/faq/)
 
-1. In Cloudflare, open Compute → Email Service → Email Sending and onboard your sending domain. Review the DNS changes, including SPF, DKIM, and DMARC, alongside any existing mail services. Outbound sending does not require moving your inbound mailbox provider. [Domain configuration](https://developers.cloudflare.com/email-service/configuration/domains/)
-2. Set `env.production.vars.EMAIL_FROM` to a mailbox on the onboarded domain and set `EMAIL_FROM_NAME` to your product name.
-3. Keep `EMAIL_TRANSPORT=cloudflare` and the production binding:
+1. Set your sender in `deploymentCloudflare.vars.EMAIL_FROM`, then run `pnpm exec void email setup --platform cloudflare` (or accept email setup during deploy). Void configures the sender domain and `SEND_EMAIL` binding. Review the DNS changes, including SPF, DKIM, and DMARC, alongside any existing mail services. Outbound sending does not require moving your inbound mailbox provider. [Domain configuration](https://developers.cloudflare.com/email-service/configuration/domains/)
+2. Set `deploymentCloudflare.vars.EMAIL_FROM` to a mailbox on the onboarded domain and set `EMAIL_FROM_NAME` to your product name.
+3. Keep `EMAIL_TRANSPORT=cloudflare`. Void manages the deployed binding; local emulation declares:
 
     ```jsonc
     "send_email": [{ "name": "EMAIL" }]
@@ -37,17 +37,17 @@ Cloudflare Email Sending requires Cloudflare DNS, an onboarded sending domain, a
 
 The checked-in local configuration uses `EMAIL_TRANSPORT=log`. The app emits `email.log_only` metadata and prints local verification/reset URLs so you can complete auth flows without a sending domain. Real credentials do not override this selection. Auth URLs are never printed in deployed environments.
 
-To exercise the native binding locally, set `EMAIL_TRANSPORT=cloudflare` in `.dev.vars`. The included local `EMAIL` binding simulates delivery. The Astro adapter disables remote bindings, so this does not send real Cloudflare email. Use the deployed staging Worker for real delivery checks. Cloudflare also supports explicit remote development bindings, but enabling them requires deliberately changing this starter's remote-binding configuration. [Local simulation](https://developers.cloudflare.com/email-service/local-development/sending/)
+To exercise the native binding locally, set `EMAIL_TRANSPORT=cloudflare` in `.env`. The included local `EMAIL` binding simulates delivery. The Astro adapter disables remote bindings, so this does not send real Cloudflare email. Use the deployed staging Worker for real delivery checks. Cloudflare also supports explicit remote development bindings, but enabling them requires deliberately changing this starter's remote-binding configuration. [Local simulation](https://developers.cloudflare.com/email-service/local-development/sending/)
 
 ## Optional Resend configuration
 
 Set `EMAIL_TRANSPORT=resend` in the selected environment and provide `RESEND_API_KEY`. Configure the sender domain with Resend and use its authorized sender mailbox in `EMAIL_FROM`.
 
 ```bash
-pnpm exec wrangler secret put RESEND_API_KEY --env production
+pnpm exec void secret put RESEND_API_KEY
 ```
 
-For real local Resend tests, set both `EMAIL_TRANSPORT=resend` and `RESEND_API_KEY` in `.dev.vars`; this sends actual messages. Existing projects upgrading from the previous key-selected transport must choose `resend` explicitly to keep their delivery provider. Do not remove the old provider's DNS records or credentials until the chosen migration path is verified.
+For real local Resend tests, set both `EMAIL_TRANSPORT=resend` and `RESEND_API_KEY` in `.env`; this sends actual messages. Existing projects upgrading from the previous key-selected transport must choose `resend` explicitly to keep their delivery provider. Do not remove the old provider's DNS records or credentials until the chosen migration path is verified.
 
 ## Logs and failures
 

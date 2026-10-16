@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,10 +32,10 @@ test("local configuration initializes missing secrets without rotating them or c
 		const settings =
 			'# Keep my settings\nADMIN_EMAIL="builder@example.test"\n';
 		writeFileSync(
-			join(directory, ".dev.vars.example"),
+			join(directory, "local.env.example"),
 			settings + 'BETTER_AUTH_SECRET="replace-me"\n'
 		);
-		const filename = join(directory, ".dev.vars");
+		const filename = join(directory, ".env");
 		if (initial !== undefined) writeFileSync(filename, settings + initial);
 		function initialize() {
 			const result = spawnSync(process.execPath, [script], {
@@ -57,17 +63,18 @@ test("local configuration initializes missing secrets without rotating them or c
 	}
 });
 
-test("local configuration preserves an existing secret and comments byte for byte", (t) => {
+test("local configuration migrates the legacy secrets file without changing credentials or comments", (t) => {
 	const directory = mkdtempSync(join(tmpdir(), "stack-local-env-"));
 	t.after(() => rmSync(directory, { recursive: true, force: true }));
-	const filename = join(directory, ".dev.vars");
+	const filename = join(directory, ".env");
 	const source =
 		'# My auth settings\nexport BETTER_AUTH_SECRET="already-configured-local-secret-12345" # keep this\n';
-	writeFileSync(filename, source);
+	writeFileSync(join(directory, ".dev.vars"), source);
 	const result = spawnSync(process.execPath, [script], {
 		cwd: directory,
 		encoding: "utf8",
 	});
 	assert.equal(result.status, 0, result.stderr);
 	assert.equal(readFileSync(filename, "utf8"), source);
+	assert.equal(existsSync(join(directory, ".dev.vars")), false);
 });

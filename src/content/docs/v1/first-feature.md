@@ -69,7 +69,7 @@ ALTER TABLE `projects` ADD `status` text DEFAULT 'planned' NOT NULL;
 Do not modify previous migrations or their snapshots. Apply the new migration locally:
 
 ```bash
-pnpm exec wrangler d1 migrations apply CORE_DB --local
+pnpm db:local:migrate
 pnpm test:migrations
 ```
 
@@ -206,7 +206,7 @@ it. Use the [extension reference](/docs/v1/extend/) when replacing Projects.
 
 For initial branding, edit `src/pages/index.astro`, `src/layouts/Layout.astro`,
 and `src/layouts/DocsLayout.astro`; configure `PRODUCT_NAME` and `EMAIL_FROM_NAME`
-in `wrangler.json` for auth and email. Product documentation lives under
+in `config/cloudflare.mjs` for auth and email. Product documentation lives under
 `src/content/docs/`.
 
 Follow the [deployment runbook](/docs/v1/deploy-runbook/) when ready to publish.

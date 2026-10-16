@@ -97,9 +97,9 @@ R2 is usually safe operationally, but failures come from application logic:
 
 Pre-prod checklist (automatable in CI):
 
-- `wrangler deploy --dry-run` (validate config, bundling, migrations plan)
+- `pnpm check` (validate the app and Worker bundle; review both migration chains separately)
 - Integration smoke tests against staging environment resources
-- Remote dev sanity check (`wrangler dev --remote --env staging`) for binding correctness
+- Binding checks against separately configured staging resources; the Void Cloudflare target has no named Wrangler environments (see [deployment setup](DEPLOYMENT_GUIDE.md))
 
 Prod rollout checklist:
 

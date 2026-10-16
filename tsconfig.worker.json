@@ -9,6 +9,12 @@
 			"@/*": ["./src/*"]
 		}
 	},
-	"include": ["src/worker", "src/worker.ts", "src/contracts", "src/bindings"],
+	"include": [
+		"src/worker",
+		"src/worker.ts",
+		"src/contracts",
+		"src/bindings",
+		"crons"
+	],
 	"exclude": ["src/bindings/d1/**/drizzle.studio.local.config.ts"]
 }

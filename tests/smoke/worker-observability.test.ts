@@ -1,3 +1,4 @@
+import retention, { cron } from "../../crons/turret-retention";
 import { testRouteLabel } from "../helpers/route-label";
 import { fingerprintHttp5xx } from "../../src/worker/turret/fingerprinting";
 import { recordWorkerError } from "../../src/worker/observability/turret";
@@ -48,6 +49,13 @@ function fixture() {
 		}
 		setStatus(_status: TracingSpanStatus) {
 			return this;
+		}
+		spanContext() {
+			return {
+				traceId: "test-trace",
+				spanId: "test-span",
+				traceFlags: 1,
+			};
 		}
 		end() {}
 	}
@@ -433,14 +441,15 @@ test("Cleanup emits completion, preserves failure, and never masks scheduled err
 	const logs = captureLogs(t);
 	const f = fixture();
 	t.after(() => f.sqlite.close());
-	await worker.scheduled(
+	assert.equal(cron, "0 * * * *");
+	await retention(
 		{ cron: "0 * * * *", scheduledTime: Date.now(), noRetry() {} },
 		f.env,
 		f.ctx
 	);
 	f.sqlite.exec("DROP TABLE turret_request_spans");
 	await assert.rejects(
-		worker.scheduled(
+		retention(
 			{ cron: "0 * * * *", scheduledTime: Date.now(), noRetry() {} },
 			f.env,
 			f.ctx

@@ -20,22 +20,22 @@ status:
     pnpm status
 
 cf-typegen:
-    pnpm exec wrangler types
+    pnpm cf:typegen
 
-migrate-core:
-    pnpm exec wrangler d1 migrations apply CORE_DB --local
-
-migrate-turret:
-    pnpm exec wrangler d1 migrations apply TURRET_DB --local
+migrate:
+    pnpm db:local:migrate
 
 studio-core:
-    pnpm exec wrangler d1 migrations apply CORE_DB --local && DRIZZLE_DB_PATH=$(node scripts/find-d1-sqlite.mjs core_users) node scripts/drizzle-studio-core-local.mjs
+    pnpm db:local:migrate
+    DRIZZLE_DB_PATH=$(node scripts/find-d1-sqlite.mjs core_users) node scripts/drizzle-studio-core-local.mjs
 
 studio-turret:
-    pnpm exec wrangler d1 migrations apply TURRET_DB --local && DRIZZLE_DB_PATH=$(node scripts/find-d1-sqlite.mjs turret_sessions) node scripts/drizzle-studio-turret-local.mjs
+    pnpm db:local:migrate
+    DRIZZLE_DB_PATH=$(node scripts/find-d1-sqlite.mjs turret_sessions) node scripts/drizzle-studio-turret-local.mjs
 
 admin-create:
-    pnpm exec wrangler d1 migrations apply CORE_DB --local && node scripts/create-admin-local.mjs
+    pnpm db:local:migrate
+    node scripts/create-admin-local.mjs
 
 check-fast:
     pnpm run lint && pnpm test
@@ -55,14 +55,11 @@ seed:
 reset:
     node scripts/reset-local.mjs
 
-preflight:
-    node scripts/deploy-preflight.mjs
-
-deploy-production:
-    CLOUDFLARE_ENV=production pnpm run build && pnpm exec wrangler deploy --config dist/server/wrangler.json
+deploy:
+    pnpm run deploy
 
 logs:
-    pnpm exec wrangler tail --env production
+    pnpm exec wrangler tail --name the-stack
 
 db-generate-core name:
     pnpm exec drizzle-kit generate --config src/bindings/d1/core/drizzle.config.ts --name {{ name }}

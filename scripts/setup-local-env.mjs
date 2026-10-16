@@ -1,10 +1,19 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import dotenv from "dotenv";
 
-const filename = ".dev.vars";
+const filename = ".env";
+// Preserve existing checkouts when moving from Wrangler's local secrets file.
+if (existsSync(".dev.vars")) {
+	if (existsSync(filename))
+		throw new Error(
+			"Both .dev.vars and .env exist. Merge them into .env before setup."
+		);
+	renameSync(".dev.vars", filename);
+	process.stdout.write("Moved existing local configuration to .env.\n");
+}
 const exists = existsSync(filename);
-const source = readFileSync(exists ? filename : ".dev.vars.example", "utf8");
+const source = readFileSync(exists ? filename : "local.env.example", "utf8");
 const configured = dotenv.parse(source).BETTER_AUTH_SECRET;
 const usable = (value) =>
 	Boolean(value?.trim()) && value.trim() !== "replace-me";
@@ -25,9 +34,7 @@ if (usable(configured)) {
 			)
 		: `${source.trimEnd()}\n${assignment}\n`;
 	writeFileSync(filename, updated, { mode: 0o600 });
-	process.stdout.write(
-		"Initialized local BETTER_AUTH_SECRET in .dev.vars.\n"
-	);
+	process.stdout.write("Initialized local BETTER_AUTH_SECRET in .env.\n");
 }
 
 if (!exists && usable(configured)) {

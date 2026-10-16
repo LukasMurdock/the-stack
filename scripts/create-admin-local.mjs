@@ -90,7 +90,7 @@ if (loaded.error) throw loaded.error;
 const email = (args.email ?? process.env.ADMIN_EMAIL ?? "").trim();
 if (!email) {
 	die(
-		"Missing admin email. Set ADMIN_EMAIL in wrangler.json vars or pass --email you@example.com"
+		"Missing admin email. Set ADMIN_EMAIL in config/cloudflare.mjs localCloudflare.vars or pass --email you@example.com"
 	);
 }
 

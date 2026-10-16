@@ -33,17 +33,8 @@ test("local bootstrap creates a usable admin credential and preserves it on reru
 		"dir"
 	);
 	writeFileSync(
-		join(directory, ".dev.vars"),
-		'BETTER_AUTH_SECRET="bootstrap-test-secret-at-least-thirty-two-characters"\n'
-	);
-	writeFileSync(
-		join(directory, "wrangler.json"),
-		JSON.stringify({
-			vars: {
-				APP_URL: "http://localhost:4321",
-				ADMIN_EMAIL: "ADMIN@example.test",
-			},
-		})
+		join(directory, ".env"),
+		'BETTER_AUTH_SECRET="bootstrap-test-secret-at-least-thirty-two-characters"\nADMIN_EMAIL="ADMIN@example.test"\nAPP_URL="http://localhost:4321"\n'
 	);
 	const initial = migratedSqlite("core");
 	const filename = join(state, "core.sqlite");
@@ -93,7 +84,7 @@ test("local bootstrap creates a usable admin credential and preserves it on reru
 	assert.match(bootstrap(), /credential password unchanged/);
 	assert.equal(readFileSync(passwordFile, "utf8"), saved);
 	writeFileSync(
-		join(directory, ".dev.vars"),
+		join(directory, ".env"),
 		'ADMIN_EMAIL="dev@example.test"\nAPP_URL="http://dev.example.test"\n'
 	);
 	const status = spawnSync(process.execPath, ["scripts/dev-status.mjs"], {

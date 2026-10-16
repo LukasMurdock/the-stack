@@ -3,7 +3,8 @@
 	"compilerOptions": {
 		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tests.tsbuildinfo",
 		"types": ["vite/client", "node", "./worker-configuration.d.ts"],
-		"lib": ["ES2024", "DOM", "DOM.Iterable"]
+		"lib": ["ES2024", "DOM", "DOM.Iterable"],
+		"allowJs": true
 	},
 	"include": [
 		"tests/**/*.ts",

@@ -93,9 +93,7 @@ node_modules/
 ### Wrangler ###
 .wrangler/
 .env*
-!.env.example
 .dev.vars*
-!.dev.vars.example
 worker-configuration.d.ts
 
 /dist
@@ -106,3 +104,7 @@ worker-configuration.d.ts
 
 /test-results/
 /playwright-report/
+
+# Void generated configuration and local platform state
+.void/
+.void-wrangler.jsonc

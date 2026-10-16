@@ -51,7 +51,7 @@ Analytics Engine can sample and ingest asynchronously. SQL `COUNT`, `SUM`, and `
 
 ## Verify the deployed SQL schema
 
-The Analytics SQL binding requires Wrangler 4.145+. Configure the production bindings already present in `wrangler.json`, provision the real D1/KV/R2 resources, and deploy through the existing preflight/deployment workflow. An empty/new Analytics Engine dataset may not be discoverable until it receives points.
+The Analytics SQL binding requires Wrangler 4.145+. Configure the production bindings already present in `config/cloudflare.mjs`, deploy through the Void workflow, which provisions both D1 databases, both KV namespaces, and the replay bucket. An empty/new Analytics Engine dataset may not be discoverable until it receives points.
 
 Use a token with Account Analytics Read plus any dataset-specific read permissions, scoped to the account. Keep it in `CLOUDFLARE_API_TOKEN` and the account in `CLOUDFLARE_ACCOUNT_ID`; never paste credentials into repository files. These commands perform reads only:
 

@@ -10,6 +10,9 @@
 	"ignorePatterns": [
 		"dist",
 		"**/routeTree.gen.ts",
-		"tools/oxlint/anti-slop/**"
+		"tools/oxlint/anti-slop/**",
+		".void/**",
+		".void-wrangler.jsonc",
+		"worker-configuration.d.ts"
 	]
 }

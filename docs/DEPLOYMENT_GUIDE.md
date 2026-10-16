@@ -1,95 +1,98 @@
-# Deployment Guide (Production)
+# Deploy a new app with Void
 
-This guide is the canonical production deploy and rollback runbook.
+The Stack is a starter with no existing deployment or resources. Void provisions
+its Cloudflare resources, records their IDs, and publishes its Astro/Hono Worker.
+No dashboard resource creation or copying database/namespace IDs is required.
 
-## Topology
+## Configure your app
 
-Production has one Worker:
+In `config/cloudflare.mjs`, set:
 
-- Main app Worker: `wrangler.json` (`the-stack-production`)
+- `appName`: your unique Worker name. Database and namespace names derive from it.
+- `deploymentCloudflare.vars.APP_URL`: your deployed HTTPS origin.
+- `ADMIN_EMAIL`: the address for your app's first administrator.
+- `EMAIL_FROM` and `EMAIL_FROM_NAME`: your sender and product name.
 
-`pnpm run deploy` intentionally fails to prevent accidental deploys.
-
-## Prerequisites
-
-- Node.js + pnpm
-- Cloudflare account + Wrangler auth
-- Production IDs/secrets configured in `wrangler.json`
-
-Before first deploy, replace placeholders in `wrangler.json`:
-
-- `env.production.vars.APP_URL`, `ADMIN_EMAIL`, `EMAIL_FROM`, and D1 IDs
-- Email sender/domain and transport configured using [email setup](email.md)
+Keep `localCloudflare` for local emulation. Local setup still needs no cloud account:
 
 ```bash
-pnpm exec wrangler whoami
-# If needed:
-pnpm exec wrangler login
+pnpm install
+pnpm local:setup
+pnpm dev
 ```
 
-## Deploy (Go/No-Go)
-
-### 1) Preflight
+## Connect, configure secrets, and deploy
 
 ```bash
-just preflight
+pnpm exec void connect --platform cloudflare
+pnpm exec void secret put BETTER_AUTH_SECRET
+pnpm exec void secret put BOOTSTRAP_SECRET
+pnpm exec void secret put TURRET_SIGNING_KEY
+pnpm verify
+pnpm run deploy
 ```
 
-Preflight validates:
+Use `pnpm run deploy`: pnpm reserves bare `deploy` for its own use. `just deploy`
+is an optional shortcut. Credentials and sender-domain ownership are supplied by
+the app owner; infrastructure resources are created by the deployment workflow.
+Never copy local `.env` secrets into a deployment automatically.
 
-- app production placeholders are removed
-- app production D1 IDs are configured
-- test/build pass
-- dry-run deploy works
+The deploy command:
 
-### 2) Apply database migrations
+1. Uses Void to connect and pin the intended Cloudflare account.
+2. Uses Void's provisioning engine to create or reuse **separate** Core and
+   Turret D1 databases, both KV namespaces, and the replay R2 bucket.
+3. Builds and validates the Worker, then applies each database's own migrations.
+4. Runs `void deploy --platform cloudflare` to configure email, publish the
+   Worker, check readiness, and update schedules.
 
-Apply pending migrations to both production databases before deploying:
+Void configures email from `void.config.ts`'s `email.from`, derived from your
+sender setting. It reviews the domain/DNS changes before applying them. Select
+a sender on a Cloudflare zone you own; existing mail providers' MX records are
+preserved. Use `pnpm exec void email setup --platform cloudflare` before CI, and
+see [email setup](email.md). Declining email setup deploys without delivery.
 
-```bash
-pnpm exec wrangler d1 migrations apply CORE_DB --remote --env production
-pnpm exec wrangler d1 migrations apply TURRET_DB --remote --env production
-```
+Analytics Engine datasets are created automatically on first write from their
+configured bindings; there is no separate dataset-create command. See
+[Cloudflare's setup guide](https://developers.cloudflare.com/analytics/analytics-engine/get-started/).
+The Analytics SQL binding and Turret's hourly cleanup job are included.
 
-These migrations create the organization capabilities and keep replay chunk metadata unique. `just deploy-production` does not apply migrations.
+## Resource state and retries
 
-### 3) Deploy
+Commit `void.lock.json` after provisioning. It contains resolved resource IDs,
+so another machine or CI reuses the same resources. `.void-wrangler.jsonc`,
+`.wrangler/local/wrangler.json`, and `dist/server/wrangler.json` are generated.
+Keep credentials and local `.void` state out of Git.
 
-```bash
-just deploy-production
-```
+A failure can leave successfully provisioned resources in your account. Rerunning
+uses the recorded IDs and Void's resource discovery instead of creating copies.
+If one database fails, migrations and application publication do not run. Core
+and Turret must have distinct names and IDs, preserving their separate D1 limits.
 
-This deploys the main production worker.
+## Why there is a small adapter
 
-### 4) Verify
+Void 0.28's public inference models one primary D1 database. The Stack uses two.
+`scripts/provision-resources.mjs` calls the **installed Void provisioning engine**
+once for each declared database; that engine owns account checks, discovery,
+creation, locking, retries, and writing `void.lock.json`. The Stack does not
+implement a second set of Cloudflare provisioning requests.
 
-```bash
-curl -i "https://<your-domain>/api/health"
-curl -i "https://<your-domain>/api/readiness"
-curl -i "https://<your-domain>/api/scalar"
-```
+The SDK's internal entry points are isolated in `scripts/lib/void-cloudflare.mjs`
+and checked against the exact pinned Void version. Updating Void requires
+validating this adapter and its transport-level tests. Database migrations remain
+explicit per database until Void offers a public multi-database workflow.
 
-Expected:
+## Validate your new app
 
-- `/api/health` returns `200` with `ok: true`
-- `/api/readiness` returns `200` when the required core database schema is available
-- `/api/scalar` returns `200`
+After deploying, check `/api/health`, `/api/readiness`, and `/api/doc`, test
+sign-in and organization permissions, and complete the [email](email.md) and
+[observability](observability-operations.md) acceptance checks. Bootstrap the first
+administrator with `POST /api/internal/bootstrap-admin` and the
+`x-bootstrap-secret` header.
 
-Tail logs as needed:
+Local development and browser tests use isolated local resources with remote
+bindings disabled. `pnpm preview` runs locally. Cloud previews need their own
+app configuration and lock state; a Worker version URL alone does not isolate data.
 
-```bash
-pnpm exec wrangler tail --env production
-```
-
-For a new project, complete the [observability acceptance checklist](observability-operations.md#per-project-acceptance-checklist). Verify deployed metrics and the admin backend health view, then configure the dashboards, alerts, domain tracing, and exports your project needs.
-
-## Rollback
-
-### Roll back worker
-
-```bash
-pnpm exec wrangler versions list --env production --config wrangler.json
-pnpm exec wrangler rollback <version-id> --env production --config wrangler.json
-```
-
-After rollback, re-run verify checks and keep incident notes with the version ID.
+This workflow targets the app owner's Cloudflare account. A managed Void platform
+is a separate target and needs compatibility validation for the custom bindings.

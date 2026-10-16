@@ -26,7 +26,8 @@
 		".gemini/**",
 		".pi/**",
 		".roo/**",
-		".windsurf/**"
+		".windsurf/**",
+		".void/**"
 	],
 	"overrides": [
 		{

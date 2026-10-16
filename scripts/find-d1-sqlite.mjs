@@ -91,5 +91,5 @@ if (matches.length > 1) {
 die(
 	`Could not find a local D1 sqlite file containing table '${needle}'.\n` +
 		`Looked in: ${absPersistDir}\n` +
-		"Tip: run your local migrations first (just migrate-core / just migrate-turret)."
+		"Tip: run your local migrations first (pnpm db:local:migrate)."
 );

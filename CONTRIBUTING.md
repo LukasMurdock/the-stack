@@ -4,7 +4,7 @@ Thanks for helping improve The Stack.
 
 ## Local setup
 
-Follow [Getting Started](src/content/docs/v1/welcome.md):
+Use Node 24.21.0+ (required by Void). Follow [Getting Started](src/content/docs/v1/welcome.md):
 
 ```bash
 pnpm install
@@ -22,7 +22,7 @@ feature ownership and permissions.
 
 `just` is optional for local development. Install it with `brew install just`
 (macOS) or `cargo install just` (Linux) to use maintenance recipes such as
-`just seed`, `just new-route _public/example`, and `just preflight`.
+`just seed`, `just new-route _public/example`, and `pnpm check`.
 `just seed` populates observability demos; it does not create organizations or projects.
 
 ## Validation
@@ -65,10 +65,10 @@ To reset local state from scratch:
 just reset
 ```
 
-Before production deploys, run:
+Before deploying an app created from this starter, run:
 
 ```bash
-just preflight
+pnpm check
 ```
 
 ## Pull requests

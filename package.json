@@ -11,28 +11,28 @@
 	},
 	"scripts": {
 		"local:setup": "node scripts/setup-local.mjs",
-		"build": "astro sync && tsc -b && astro build",
-		"check": "CLOUDFLARE_ENV=production pnpm run build && wrangler deploy --config dist/server/wrangler.json --dry-run",
-		"deploy": "node -e \"console.error('Refusing to deploy without an env. Use: just deploy-production'); process.exit(1)\"",
+		"build": "pnpm run cf:typegen && STACK_BUILD=deploy astro sync && tsc -b && STACK_BUILD=deploy astro build",
+		"check": "pnpm run build && wrangler deploy --config dist/server/wrangler.json --dry-run",
+		"deploy": "node scripts/deploy.mjs",
 		"dev": "astro dev",
 		"doctor": "node scripts/dev-doctor.mjs",
 		"status": "node scripts/dev-status.mjs",
 		"lint": "oxlint .",
 		"prepare": "husky",
 		"test": "tsx --tsconfig tsconfig.app.json --test \"tests/unit/**/*.test.ts\" \"tests/integration/**/*.test.ts\" \"tests/smoke/**/*.test.ts\"",
-		"preview": "pnpm run build && astro preview",
-		"db:core:generate": "drizzle-kit generate --config src/bindings/d1/core/drizzle.config.ts",
-		"db:turret:generate": "drizzle-kit generate --config src/bindings/d1/turret/drizzle.config.ts",
+		"preview": "astro sync && tsc -b && astro build && node scripts/preview.mjs",
 		"email:dev": "email dev",
 		"format": "oxfmt --write .",
 		"format:check": "oxfmt --check .",
-		"db:local:squash": "rm -rf src/bindings/d1/core/drizzle/* && pnpm run db:core:generate && wrangler d1 migrations apply CORE_DB --local",
-		"db:local:squash-turret": "rm -rf src/bindings/d1/turret/drizzle/* && pnpm run db:turret:generate && wrangler d1 migrations apply TURRET_DB --local",
 		"test:e2e": "playwright test",
-		"verify": "pnpm run lint && pnpm run format:check && pnpm run build && pnpm run test:types && pnpm test && pnpm run test:migrations",
+		"verify": "pnpm run lint && pnpm run format:check && pnpm run build && pnpm run test:types && pnpm test && pnpm run test:migrations && pnpm run test:tooling",
 		"test:types": "tsc -p tsconfig.tests.json",
 		"test:tooling": "tsx --tsconfig tsconfig.app.json --test \"tests/tooling/**/*.test.ts\"",
-		"test:migrations": "tsx --tsconfig tsconfig.app.json scripts/testing/check-migrations.ts"
+		"test:migrations": "tsx --tsconfig tsconfig.app.json scripts/testing/check-migrations.ts",
+		"cf:typegen": "node scripts/generate-types.mjs",
+		"db:local:migrate": "node scripts/local-cloudflare.mjs && wrangler d1 migrations apply CORE_DB --local --config .wrangler/local/wrangler.json --persist-to .wrangler/state && wrangler d1 migrations apply TURRET_DB --local --config .wrangler/local/wrangler.json --persist-to .wrangler/state",
+		"db:core:generate": "drizzle-kit generate --config src/bindings/d1/core/drizzle.config.ts",
+		"db:turret:generate": "drizzle-kit generate --config src/bindings/d1/turret/drizzle.config.ts"
 	},
 	"dependencies": {
 		"@astrojs/cloudflare": "14.3.3",
@@ -102,12 +102,13 @@
 		"tw-animate-css": "^1.4.0",
 		"typescript": "npm:@typescript/typescript6@~6.0.2",
 		"vite": "^8.3.2",
-		"wrangler": "^4.147.0"
+		"void": "0.28.0",
+		"wrangler": "^4.151.0"
 	},
 	"private": true,
 	"type": "module",
 	"engines": {
-		"node": ">=22.22.1"
+		"node": ">=24.21.0"
 	},
 	"packageManager": "pnpm@10.34.6",
 	"lint-staged": {

@@ -9,8 +9,7 @@ pubDate: "2026-02-27"
 ## Local workflow
 
 ```bash
-pnpm exec wrangler d1 migrations apply CORE_DB --local
-pnpm exec wrangler d1 migrations apply TURRET_DB --local
+pnpm db:local:migrate
 ```
 
 If you use the optional `just` task runner, `just studio-core` and
@@ -27,8 +26,10 @@ Review generated SQL before applying remotely.
 ## Production workflow
 
 ```bash
-pnpm exec wrangler d1 migrations apply CORE_DB --env production
-pnpm exec wrangler d1 migrations apply TURRET_DB --env production
+pnpm run deploy
 ```
+
+The release wrapper applies both migration directories before Void publishes the Worker.
+See `docs/DEPLOYMENT_GUIDE.md` for configuration and release checks.
 
 Use expand/contract for schema changes that affect live traffic.

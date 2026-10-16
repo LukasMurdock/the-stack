@@ -7,7 +7,7 @@ pubDate: "2026-10-07"
 # Getting Started
 
 Start with a working local app, then change one feature. You need Node.js
-22.22.1+ and pnpm 10.34.6. A Cloudflare account, email provider, OAuth credentials,
+24.21.0+ and pnpm 10.34.6. A Cloudflare account, email provider, OAuth credentials,
 and `just` are not needed for this local walkthrough.
 
 ## 1. Get the starter
@@ -38,9 +38,9 @@ pnpm local:setup
 pnpm dev
 ```
 
-`pnpm local:setup` creates `.dev.vars` from the example when absent and generates
+`pnpm local:setup` creates `.env` from the example when absent and generates
 `BETTER_AUTH_SECRET` if it is missing, empty, or `replace-me`. Existing configured
-secrets and other settings are preserved. The local secret comes from `.dev.vars`;
+secrets and other settings are preserved. The local secret comes from `.env`;
 exporting a shell variable does not replace it during setup.
 
 Setup applies both local D1 migration chains and creates a verified administrator.
@@ -53,8 +53,8 @@ If your coding agent starts Astro in the background, use
 Use `pnpm exec astro dev stop` to stop that background server.
 
 Local defaults, including `APP_URL` and `ADMIN_EMAIL=admin@localhost.test`, live in
-`wrangler.json` vars. To choose another local admin email, add `ADMIN_EMAIL` to
-`.dev.vars` before setup. Optional credentials are empty by default. Local email
+`localCloudflare.vars` in `config/cloudflare.mjs`. To choose another local admin email, add `ADMIN_EMAIL` to
+`.env` before setup. Optional credentials are empty by default. Local email
 is log-only: auth verification and recovery links appear in the dev terminal.
 
 ## 3. Sign in and create a record
@@ -114,11 +114,11 @@ boundaries, [auth guide](/docs/v1/auth/) for onboarding policy, and
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pnpm` not found                           | Install pnpm using the command above.                                                                                                                                 |
 | Missing dependency or Wrangler unavailable | Run `pnpm install`, then `pnpm local:setup`.                                                                                                                          |
-| An optional key still equals `replace-me`  | Set that key to `""` in `.dev.vars` to disable it, then rerun setup.                                                                                                  |
+| An optional key still equals `replace-me`  | Set that key to `""` in `.env` to disable it, then rerun setup.                                                                                                       |
 | Can't find the initial password            | Read `.wrangler/.admin-password`; if it was lost, run `node scripts/create-admin-local.mjs --force-reset-password` to deliberately replace this local admin password. |
 | No signup button                           | Invite-only mode is the default. Use the setup administrator; invitations support new users.                                                                          |
 | Verification email never arrives           | Read the link in the dev-server terminal; email is log-only locally.                                                                                                  |
-| Port 4321 is occupied                      | Stop the other server, or change `APP_URL` in `.dev.vars` and run `pnpm dev --port <matching-port>`.                                                                  |
+| Port 4321 is occupied                      | Stop the other server, or change `APP_URL` in `.env` and run `pnpm dev --port <matching-port>`.                                                                       |
 
 `pnpm doctor` diagnoses configuration; `pnpm status` prints useful URLs.
 `just` is an optional maintenance shortcut. `just seed` fills observability demo
