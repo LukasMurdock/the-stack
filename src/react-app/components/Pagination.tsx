@@ -32,7 +32,7 @@ export function Pagination({
 			<span className="text-sm tabular-nums">
 				{offset < total
 					? `${count(offset + 1)}–${count(end)} of ${count(total)}`
-					: `Page ${count(offset / PAGE_SIZE + 1)}`}
+					: `Page ${count(Math.floor(offset / PAGE_SIZE) + 1)}`}
 			</span>
 			<Button
 				variant="outline"
