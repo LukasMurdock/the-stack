@@ -164,7 +164,7 @@ export const routes = app
 				SELECT id, actor_id AS actorId, kind, detail_json AS detailJson,
 					created_at AS createdAt
 				FROM turret_issue_activity WHERE fingerprint = ${fingerprint}
-				ORDER BY created_at DESC, id DESC
+				ORDER BY created_at DESC, rowid DESC
 				LIMIT ${ACTIVITY_MAX}
 			`);
 			const activity = rows.map(({ detailJson, ...row }) =>

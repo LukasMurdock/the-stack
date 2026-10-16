@@ -13,7 +13,7 @@ import {
 	organizationsQuery,
 	createOrganizationMutation,
 } from "../../../features/organizations/queries";
-import { Pagination } from "../../../features/organizations/Pagination";
+import { Pagination } from "../../../components/Pagination";
 export const Route = createFileRoute("/_authenticated/organizations/")({
 	loader: ({ context }) =>
 		context.queryClient.ensureQueryData(organizationsQuery(context.userId)),
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/organizations/")({
 function OrganizationsPage() {
 	const { userId } = Route.useRouteContext();
 	const [offset, setOffset] = useState(0);
-	const { organizations } = useSuspenseQuery(
+	const { organizations, page } = useSuspenseQuery(
 		organizationsQuery(userId, offset)
 	).data;
 	const form = useRef<HTMLFormElement>(null);
@@ -50,11 +50,7 @@ function OrganizationsPage() {
 				))}
 			</ul>
 			{!organizations.length && <p>No organizations on this page.</p>}
-			<Pagination
-				offset={offset}
-				count={organizations.length}
-				onPage={setOffset}
-			/>
+			<Pagination page={page} onPage={setOffset} />
 			<form
 				ref={form}
 				className="max-w-lg space-y-3"

@@ -35,17 +35,14 @@ export const routes = app
 				...errorResponses,
 			},
 		}),
-		async (c) =>
-			c.json(
-				{
-					projects: await listProjects(
-						c.get("operation"),
-						c.req.valid("param").organizationId,
-						c.req.valid("query")
-					),
-				},
-				200
-			)
+		async (c) => {
+			const { rows, page } = await listProjects(
+				c.get("operation"),
+				c.req.valid("param").organizationId,
+				c.req.valid("query")
+			);
+			return c.json({ projects: rows, page }, 200);
+		}
 	)
 	.openapi(
 		createRoute({

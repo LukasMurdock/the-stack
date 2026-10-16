@@ -1,4 +1,4 @@
-import { PAGE_SIZE, pageSchema } from "../../contracts/pagination";
+import { pageSchema } from "../../contracts/pagination";
 import { and, eq, sql } from "drizzle-orm";
 import { memberships, organizations } from "../../bindings/d1/core/schema";
 import { createOrganizationSchema } from "../../contracts/organizations";
@@ -8,27 +8,30 @@ import {
 	ProductError,
 	type OperationContext,
 } from "../shared/context";
+import { matchedRows, readPage } from "../shared/paging";
 
 export async function listOrganizations(
 	context: OperationContext,
 	input: unknown = {}
 ) {
 	const { offset } = commandInput(pageSchema, input);
-	return context.db
-		.select({
-			id: organizations.id,
-			name: organizations.name,
-			role: memberships.role,
-		})
-		.from(organizations)
-		.innerJoin(
-			memberships,
-			eq(memberships.organizationId, organizations.id)
-		)
-		.where(eq(memberships.userId, context.actor.userId))
-		.orderBy(organizations.name, organizations.id)
-		.limit(PAGE_SIZE)
-		.offset(offset);
+	return readPage(
+		context.db
+			.select({
+				id: organizations.id,
+				name: organizations.name,
+				role: memberships.role,
+				matched: matchedRows,
+			})
+			.from(organizations)
+			.innerJoin(
+				memberships,
+				eq(memberships.organizationId, organizations.id)
+			)
+			.where(eq(memberships.userId, context.actor.userId))
+			.orderBy(organizations.name, organizations.id),
+		offset
+	);
 }
 export async function getOrganization(
 	context: OperationContext,

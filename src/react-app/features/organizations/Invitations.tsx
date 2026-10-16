@@ -9,7 +9,7 @@ import {
 	inviteMemberMutation,
 	revokeInvitationMutation,
 } from "./queries";
-import { Pagination } from "./Pagination";
+import { Pagination } from "../../components/Pagination";
 import { MutationFeedback } from "../../forms/feedback";
 export function Invitations({
 	userId,
@@ -138,11 +138,7 @@ export function Invitations({
 							</li>
 						))}
 					</ul>
-					<Pagination
-						offset={offset}
-						count={pending.data.invitations.length}
-						onPage={setOffset}
-					/>
+					<Pagination page={pending.data.page} onPage={setOffset} />
 				</>
 			)}
 		</section>

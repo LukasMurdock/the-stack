@@ -190,18 +190,14 @@ export const routes = app
 			c.header("Set-Cookie", cookie, { append: true });
 		return c.json({ ok: true as const }, 200);
 	})
-	.openapi(getInvitations, async (c) =>
-		c.json(
-			{
-				invitations: await organizations.listInvitations(
-					c.get("operation"),
-					c.req.valid("param").organizationId,
-					c.req.valid("query")
-				),
-			},
-			200
-		)
-	)
+	.openapi(getInvitations, async (c) => {
+		const { rows, page } = await organizations.listInvitations(
+			c.get("operation"),
+			c.req.valid("param").organizationId,
+			c.req.valid("query")
+		);
+		return c.json({ invitations: rows, page }, 200);
+	})
 	.openapi(postInvitations, async (c) =>
 		c.json(
 			{

@@ -1,4 +1,4 @@
-import { PAGE_SIZE, pageSchema } from "../../contracts/pagination";
+import { pageSchema } from "../../contracts/pagination";
 import { and, eq, inArray } from "drizzle-orm";
 import { resourceIdSchema } from "../../contracts/operation";
 import { membershipPredicate, requireMembership } from "./authorization";
@@ -7,6 +7,7 @@ import {
 	ProductError,
 	type OperationContext,
 } from "../shared/context";
+import { matchedRows, readPage } from "../shared/paging";
 import { auth_user, memberships } from "../../bindings/d1/core/schema";
 import { assignableRoleSchema } from "./policy";
 import {
@@ -22,24 +23,26 @@ export async function listMembers(
 	const { offset } = commandInput(pageSchema, input);
 	commandInput(resourceIdSchema, organizationId);
 	await requireMembership(context, organizationId);
-	return context.db
-		.select({
-			userId: memberships.userId,
-			name: auth_user.name,
-			email: auth_user.email,
-			role: memberships.role,
-		})
-		.from(memberships)
-		.innerJoin(auth_user, eq(auth_user.id, memberships.userId))
-		.where(
-			and(
-				eq(memberships.organizationId, organizationId),
-				membershipPredicate(context, organizationId, "read")
+	return readPage(
+		context.db
+			.select({
+				userId: memberships.userId,
+				name: auth_user.name,
+				email: auth_user.email,
+				role: memberships.role,
+				matched: matchedRows,
+			})
+			.from(memberships)
+			.innerJoin(auth_user, eq(auth_user.id, memberships.userId))
+			.where(
+				and(
+					eq(memberships.organizationId, organizationId),
+					membershipPredicate(context, organizationId, "read")
+				)
 			)
-		)
-		.orderBy(auth_user.name, auth_user.id)
-		.limit(PAGE_SIZE)
-		.offset(offset);
+			.orderBy(auth_user.name, auth_user.id),
+		offset
+	);
 }
 export async function changeMember(
 	context: OperationContext,

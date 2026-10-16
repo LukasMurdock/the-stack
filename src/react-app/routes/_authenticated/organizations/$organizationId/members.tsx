@@ -14,7 +14,7 @@ import {
 	changeMemberMutation,
 	removeMemberMutation,
 } from "../../../../features/organizations/queries";
-import { Pagination } from "../../../../features/organizations/Pagination";
+import { Pagination } from "../../../../components/Pagination";
 import { Invitations } from "../../../../features/organizations/Invitations";
 import { MutationFeedback } from "../../../../forms/feedback";
 export const Route = createFileRoute(
@@ -30,7 +30,7 @@ function MembersPage() {
 	const { userId } = Route.useRouteContext();
 	const { organizationId } = Route.useParams();
 	const [offset, setOffset] = useState(0);
-	const { members } = useSuspenseQuery(
+	const { members, page } = useSuspenseQuery(
 		membersQuery(userId, organizationId, offset)
 	).data;
 	const { organization } = useSuspenseQuery(
@@ -111,11 +111,7 @@ function MembersPage() {
 				))}
 			</ul>
 			<MutationFeedback error={change.error ?? remove.error} />
-			<Pagination
-				offset={offset}
-				count={members.length}
-				onPage={setOffset}
-			/>
+			<Pagination page={page} onPage={setOffset} />
 			{can(organization.role, "manage") && (
 				<Invitations userId={userId} organizationId={organizationId} />
 			)}

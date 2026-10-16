@@ -1,7 +1,8 @@
 import { sql, type SQLWrapper } from "drizzle-orm";
 
-// SQLite requires the pattern encoding and ESCAPE declaration together.
+// Case-insensitive literal substring match. instr() treats input as plain text,
+// and D1 rejects LIKE patterns over 50 bytes, so user input never becomes one.
+// lower() folds ASCII case, as SQLite's LIKE does.
 export function literalContains(column: SQLWrapper, input: string) {
-	const pattern = `%${input.replace(/[%_\\]/g, (character) => `\\${character}`)}%`;
-	return sql`${column} LIKE ${pattern} ESCAPE '\\'`;
+	return sql`instr(lower(${column}), lower(${input})) > 0`;
 }

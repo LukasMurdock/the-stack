@@ -34,7 +34,7 @@ test("organization ownership is atomic and tenant reads are scoped", async (t) =
 	);
 	assert.deepEqual(
 		await organizations.listOrganizations(f.actor("outsider")),
-		[]
+		{ rows: [], page: { offset: 0, total: 0 } }
 	);
 	await assert.rejects(
 		() =>
@@ -53,7 +53,7 @@ test("organization ownership is atomic and tenant reads are scoped", async (t) =
 		/member unavailable/
 	);
 	assert.equal(
-		(await organizations.listOrganizations(f.actor("owner"))).length,
+		(await organizations.listOrganizations(f.actor("owner"))).rows.length,
 		1
 	);
 });
@@ -68,7 +68,7 @@ test("example writes require editor access and lists isolate tenants", async (t)
 	assert.equal(project.name, "Launch");
 	assert.equal(project.description, "Plan");
 	assert.equal(
-		(await projects.listProjects(f.actor("viewer"), f.organizationId))
+		(await projects.listProjects(f.actor("viewer"), f.organizationId)).rows
 			.length,
 		1
 	);
@@ -88,7 +88,7 @@ test("example writes require editor access and lists isolate tenants", async (t)
 		name: "Other",
 	});
 	assert.deepEqual(
-		await projects.listProjects(f.actor("owner"), other.id),
+		(await projects.listProjects(f.actor("owner"), other.id)).rows,
 		[]
 	);
 });
@@ -230,33 +230,58 @@ test("expired/revoked invitations fail and membership failure rolls back consump
 		failure("not_found")
 	);
 	assert.deepEqual(
-		await invitations.listInvitations(f.actor("owner"), f.organizationId),
+		(await invitations.listInvitations(f.actor("owner"), f.organizationId))
+			.rows,
 		[]
 	);
 });
-test("lists paginate without losing records and operation inputs are validated", async (t) => {
+test("lists page in insertion order with totals from the same filters", async (t) => {
 	const f = await fixture();
 	t.after(() => f.sqlite.close());
+	// Every project lands in one millisecond: the list keeps the order of writes.
+	const now = Date.now();
+	t.mock.method(Date, "now", () => now);
+	const created: string[] = [];
 	for (let index = 0; index < 51; index++)
-		await projects.createProject(f.actor("owner"), f.organizationId, {
-			name: `Project ${index}`,
-			description: "",
-		});
-	const first = await projects.listProjects(
-		f.actor("viewer"),
-		f.organizationId
+		created.push(
+			(
+				await projects.createProject(
+					f.actor("owner"),
+					f.organizationId,
+					{
+						name: `Project ${index}`,
+						description: "",
+					}
+				)
+			).id
+		);
+	const other = await organizations.createOrganization(f.actor("owner"), {
+		name: "Other",
+	});
+	await projects.createProject(f.actor("owner"), other.id, {
+		name: "Elsewhere",
+		description: "",
+	});
+	const list = (offset: number) =>
+		projects.listProjects(f.actor("viewer"), f.organizationId, { offset });
+	const [first, second, past] = [
+		await list(0),
+		await list(50),
+		await list(100),
+	];
+	assert.deepEqual(
+		[first.page, second.page, past.page],
+		[
+			{ offset: 0, total: 51 },
+			{ offset: 50, total: 51 },
+			{ offset: 100, total: 51 },
+		]
 	);
-	const second = await projects.listProjects(
-		f.actor("viewer"),
-		f.organizationId,
-		{ offset: 50 }
+	assert.deepEqual(
+		[...first.rows, ...second.rows].map((project) => project.id),
+		created.toReversed()
 	);
-	assert.equal(first.length, 50);
-	assert.equal(second.length, 1);
-	assert.equal(
-		new Set([...first, ...second].map((project) => project.id)).size,
-		51
-	);
+	assert.deepEqual(past.rows, []);
 	await assert.rejects(
 		() =>
 			projects.createProject(f.actor("owner"), f.organizationId, {
@@ -303,25 +328,28 @@ test("member and invitation pages use ID tie-breakers for equal sort values", as
 			.run(id, organization.id, `${id}@invited.test`, id, expiry);
 	}
 	const memberPages = [
-		...(await members.listMembers(f.actor("owner"), organization.id)),
-		...(await members.listMembers(f.actor("owner"), organization.id, {
-			offset: 50,
-		})),
+		...(await members.listMembers(f.actor("owner"), organization.id)).rows,
+		...(
+			await members.listMembers(f.actor("owner"), organization.id, {
+				offset: 50,
+			})
+		).rows,
 	];
 	assert.deepEqual(
 		memberPages.map((member) => member.userId),
 		[...ids, "owner"]
 	);
 	const invitationPages = [
-		...(await invitations.listInvitations(
-			f.actor("owner"),
-			organization.id
-		)),
-		...(await invitations.listInvitations(
-			f.actor("owner"),
-			organization.id,
-			{ offset: 50 }
-		)),
+		...(
+			await invitations.listInvitations(f.actor("owner"), organization.id)
+		).rows,
+		...(
+			await invitations.listInvitations(
+				f.actor("owner"),
+				organization.id,
+				{ offset: 50 }
+			)
+		).rows,
 	];
 	assert.deepEqual(
 		invitationPages.map((invitation) => invitation.id),
@@ -352,7 +380,7 @@ test("membership revoked between the access check and insert prevents the write"
 		failure("forbidden")
 	);
 	assert.deepEqual(
-		await projects.listProjects(f.actor("owner"), f.organizationId),
+		(await projects.listProjects(f.actor("owner"), f.organizationId)).rows,
 		[]
 	);
 });
@@ -377,18 +405,15 @@ test("invitation eligibility agrees at expiry while accepted retries remain inde
 		password: "Valid-password-123!",
 	};
 	assert.equal(
-		(
-			await invitations.listInvitations(
-				f.actor("owner"),
-				f.organizationId
-			)
-		)[0]?.id,
+		(await invitations.listInvitations(f.actor("owner"), f.organizationId))
+			.rows[0]?.id,
 		invite.id
 	);
 	await invitations.invitationRegistration(f.db, registration);
 	now = invite.expiresAt;
 	assert.deepEqual(
-		await invitations.listInvitations(f.actor("owner"), f.organizationId),
+		(await invitations.listInvitations(f.actor("owner"), f.organizationId))
+			.rows,
 		[]
 	);
 	await assert.rejects(
@@ -420,7 +445,8 @@ test("invitation eligibility agrees at expiry while accepted retries remain inde
 		token: accepted.token,
 	});
 	assert.deepEqual(
-		await invitations.listInvitations(f.actor("owner"), f.organizationId),
+		(await invitations.listInvitations(f.actor("owner"), f.organizationId))
+			.rows,
 		[]
 	);
 	await assert.rejects(
@@ -482,16 +508,16 @@ test("member operations validate target IDs and preserve opaque Better Auth IDs"
 		role: "viewer",
 	});
 	assert.equal(
-		(await members.listMembers(f.actor("owner"), f.organizationId)).find(
-			(member) => member.userId === userId
-		)?.role,
+		(
+			await members.listMembers(f.actor("owner"), f.organizationId)
+		).rows.find((member) => member.userId === userId)?.role,
 		"viewer"
 	);
 	await members.removeMember(f.actor("owner"), f.organizationId, userId);
 	assert.equal(
-		(await members.listMembers(f.actor("owner"), f.organizationId)).some(
-			(member) => member.userId === userId
-		),
+		(
+			await members.listMembers(f.actor("owner"), f.organizationId)
+		).rows.some((member) => member.userId === userId),
 		false
 	);
 });

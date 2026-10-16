@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { projectsQuery, createProjectMutation } from "./queries";
 import { organizationQuery } from "../organizations/queries";
-import { Pagination } from "../organizations/Pagination";
+import { Pagination } from "../../components/Pagination";
 import { MutationFeedback } from "../../forms/feedback";
 import { useWorkflowOutcome } from "../turret/outcomes";
 export function ProjectsPage({
@@ -22,7 +22,7 @@ export function ProjectsPage({
 	organizationId: string;
 }) {
 	const [offset, setOffset] = useState(0);
-	const { projects } = useSuspenseQuery(
+	const { projects, page } = useSuspenseQuery(
 		projectsQuery(userId, organizationId, offset)
 	).data;
 	const { organization } = useSuspenseQuery(
@@ -42,11 +42,7 @@ export function ProjectsPage({
 				))}
 			</ul>
 			{!projects.length && <p>No projects on this page.</p>}
-			<Pagination
-				offset={offset}
-				count={projects.length}
-				onPage={setOffset}
-			/>
+			<Pagination page={page} onPage={setOffset} />
 			{can(organization.role, "edit") && (
 				<CreateProject
 					userId={userId}

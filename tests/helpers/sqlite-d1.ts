@@ -1,9 +1,24 @@
 import { isRecord } from "../../src/lib/isRecord";
 import assert from "node:assert/strict";
-import type Database from "better-sqlite3";
+import Database from "better-sqlite3";
 
-// Implements the D1 API over one SQLite connection, including atomic batches.
+// SQLite's own LIKE on a separate connection, so the override below can
+// delegate to it after applying D1's pattern limit.
+const likes = new Database(":memory:");
+const like = likes.prepare("SELECT ? LIKE ?").pluck();
+const likeEscape = likes.prepare("SELECT ? LIKE ? ESCAPE ?").pluck();
+function d1Like(...[pattern, value, escape]: unknown[]) {
+	if (typeof pattern === "string" && Buffer.byteLength(pattern) > 50)
+		throw new Error("LIKE or GLOB pattern too complex");
+	return escape === undefined
+		? like.get(value, pattern)
+		: likeEscape.get(value, pattern, escape);
+}
+
+// Implements the D1 API over one SQLite connection, including atomic batches
+// and D1's 50-byte LIKE pattern limit.
 export function createSqliteD1(sqlite: Database.Database): D1Database {
+	sqlite.function("like", { deterministic: true, varargs: true }, d1Like);
 	const nativeStatements = new WeakSet<D1PreparedStatement>();
 	class Statement implements D1PreparedStatement {
 		constructor(

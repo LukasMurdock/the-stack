@@ -83,17 +83,13 @@ const getOrganization = createRoute({
 });
 
 export const routes = app
-	.openapi(getOrganizations, async (c) =>
-		c.json(
-			{
-				organizations: await organizations.listOrganizations(
-					c.get("operation"),
-					c.req.valid("query")
-				),
-			},
-			200
-		)
-	)
+	.openapi(getOrganizations, async (c) => {
+		const { rows, page } = await organizations.listOrganizations(
+			c.get("operation"),
+			c.req.valid("query")
+		);
+		return c.json({ organizations: rows, page }, 200);
+	})
 	.openapi(postOrganizations, async (c) =>
 		c.json(
 			{

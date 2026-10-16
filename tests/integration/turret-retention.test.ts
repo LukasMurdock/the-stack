@@ -547,13 +547,17 @@ test("replay-backed readers preserve authorization, expiry and response contract
 	);
 
 	await t.test(
-		"replay, issue and feedback search share literal wildcard semantics",
+		"replay, issue and feedback search share literal, case-insensitive semantics",
 		async () => {
 			const now = Date.now();
+			// D1 rejects LIKE patterns over 50 bytes; long queries must still work.
+			const long =
+				"checkout failed while confirming the saved payment method";
 			const pairs = [
 				["path_with_under", "pathXwithXunder"],
 				["95%complete", "95percentcomplete"],
 				["path\\nested", "path/nested"],
+				[`${long}_1`, `${long}X1`],
 			];
 			for (const [index, pair] of pairs.entries()) {
 				for (const [variant, message] of pair.entries()) {
@@ -575,7 +579,7 @@ test("replay-backed readers preserve authorization, expiry and response contract
 						)
 						.run(id, id, now, message, now, now);
 				}
-				const query = encodeURIComponent(pair[0]);
+				const query = encodeURIComponent(pair[0].toUpperCase());
 				for (const [endpoint, key, idKey] of [
 					["replay-sessions", "sessions", "sessionId"],
 					["issues", "issues", "fingerprint"],
