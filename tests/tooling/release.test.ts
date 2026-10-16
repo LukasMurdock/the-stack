@@ -7,7 +7,7 @@ import {
 	productionOrigin,
 	summarizeChecks,
 } from "../../scripts/lib/release.mjs";
-import { waitForChecks } from "../../scripts/ci-wait.mjs";
+import { minutesOption, waitForChecks } from "../../scripts/ci-wait.mjs";
 import { ship } from "../../scripts/ship.mjs";
 
 type Result = { status: number; stdout: string; stderr: string };
@@ -284,4 +284,12 @@ test("ship stops before production changes when it cannot ship safely", async ()
 test("the build commit comes from STACK_COMMIT or the checkout", () => {
 	assert.equal(buildCommit({ STACK_COMMIT: "abc123" }), "abc123");
 	assert.match(buildCommit({}) ?? "", /^[0-9a-f]{40}$/);
+});
+
+test("--timeout and its default are both read as minutes", () => {
+	assert.equal(minutesOption([], "--timeout", 30), 30 * 60_000);
+	const args = ["12", "--timeout", "5"];
+	assert.equal(minutesOption(args, "--timeout", 30), 5 * 60_000);
+	assert.deepEqual(args, ["12"]);
+	assert.throws(() => minutesOption(["--timeout", "x"], "--timeout", 30));
 });
