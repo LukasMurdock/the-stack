@@ -1,7 +1,18 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Bundled so screenshots and recordings look the same on every host: a
+   headless browser otherwise falls back to whatever sans-serif the machine
+   has, which can be a CJK font with wide Latin spacing. */
+@import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
+
+@theme {
+	--font-sans:
+		"Inter Variable", ui-sans-serif, system-ui, sans-serif,
+		"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+		"Noto Color Emoji";
+}
 
 @theme inline {
 	--radius-sm: calc(var(--radius) - 4px);

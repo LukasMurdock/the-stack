@@ -53,6 +53,24 @@ test each CLI as a subprocess (`tests/tooling/cli-boundaries.test.ts`).
   prints the production URL and admin sign-in. Rerun it after a failure; it does
   not merge twice. Only the operator's request authorizes a ship.
 
+## Showing UI changes
+
+Use these instead of throwaway Playwright or curl scripts, and give the human
+the files they write:
+
+- `pnpm shot <path...>` saves PNGs to `.wrangler/shots` (`--out before`, then
+  `--out after`, for a comparison). Paths without a leading slash are under
+  `/app`. Signed in as the local admin by default (`--as anonymous`, or
+  `owner`/`viewer` with `--e2e`); `--viewport phone|desktop|<W>x<H>`, repeatable.
+  It prints each page's status, console errors and failed requests, and exits
+  1 if a page did not load or threw. It uses the running `pnpm dev` server, or
+  with `--e2e` a fresh production build with seeded fixture users and no dev
+  overlays.
+- `pnpm api <METHOD> <path> [json]` sends one signed-in request (paths under
+  `/api`) and prints the JSON; same `--as` and `--e2e`.
+- `pnpm demo:record <spec>[:line]` runs one browser spec with video and writes
+  `.wrangler/recordings/<spec>.webm` (and an `.mp4` when ffmpeg is installed).
+
 ## Infrastructure
 
 `void.config.ts` is the Void entry point. Explicit Cloudflare bindings and local

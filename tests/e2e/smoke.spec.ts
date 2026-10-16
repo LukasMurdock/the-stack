@@ -189,3 +189,31 @@ test("an open Astro tab replaces capture on account change and stops after cross
 	await page.clock.runFor(5000);
 	expect(chunks).toBe(before);
 });
+
+// Screenshots and recordings must not depend on the host's fonts: headless
+// Chromium otherwise falls back to whatever sans-serif the machine has.
+test("Astro and React pages render in the bundled font", async ({ page }) => {
+	// A face loads only once text uses it, so wait for each page's heading.
+	for (const [path, heading] of [
+		["/", "The Stack"],
+		["/app/login", "Sign in"],
+	] as const) {
+		await page.goto(path);
+		await expect(
+			page.getByRole("heading", { name: heading, exact: true }).first()
+		).toBeVisible();
+		const font = await page.evaluate(async () => {
+			await document.fonts.ready;
+			return {
+				family: getComputedStyle(document.body).fontFamily,
+				loaded: [...document.fonts].some(
+					(face) =>
+						face.family.replaceAll('"', "") === "Inter Variable" &&
+						face.status === "loaded"
+				),
+			};
+		});
+		expect(font.family, path).toMatch(/^"Inter Variable"/);
+		expect(font.loaded, path).toBe(true);
+	}
+});
