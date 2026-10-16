@@ -32,8 +32,8 @@ pnpm verify
 pnpm run deploy
 ```
 
-Use `pnpm run deploy`: pnpm reserves bare `deploy` for its own use. `just deploy`
-is an optional shortcut. Credentials and sender-domain ownership are supplied by
+Use `pnpm run deploy`: pnpm reserves bare `deploy` for its own use. `pnpm secret`
+prints a random value for each prompt. Credentials and sender-domain ownership are supplied by
 the app owner; infrastructure resources are created by the deployment workflow.
 Never copy local `.env` secrets into a deployment automatically.
 

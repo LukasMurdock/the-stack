@@ -1,3 +1,5 @@
+# Optional aliases: every recipe runs a package.json script, so `pnpm <script>`
+# works without just installed. CI does not use this file.
 set shell := ["bash", "-cu"]
 
 default:
@@ -8,7 +10,7 @@ setup:
     pnpm local:setup
 
 secret-auth:
-    node -e 'console.log(require("node:crypto").randomBytes(32).toString("base64url"))'
+    pnpm secret
 
 dev:
     pnpm dev
@@ -26,16 +28,13 @@ migrate:
     pnpm db:local:migrate
 
 studio-core:
-    pnpm db:local:migrate
-    DRIZZLE_DB_PATH=$(node scripts/find-d1-sqlite.mjs core_users) node scripts/drizzle-studio-core-local.mjs
+    pnpm db:studio:core
 
 studio-turret:
-    pnpm db:local:migrate
-    DRIZZLE_DB_PATH=$(node scripts/find-d1-sqlite.mjs turret_sessions) node scripts/drizzle-studio-turret-local.mjs
+    pnpm db:studio:turret
 
 admin-create:
-    pnpm db:local:migrate
-    node scripts/create-admin-local.mjs
+    pnpm admin:create
 
 check-fast:
     pnpm run lint && pnpm test
@@ -44,25 +43,28 @@ check-full:
     pnpm verify
 
 format:
-    pnpm exec oxfmt --write .
+    pnpm format
 
 format-check:
-    pnpm exec oxfmt --check .
+    pnpm format:check
 
 seed:
-    node scripts/seed-local.mjs
+    pnpm local:seed
 
 reset:
-    node scripts/reset-local.mjs
+    pnpm local:reset
 
 deploy:
     pnpm run deploy
 
 logs:
-    pnpm exec wrangler tail --name the-stack
+    pnpm logs
+
+routes:
+    pnpm routes
 
 db-generate-core name:
-    pnpm exec drizzle-kit generate --config src/bindings/d1/core/drizzle.config.ts --name {{ name }}
+    pnpm db:core:generate --name {{ name }}
 
 new-route path:
-    node scripts/new-route.mjs {{ path }}
+    pnpm routes:new {{ path }}

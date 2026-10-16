@@ -12,8 +12,12 @@ pubDate: "2026-02-27"
 pnpm db:local:migrate
 ```
 
-If you use the optional `just` task runner, `just studio-core` and
-`just studio-turret` open the local databases for inspection.
+`pnpm db:studio:core` and `pnpm db:studio:turret` open the local databases in
+Drizzle Studio for inspection.
+
+Columns are snake_case in SQL and camelCase in schema keys: Drizzle runs with
+`casing: "snake_case"`, and a unit test rejects explicit names that break the
+rule. Raw SQL, such as a seed script, uses the SQL names (`organization_id`).
 
 ## New migration
 

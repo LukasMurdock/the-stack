@@ -32,10 +32,10 @@ function toPascal(value) {
 const rawRoute = process.argv[2];
 if (!rawRoute) {
 	die(
-		"Usage: node scripts/new-route.mjs <route-path>\n" +
+		"Usage: pnpm routes:new <route-path>\n" +
 			"Examples:\n" +
-			"  node scripts/new-route.mjs _public/reports\n" +
-			"  node scripts/new-route.mjs ts_admin/ops/index"
+			"  pnpm routes:new _public/reports\n" +
+			"  pnpm routes:new ts_admin/ops/index"
 	);
 }
 
@@ -104,4 +104,6 @@ fs.writeFileSync(filePath, template);
 process.stdout.write(
 	`Created route file: src/react-app/routes/${normalized}.tsx\n`
 );
-process.stdout.write("Next: run `just dev` to regenerate routeTree.gen.ts\n");
+process.stdout.write(
+	"Next: run `pnpm routes` to regenerate routeTree.gen.ts\n"
+);

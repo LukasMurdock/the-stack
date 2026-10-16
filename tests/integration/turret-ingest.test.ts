@@ -11,6 +11,7 @@ import { REPLAY_CHUNK_BYTES_MAX } from "../../src/contracts/turret-ingest";
 import { turretUploadChunk } from "../../src/react-app/features/turret/ingest";
 import { createSqliteD1 } from "../helpers/sqlite-d1";
 import { testBindings } from "../helpers/worker";
+import { FakeR2Bucket } from "../helpers/fake-r2";
 
 async function ingestFixture(t: TestContext) {
 	const sqlite = migratedSqlite("turret");
@@ -21,41 +22,14 @@ async function ingestFixture(t: TestContext) {
 			"INSERT INTO turret_sessions (session_id, started_at, user_id, policy_version, retention_expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
 		)
 		.run("session", now, "user", "1", now + 60000, now, now);
-	const writes: string[] = [];
-	const objects = new Map<string, { json: string; sha256?: string }>();
-	const bucket = {
-		async put(key: string, value: string, options: R2PutOptions) {
-			assert.equal(typeof value, "string");
-			assert.ok(
-				typeof options?.onlyIf === "object" &&
-					"etagDoesNotMatch" in options.onlyIf
-			);
-			assert.equal(options.onlyIf.etagDoesNotMatch, "*");
-			if (objects.has(key)) return null;
-			const json = String(value);
-			objects.set(key, { json, sha256: options.customMetadata?.sha256 });
-			writes.push(json);
-			// SAFETY: commitReplayChunk checks only whether conditional put succeeded.
-			return { key } as R2Object;
-		},
-		async get(key: string) {
-			const object = objects.get(key);
-			if (!object) return null;
-			// SAFETY: commitReplayChunk reads checksum metadata or text on this fixture.
-			return {
-				customMetadata: object.sha256 ? { sha256: object.sha256 } : {},
-				text: async () => object.json,
-			} as R2ObjectBody;
-		},
-	};
+	const bucket = new FakeR2Bucket();
 	const key = "test-upload-signing-key";
 	const env = testBindings({
 		APP_URL: "http://localhost:4321",
 		TURRET_MODE: "full",
 		TURRET_SIGNING_KEY: key,
 		TURRET_DB: createSqliteD1(sqlite),
-		// SAFETY: chunk ingest exercises only the conditional put and checksum read above.
-		TURRET_REPLAY_BUCKET: bucket as R2Bucket,
+		TURRET_REPLAY_BUCKET: bucket,
 	});
 	const token = await signUploadToken(key, {
 		sid: "session",
@@ -86,7 +60,7 @@ async function ingestFixture(t: TestContext) {
 			{ waitUntil() {}, passThroughOnException() {}, props: {} }
 		);
 	}
-	return { sqlite, writes, objects, request, env, key };
+	return { sqlite, bucket, request, env, key };
 }
 
 test("replay chunks enforce actual wire bytes before parsing or writing, including missing and false length headers", async (t) => {
@@ -96,7 +70,7 @@ test("replay chunks enforce actual wire bytes before parsing or writing, includi
 		const response = await f.request("chunk", tooLarge, undefined, length);
 		assert.equal(response.status, 413, await response.clone().text());
 	}
-	assert.equal(f.writes.length, 0);
+	assert.equal(f.bucket.writtenKeys.length, 0);
 	assert.equal(
 		f.sqlite
 			.prepare("select count(*) from turret_session_chunks")
@@ -124,7 +98,7 @@ test("replay chunks enforce actual wire bytes before parsing or writing, includi
 			.all(),
 		[REPLAY_CHUNK_BYTES_MAX, new TextEncoder().encode(unicode).byteLength]
 	);
-	assert.equal(f.writes.length, 2);
+	assert.equal(f.bucket.writtenKeys.length, 2);
 });
 
 test("every upload endpoint enforces mode and session-bound authorization before JSON parsing", async (t) => {
@@ -162,7 +136,7 @@ test("every upload endpoint enforces mode and session-bound authorization before
 		);
 		f.env.TURRET_SIGNING_KEY = key;
 	}
-	assert.equal(f.writes.length, 0);
+	assert.equal(f.bucket.writtenKeys.length, 0);
 });
 
 test("the client rejects a UTF-8 oversized replay before issuing a request", async (t) => {
@@ -192,7 +166,7 @@ test("expired or missing sessions reject valid upload tokens before parsing or s
 	}
 	f.sqlite.exec("DELETE FROM turret_sessions");
 	assert.equal((await f.request("chunk", "not json")).status, 401);
-	assert.equal(f.writes.length, 0);
+	assert.equal(f.bucket.writtenKeys.length, 0);
 });
 
 test("chunk commits are idempotent and reject conflicting content without overwriting R2", async (t) => {
@@ -215,7 +189,7 @@ test("chunk commits are idempotent and reject conflicting content without overwr
 		z.object({ code: z.string() }).parse(await conflict.json()).code,
 		"chunk_conflict"
 	);
-	assert.equal(f.writes.length, 1);
+	assert.equal(f.bucket.writtenKeys.length, 1);
 	assert.equal(
 		f.sqlite
 			.prepare("SELECT count(*) FROM turret_session_chunks")
@@ -233,7 +207,10 @@ test("chunk commits are idempotent and reject conflicting content without overwr
 		rrweb_start_ts_ms: 123,
 		rrweb_last_ts_ms: 123,
 	});
-	assert.equal([...f.objects.values()][0].json, chunk);
+	assert.deepEqual(
+		[...f.bucket.objects.keys()].map((key) => f.bucket.text(key)),
+		[chunk]
+	);
 });
 
 test("D1 commit failure rolls back metadata and counts; a retry repairs the immutable R2 object", async (t) => {
@@ -243,7 +220,7 @@ test("D1 commit failure rolls back metadata and counts; a retry repairs the immu
 	);
 	const chunk = JSON.stringify({ seq: 0, events: [] });
 	assert.equal((await f.request("chunk", chunk)).status, 500);
-	assert.equal(f.objects.size, 1);
+	assert.equal(f.bucket.objects.size, 1);
 	assert.equal(
 		f.sqlite
 			.prepare("SELECT count(*) FROM turret_session_chunks")
@@ -260,7 +237,7 @@ test("D1 commit failure rolls back metadata and counts; a retry repairs the immu
 	);
 	f.sqlite.exec("DROP TRIGGER fail_chunk_count");
 	assert.equal((await f.request("chunk", chunk)).status, 200);
-	assert.equal(f.writes.length, 1);
+	assert.equal(f.bucket.writtenKeys.length, 1);
 	assert.equal(
 		f.sqlite
 			.prepare("SELECT chunk_count FROM turret_sessions")
@@ -281,7 +258,7 @@ test("concurrent commits preserve one sequence and legacy objects can be verifie
 		responses.map((response) => response.status),
 		[200, 200]
 	);
-	assert.equal(f.writes.length, 1);
+	assert.equal(f.bucket.writtenKeys.length, 1);
 	assert.equal(
 		f.sqlite
 			.prepare("SELECT chunk_count FROM turret_sessions")
@@ -289,8 +266,8 @@ test("concurrent commits preserve one sequence and legacy objects can be verifie
 			.get(),
 		1
 	);
-	const [key, object] = [...f.objects.entries()][0];
-	f.objects.set(key, { json: object.json });
+	const [key, object] = [...f.bucket.objects.entries()][0];
+	f.bucket.objects.set(key, { ...object, customMetadata: {} });
 	assert.equal((await f.request("chunk", chunk)).status, 200);
 	assert.equal(
 		(

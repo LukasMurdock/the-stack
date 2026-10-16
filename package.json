@@ -11,9 +11,13 @@
 	},
 	"scripts": {
 		"local:setup": "node scripts/setup-local.mjs",
+		"local:seed": "node scripts/seed-local.mjs",
+		"local:reset": "node scripts/reset-local.mjs",
+		"admin:create": "pnpm run db:local:migrate && node scripts/create-admin-local.mjs",
 		"build": "pnpm run cf:typegen && STACK_BUILD=deploy astro sync && tsc -b && STACK_BUILD=deploy astro build",
 		"check": "pnpm run build && wrangler deploy --config dist/server/wrangler.json --dry-run",
 		"deploy": "node scripts/deploy.mjs",
+		"secret": "node -e \"console.log(require('node:crypto').randomBytes(32).toString('base64url'))\"",
 		"ship": "node scripts/ship.ts",
 		"ci:wait": "node scripts/ci-wait.ts",
 		"dev": "node scripts/dev-server.ts start",
@@ -21,7 +25,10 @@
 		"dev:wait": "node scripts/dev-server.ts wait",
 		"doctor": "node scripts/dev-doctor.mjs",
 		"status": "node scripts/dev-status.mjs",
-		"lint": "oxlint --type-aware .",
+		"logs": "node scripts/logs.ts",
+		"lint": "oxlint --type-aware --deny-warnings .",
+		"routes": "astro sync",
+		"routes:new": "node scripts/new-route.mjs",
 		"prepare": "husky",
 		"test": "tsx --tsconfig tsconfig.app.json --test \"tests/unit/**/*.test.ts\" \"tests/integration/**/*.test.ts\" \"tests/smoke/**/*.test.ts\"",
 		"preview": "astro sync && tsc -b && astro build && node scripts/preview.mjs",
@@ -37,7 +44,9 @@
 		"cf:typegen": "node scripts/generate-types.mjs",
 		"db:local:migrate": "node scripts/local-cloudflare.mjs && wrangler d1 migrations apply CORE_DB --local --config .wrangler/local/wrangler.json --persist-to .wrangler/state && wrangler d1 migrations apply TURRET_DB --local --config .wrangler/local/wrangler.json --persist-to .wrangler/state",
 		"db:core:generate": "drizzle-kit generate --config src/bindings/d1/core/drizzle.config.ts",
-		"db:turret:generate": "drizzle-kit generate --config src/bindings/d1/turret/drizzle.config.ts"
+		"db:turret:generate": "drizzle-kit generate --config src/bindings/d1/turret/drizzle.config.ts",
+		"db:studio:core": "pnpm run db:local:migrate && node scripts/drizzle-studio-core-local.mjs",
+		"db:studio:turret": "pnpm run db:local:migrate && node scripts/drizzle-studio-turret-local.mjs"
 	},
 	"dependencies": {
 		"@astrojs/cloudflare": "14.3.3",

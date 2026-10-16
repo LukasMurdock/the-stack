@@ -1,26 +1,21 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import path from "node:path";
-
-/**
- * @param {string} message
- * @returns {never}
- */
-function die(message) {
-	process.stderr.write(`${message}\n`);
-	process.exit(1);
-}
 
 const port = process.env.DRIZZLE_STUDIO_PORT ?? "4983";
 const host = process.env.DRIZZLE_STUDIO_HOST ?? "127.0.0.1";
 
-const dbPathRaw = process.env.DRIZZLE_DB_PATH;
-if (!dbPathRaw) {
-	die(
-		"Missing DRIZZLE_DB_PATH.\n" +
-			"Run: node scripts/find-d1-sqlite.mjs core_users\n" +
-			"or use just studio-core"
+// find-d1-sqlite prints its own tip (e.g. run local setup) when it fails.
+function findDbPath() {
+	const result = spawnSync(
+		process.execPath,
+		["scripts/find-d1-sqlite.mjs", "core_users"],
+		{ encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] }
 	);
+	if (result.status !== 0) process.exit(result.status ?? 1);
+	return result.stdout;
 }
+
+const dbPathRaw = process.env.DRIZZLE_DB_PATH || findDbPath();
 
 const dbPath = path.resolve(process.cwd(), dbPathRaw);
 const dbUrl = `file:${dbPath}`;

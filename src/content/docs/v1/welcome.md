@@ -7,8 +7,8 @@ pubDate: "2026-10-07"
 # Getting Started
 
 Start with a working local app, then change one feature. You need Node.js
-24.21.0+ and pnpm 10.34.6. A Cloudflare account, email provider, OAuth credentials,
-and `just` are not needed for this local walkthrough.
+24.21.0+ and pnpm 10.34.6. A Cloudflare account, email provider and OAuth credentials
+are not needed for this local walkthrough.
 
 ## 1. Get the starter
 
@@ -122,8 +122,8 @@ boundaries, [auth guide](/docs/v1/auth/) for onboarding policy, and
 | Port 4321 is occupied                      | Stop the other server, or change `APP_URL` in `.env` and run `pnpm dev --port <matching-port>`.                                                                       |
 
 `pnpm doctor` diagnoses configuration; `pnpm status` prints useful URLs.
-`just` is an optional maintenance shortcut. `just seed` fills observability demo
-records, rather than organizations or projects, and is not part of this walkthrough.
+`pnpm local:seed` fills observability demo records, rather than organizations or
+projects, and is not part of this walkthrough.
 
 When your local feature works, follow the [deployment runbook](/docs/v1/deploy-runbook/).
 Production requires your own Cloudflare resources, secrets, origin, and email sender.

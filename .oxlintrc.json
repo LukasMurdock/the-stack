@@ -171,6 +171,16 @@
 		},
 		{
 			"files": [
+				"src/react-app/routes/**/*.tsx",
+				"src/components/ui/**/*.tsx"
+			],
+			"jsPlugins": ["eslint-plugin-react-refresh"],
+			"rules": {
+				"react-refresh/only-export-components": "off"
+			}
+		},
+		{
+			"files": [
 				"scripts/**/*.ts",
 				"src/worker/**/*.ts",
 				"src/bindings/**/*.ts",
