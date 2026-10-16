@@ -60,27 +60,47 @@ The Analytics SQL binding and Turret's hourly cleanup job are included.
 It ends by printing the production URL, the sign-in path (`/app/login`), and
 how the first administrator gets credentials (below).
 
-## Ship a pull request
+## Release
 
-After the first deploy, release merged work with one command:
+After the first deploy, release the committed `main` with one command:
+
+```bash
+pnpm proof            # verify HEAD in a clean checkout; record a git note
+pnpm ship --dry-run   # optional: print the checks and steps, change nothing
+pnpm ship             # [--require-reviews <n>]
+```
+
+`pnpm ship` needs only git and an `origin` remote. It refuses unless the
+working tree is clean, HEAD has a passing proof of its exact tree (e2e run),
+and origin's `main` fast-forwards to HEAD; each refusal says what to do next.
+It then pushes HEAD to `main` and `refs/notes/proof` in one `git push
+--atomic` (first merging notes others pushed, never forcing), runs
+`pnpm run deploy` with `STACK_COMMIT` set, and polls `${APP_URL}/api/health`
+until it reports the commit several times in a row (Cloudflare can briefly
+serve the previous version), then checks `/api/readiness`. Health reports
+`commit`, the Git SHA the build was made from, and `version`, the Cloudflare
+Worker version ID. CI on `main` fails if HEAD has no passing proof.
+
+### Pull requests
+
+Teams that release through pull requests, or a maintainer releasing an outside
+contribution, use:
 
 ```bash
 pnpm ci:wait 42      # optional: just wait for PR #42's checks
 pnpm ship 42         # [--squash|--rebase] [--timeout <minutes>]
 ```
 
-`pnpm ship` uses the `gh` CLI (honoring `GH_HOST`, `GH_TOKEN`, and `GH_REPO`) to
+PR mode uses the `gh` CLI (honoring `GH_HOST`, `GH_TOKEN`, and `GH_REPO`) to
 wait for every check run on the PR head, then `gh pr merge --match-head-commit`
 so a head that moved after CI cannot merge. It fast-forwards the base branch,
-runs `pnpm run deploy`, and polls `${APP_URL}/api/health` until it reports the
-merged commit several times in a row (Cloudflare can briefly serve the previous
-version), then checks `/api/readiness`. Health reports `commit`, the Git SHA the
-build was made from, and `version`, the Cloudflare Worker version ID.
+then deploys and waits as above. Auto-merge or merge queues are not driven;
+rerun `pnpm ship <pr>` once the PR has merged. `ci:wait` alone accepts a PR
+number or any pushed ref (default `HEAD`).
 
-Reruns are safe: a merged PR skips CI and merging, and a commit production
-already serves skips the deploy. Auto-merge or merge queues are not driven;
-rerun `pnpm ship` once the PR has merged. `ci:wait` alone accepts a PR number or
-any pushed ref (default `HEAD`).
+Reruns are safe in both modes: a commit already on `main` with its note, or a
+merged PR, is not pushed or merged again, and a commit production already
+serves skips the deploy.
 
 ## Resource state and retries
 

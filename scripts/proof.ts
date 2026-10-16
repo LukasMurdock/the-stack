@@ -37,6 +37,7 @@ import {
 	addReview,
 	checkProof,
 	deriveResult,
+	formatChanges,
 	PROOF_GIT_TIMEOUT_MS,
 	PROOF_LOG_TAIL_BYTES_MAX,
 	PROOF_NOTES_REF,
@@ -53,6 +54,8 @@ import {
 	proofSummary,
 	readProof,
 	resolveTarget,
+	WORKING_TREE_STATUS_ARGS,
+	workingTreeChanges,
 	writeProof,
 } from "./lib/proof.ts";
 
@@ -72,8 +75,8 @@ export const PROOF_USAGE = `Usage: pnpm proof [--skip-e2e] [--keep]
 Without a mode, verifies the committed HEAD in a clean temporary checkout
 (install, pnpm verify, pnpm test:e2e) and records the result as a git note
 under ${PROOF_NOTES_REF}. Refuses to run with uncommitted or untracked changes.
-Logs go to ${PROOF_LOG_DIRECTORY}/<sha>/. Push notes with:
-git push origin ${PROOF_NOTES_REF}
+Logs go to ${PROOF_LOG_DIRECTORY}/<sha>/. pnpm ship pushes the note with the
+commit (alone: git push origin ${PROOF_NOTES_REF}).
 
   --skip-e2e               Record e2e as skipped (--check rejects it by default).
   --keep                   Keep the temporary checkout and print its path.
@@ -216,21 +219,12 @@ function repositoryRoot(): string {
 	}
 }
 
-// Untracked files count: they would change what the build sees but are not
-// in the commit. Ignored files do not.
 function assertClean(root: string): void {
-	const status = git(root, [
-		"status",
-		"--porcelain=v1",
-		"--untracked-files=normal",
-	]);
-	if (status === "") return;
-	const lines = status.split("\n");
-	const shown = lines.slice(0, 10).join("\n");
-	const more = lines.length > 10 ? `\n... and ${lines.length - 10} more` : "";
+	const changes = workingTreeChanges(git(root, WORKING_TREE_STATUS_ARGS));
+	if (changes.length === 0) return;
 	throw new CommandError(
 		`The working tree has uncommitted or untracked changes, so a proof of HEAD would not\n` +
-			`describe it. Commit or stash them, then rerun pnpm proof:\n${shown}${more}`
+			`describe it. Commit or stash them, then rerun pnpm proof:\n${formatChanges(changes)}`
 	);
 }
 
@@ -548,7 +542,7 @@ async function runProof(skipE2e: boolean, keep: boolean): Promise<void> {
 	const logs = path.relative(run.root, run.logDirectory);
 	process.stdout.write(`\n${proofSummary(record)}\n`);
 	process.stdout.write(
-		`Logs: ${logs}/\nNote: ${PROOF_NOTES_REF} (push it: git push origin ${PROOF_NOTES_REF})\n`
+		`Logs: ${logs}/\nNote: ${PROOF_NOTES_REF} (pnpm ship pushes it with the commit)\n`
 	);
 	if (record.result !== "passed")
 		throw new CommandError("The proof failed; see the logs above.");

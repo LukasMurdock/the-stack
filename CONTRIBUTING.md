@@ -69,10 +69,10 @@ behavior suite without building. For full local verification:
 pnpm verify
 ```
 
-Before pushing to `main`, commit and run `pnpm proof`: it runs install,
+Before landing on `main`, commit and run `pnpm proof`: it runs install,
 `pnpm verify` and `pnpm test:e2e` on the committed tree in a clean temporary
-checkout and records the result as a git note; push it with
-`git push origin refs/notes/proof`. See "Trunk loop and proofs" in `AGENTS.md`.
+checkout and records the result as a git note. `pnpm ship` then pushes the
+commit and the note together. See "Trunk loop and proofs" in `AGENTS.md`.
 
 To reset local state from scratch:
 
@@ -87,6 +87,13 @@ pnpm check
 ```
 
 ## Pull requests
+
+Maintainers work trunk-based: small commits land on `main` with
+`pnpm proof` and `pnpm ship`, without pull requests. External contributors
+open a pull request; a maintainer releases it with `pnpm ship <pr>`, then
+proves the merged `main` (`pnpm proof`, `git push origin refs/notes/proof`) so
+the CI proof audit stays green. Repositories that work through pull requests
+can turn the audit off with the repository variable `STACK_PROOF_AUDIT=off`.
 
 - Keep PRs focused and small when possible.
 - Include context on what changed and why.

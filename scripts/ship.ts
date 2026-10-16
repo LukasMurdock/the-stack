@@ -1,8 +1,11 @@
-// `pnpm ship <pr>` releases one pull request: wait for its CI, merge it,
-// fast-forward the base branch, run `scripts/deploy.mjs`, then wait until
-// production's /api/health serves the deployed commit. Running it is the
-// operator's production approval. Rerunning resumes: a merged PR skips the
-// merge, and a commit production already serves skips the deploy.
+// `pnpm ship` releases to production; running it is the operator's approval.
+// Trunk mode (no argument) lands the proved HEAD on main with its proof note
+// in one atomic push (scripts/lib/trunk.ts). `pnpm ship <pr>` instead waits
+// for a pull request's CI, merges it and fast-forwards its base branch. Both
+// then run `scripts/deploy.mjs` and wait until production's /api/health
+// serves the commit. Rerunning resumes: a landed commit or merged PR is not
+// pushed or merged again, and a commit production already serves skips the
+// deploy.
 
 import { deploymentCloudflare } from "../config/cloudflare.mjs";
 import {
@@ -20,11 +23,13 @@ import {
 import {
 	type Command,
 	isEntryPoint,
+	parseBoundedInteger,
 	parseCommandLine,
 	runCli,
 	UsageError,
 } from "./lib/cli.ts";
 import {
+	assertNever,
 	type HealthRead,
 	LIVE_CONFIRMATIONS_COUNT,
 	mergeAction,
@@ -38,6 +43,22 @@ import {
 	releaseSummary,
 	servedCommit,
 } from "./lib/release.ts";
+import {
+	DEPLOY_STATE_PATHS,
+	describeLanding,
+	formatPreconditions,
+	type Landing,
+	landOnMain,
+	readTrunkState,
+	type TrunkState,
+} from "./lib/trunk.ts";
+import {
+	formatChanges,
+	PROOF_NOTES_REF,
+	PROOF_REVIEWS_MAX,
+	WORKING_TREE_STATUS_ARGS,
+	workingTreeChanges,
+} from "./lib/proof.ts";
 
 export const LIVE_WAIT_TIMEOUT_MS_DEFAULT = 5 * 60_000;
 // Between polls while production still serves the previous commit.
@@ -53,48 +74,117 @@ const NO_CACHE_HEADERS = { "cache-control": "no-cache" };
 const MERGE_METHODS = ["merge", "squash", "rebase"] as const;
 export type MergeMethod = (typeof MERGE_METHODS)[number];
 
-export const SHIP_USAGE = `Usage: pnpm ship <pr> [--merge | --squash | --rebase] [--timeout <minutes>]
+export const SHIP_USAGE = `Usage: pnpm ship [--dry-run] [--require-reviews <n>]
+       pnpm ship <pr> [--merge | --squash | --rebase] [--timeout <minutes>]
 
-Waits for the pull request's CI, merges it, fast-forwards its base branch,
-deploys, and waits until production serves the merged commit.
+Trunk (default, no <pr>): lands the committed HEAD on main and deploys it.
+Requires a clean tree, a passing \`pnpm proof\` of HEAD, and that origin's
+main fast-forwards to HEAD. Pushes HEAD to main and ${PROOF_NOTES_REF} in one
+atomic push (merging notes others pushed), runs scripts/deploy.mjs, and waits
+until production serves HEAD. Needs only git and an origin remote.
+
+  --dry-run                      Print each precondition and the steps it
+                                 would take; change nothing.
+  --require-reviews <n>          Also require n approving proof reviews
+                                 (max ${PROOF_REVIEWS_MAX}).
+
+Pull request (<pr>, for PR-based teams and outside contributions): waits for
+the PR's CI through gh, merges it, fast-forwards its base branch, deploys,
+and waits until production serves the merged commit.
 
   --merge | --squash | --rebase  Merge method (default --merge).
   --timeout <minutes>            CI wait in whole minutes
                                  (default ${CI_WAIT_TIMEOUT_MINUTES_DEFAULT}, max ${CI_WAIT_TIMEOUT_MINUTES_MAX}).
+
+Rerun after a failure: nothing is pushed, merged or deployed twice.
+
   -h, --help                     Show this help.`;
 
-export type ShipOptions = {
+export type PullRequestShipOptions = {
+	readonly mode: "pr";
 	readonly pullRequestNumber: number;
 	readonly mergeMethod: MergeMethod;
 	readonly ciTimeoutMs: number;
 	readonly liveTimeoutMs: number;
 };
 
+export type TrunkShipOptions = {
+	readonly mode: "trunk";
+	readonly requireReviewsCount: number;
+	readonly dryRun: boolean;
+	readonly liveTimeoutMs: number;
+};
+
+export type ShipOptions = PullRequestShipOptions | TrunkShipOptions;
+
 export type ShipConfig = {
 	readonly vars: { readonly APP_URL: string; readonly ADMIN_EMAIL: string };
 };
 
+const SHIP_ARGS = {
+	merge: { type: "boolean" },
+	squash: { type: "boolean" },
+	rebase: { type: "boolean" },
+	timeout: { type: "string" },
+	"dry-run": { type: "boolean" },
+	"require-reviews": { type: "string" },
+	help: { type: "boolean", short: "h" },
+} as const;
+type ShipArgs = ReturnType<typeof parseCommandLine<typeof SHIP_ARGS>>["values"];
+
+const PULL_REQUEST_FLAGS = ["merge", "squash", "rebase", "timeout"] as const;
+const TRUNK_FLAGS = ["dry-run", "require-reviews"] as const;
+
+// No positional argument selects trunk mode; a PR number selects PR mode.
+// Flags of the other mode are usage errors, not ignored.
 export function parseShipOptions(
 	argv: readonly string[]
 ): Command<ShipOptions> {
-	const { values, positionals } = parseCommandLine(argv, {
-		merge: { type: "boolean" },
-		squash: { type: "boolean" },
-		rebase: { type: "boolean" },
-		timeout: { type: "string" },
-		help: { type: "boolean", short: "h" },
-	});
+	const { values, positionals } = parseCommandLine(argv, SHIP_ARGS);
 	if (values.help === true) return { kind: "help" };
+	if (positionals.length > 1)
+		throw new UsageError(
+			`Expected at most one <pr>, got: ${positionals.join(" ")}.`
+		);
+	const argument = positionals[0];
+	if (argument === undefined)
+		return { kind: "run", options: parseTrunkOptions(values) };
+	return { kind: "run", options: parsePullRequestOptions(argument, values) };
+}
+
+function parseTrunkOptions(values: ShipArgs): TrunkShipOptions {
+	const flag = PULL_REQUEST_FLAGS.find((name) => values[name] !== undefined);
+	if (flag !== undefined)
+		throw new UsageError(`--${flag} only applies with a <pr>.`);
+	const requireReviews = values["require-reviews"];
+	let requireReviewsCount = 0;
+	if (requireReviews !== undefined)
+		requireReviewsCount = parseBoundedInteger(requireReviews, {
+			name: "--require-reviews",
+			min: 0,
+			max: PROOF_REVIEWS_MAX,
+		});
+	return {
+		mode: "trunk",
+		requireReviewsCount,
+		dryRun: values["dry-run"] === true,
+		liveTimeoutMs: LIVE_WAIT_TIMEOUT_MS_DEFAULT,
+	};
+}
+
+function parsePullRequestOptions(
+	argument: string,
+	values: ShipArgs
+): PullRequestShipOptions {
+	const flag = TRUNK_FLAGS.find((name) => values[name] !== undefined);
+	if (flag !== undefined)
+		throw new UsageError(
+			`--${flag} only applies to trunk mode (pnpm ship without a <pr>).`
+		);
 	const methods = MERGE_METHODS.filter((method) => values[method] === true);
 	if (methods.length > 1)
 		throw new UsageError(
 			`Choose one merge method, got ${methods.map((method) => `--${method}`).join(" ")}.`
-		);
-	const [argument, ...extra] = positionals;
-	if (argument === undefined) throw new UsageError("Missing <pr>.");
-	if (extra.length > 0)
-		throw new UsageError(
-			`Expected one <pr>, got: ${positionals.join(" ")}.`
 		);
 	const pullRequestNumber = parsePullRequestNumber(argument);
 	if (pullRequestNumber === null)
@@ -102,13 +192,11 @@ export function parseShipOptions(
 			`<pr> must be a pull request number, got "${argument}".`
 		);
 	return {
-		kind: "run",
-		options: {
-			pullRequestNumber,
-			mergeMethod: methods[0] ?? "merge",
-			ciTimeoutMs: parseCiTimeoutMs(values.timeout),
-			liveTimeoutMs: LIVE_WAIT_TIMEOUT_MS_DEFAULT,
-		},
+		mode: "pr",
+		pullRequestNumber,
+		mergeMethod: methods[0] ?? "merge",
+		ciTimeoutMs: parseCiTimeoutMs(values.timeout),
+		liveTimeoutMs: LIVE_WAIT_TIMEOUT_MS_DEFAULT,
 	};
 }
 
@@ -203,14 +291,11 @@ function run(
 }
 
 function assertCleanCheckout(io: ReleaseIo): void {
-	// A failed deploy can leave newly recorded resource IDs; keep them so
-	// the rerun reuses those resources (commit void.lock.json afterwards).
-	const changes = capture(io, "git", ["status", "--porcelain"])
-		.split("\n")
-		.filter((line) => line !== "" && !line.endsWith(" void.lock.json"));
+	const status = capture(io, "git", [...WORKING_TREE_STATUS_ARGS]);
+	const changes = workingTreeChanges(status, DEPLOY_STATE_PATHS);
 	if (changes.length > 0)
 		throw new ReleaseError(
-			`Commit or stash local changes before shipping:\n${changes.join("\n")}`
+			`Commit or stash local changes before shipping:\n${formatChanges(changes)}`
 		);
 }
 
@@ -228,7 +313,7 @@ function viewPullRequest(io: ReleaseIo, number: number): PullRequest {
 async function mergeWhenGreen(
 	io: ReleaseIo,
 	pr: PullRequest,
-	options: ShipOptions
+	options: PullRequestShipOptions
 ): Promise<PullRequest> {
 	io.log("\n==> Waiting for CI");
 	await waitForChecks(io, pr.headRefOid, {
@@ -306,6 +391,21 @@ export async function ship(
 	options: ShipOptions,
 	config: ShipConfig
 ): Promise<void> {
+	switch (options.mode) {
+		case "trunk":
+			return shipTrunk(io, options, config);
+		case "pr":
+			return shipPullRequest(io, options, config);
+		default:
+			return assertNever(options);
+	}
+}
+
+async function shipPullRequest(
+	io: ReleaseIo,
+	options: PullRequestShipOptions,
+	config: ShipConfig
+): Promise<void> {
 	const origin = productionOrigin(config.vars.APP_URL);
 	assertCleanCheckout(io);
 	let pr = viewPullRequest(io, options.pullRequestNumber);
@@ -317,15 +417,99 @@ export async function ship(
 	}
 	const commit = fastForward(io, pr);
 	await deployUnlessLive(io, origin, commit);
-	io.log(`\n==> Waiting for ${origin} to serve ${commit.slice(0, 12)}`);
-	const health = await waitUntilLive(
-		io,
-		{ origin, commit },
-		options.liveTimeoutMs
+	await confirmRelease(io, {
+		release: { origin, commit, label: `PR #${pr.number}` },
+		liveTimeoutMs: options.liveTimeoutMs,
+		config,
+	});
+}
+
+async function shipTrunk(
+	io: ReleaseIo,
+	options: TrunkShipOptions,
+	config: ShipConfig
+): Promise<void> {
+	const state = readTrunkState(io, {
+		appUrl: config.vars.APP_URL,
+		proof: {
+			allowSkippedE2e: false,
+			requireReviewsCount: options.requireReviewsCount,
+		},
+	});
+	if (options.dryRun) return printTrunkPlan(io, state);
+	const landing = readyLanding(io, state);
+	io.log(`\n==> Landing ${landing.commit.slice(0, 12)} on main`);
+	if (landOnMain(io, landing) === "already-landed")
+		io.log(
+			"origin main is HEAD and has its proof note; skipping the push."
+		);
+	await deployUnlessLive(io, landing.origin, landing.commit);
+	await confirmRelease(io, {
+		release: {
+			origin: landing.origin,
+			commit: landing.commit,
+			label: "main",
+		},
+		liveTimeoutMs: options.liveTimeoutMs,
+		config,
+	});
+}
+
+function readyLanding(io: ReleaseIo, state: TrunkState): Landing {
+	io.log(`Shipping HEAD ${state.commit} to main.`);
+	io.log(formatPreconditions(state.preconditions));
+	if (state.landing === null)
+		throw new ReleaseError(
+			"Nothing was pushed or deployed. Fix the FAIL lines above, then rerun pnpm ship."
+		);
+	return state.landing;
+}
+
+async function printTrunkPlan(io: ReleaseIo, state: TrunkState): Promise<void> {
+	io.log(`Dry run for ${state.commit}; nothing changes.\n\nPreconditions:`);
+	io.log(formatPreconditions(state.preconditions));
+	const landing = state.landing;
+	if (landing === null)
+		throw new ReleaseError(
+			"A ship would stop here: fix the FAIL lines above, then rerun pnpm ship."
+		);
+	const short = landing.commit.slice(0, 12);
+	const steps = describeLanding(io, landing);
+	if (servedCommit(await readHealth(io, landing.origin)) === landing.commit) {
+		steps.push(`skip the deploy: production already serves ${short}`);
+	} else {
+		steps.push(
+			"pnpm install --frozen-lockfile",
+			`node scripts/deploy.mjs (STACK_COMMIT=${landing.commit})`
+		);
+	}
+	steps.push(
+		`wait until ${landing.origin}/api/health serves ${short} ${LIVE_CONFIRMATIONS_COUNT} times in a row, then check /api/readiness`
 	);
+	io.log("\nSteps:");
+	io.log(steps.map((step, index) => `  ${index + 1}. ${step}`).join("\n"));
+}
+
+type ConfirmRelease = {
+	readonly release: {
+		readonly origin: string;
+		readonly commit: string;
+		readonly label: string;
+	};
+	readonly liveTimeoutMs: number;
+	readonly config: ShipConfig;
+};
+
+async function confirmRelease(
+	io: ReleaseIo,
+	{ release, liveTimeoutMs, config }: ConfirmRelease
+): Promise<void> {
+	const { origin, commit } = release;
+	io.log(`\n==> Waiting for ${origin} to serve ${commit.slice(0, 12)}`);
+	const health = await waitUntilLive(io, { origin, commit }, liveTimeoutMs);
 	const version = health.kind === "served" ? health.version : null;
 	io.log(
-		`\nShipped PR #${pr.number} at ${commit.slice(0, 12)} (Worker version ${version ?? "unknown"}).`
+		`\nShipped ${release.label} at ${commit.slice(0, 12)} (Worker version ${version ?? "unknown"}).`
 	);
 	io.log(releaseSummary({ origin, adminEmail: config.vars.ADMIN_EMAIL }));
 }

@@ -32,6 +32,7 @@ const ciTiming = {
 	pollIntervalMs: CI_POLL_INTERVAL_MS,
 };
 const shipOptions: ShipOptions = {
+	mode: "pr",
 	pullRequestNumber: 7,
 	mergeMethod: "merge",
 	ciTimeoutMs: CI_WAIT_TIMEOUT_MS_DEFAULT,

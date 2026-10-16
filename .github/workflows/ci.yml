@@ -60,6 +60,8 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v7
+              with:
+                  fetch-depth: 1
 
             - name: Setup pnpm
               uses: pnpm/action-setup@v6
@@ -72,6 +74,25 @@ jobs:
 
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
+
+            - name: Proof of main's HEAD
+              # Trunk audit: `pnpm ship` pushes each commit to main together
+              # with its proof note, so a red step means a push bypassed it.
+              # The depth-1 checkout has HEAD's commit and tree, which is all
+              # `proof --check` reads besides the notes fetched here.
+              # PR-based repositories (pnpm ship <pr>, Dependabot merges) land
+              # commits without proofs: set the repository variable
+              # STACK_PROOF_AUDIT=off to skip this audit.
+              if: github.event_name == 'push' && vars.STACK_PROOF_AUDIT != 'off'
+              run: |
+                  if ! git fetch --no-tags origin "+refs/notes/proof:refs/notes/proof"; then
+                      echo "::error::origin has no refs/notes/proof, so $GITHUB_SHA has no proof. Land commits with pnpm proof, then pnpm ship (AGENTS.md: Trunk loop and proofs)."
+                      exit 1
+                  fi
+                  if ! pnpm proof --check HEAD; then
+                      echo "::error::main's HEAD $GITHUB_SHA has no passing proof: it was pushed without pnpm ship. Prove it (pnpm proof) and push refs/notes/proof, or revert it (AGENTS.md: Trunk loop and proofs)."
+                      exit 1
+                  fi
 
             - name: Format check
               run: pnpm run format:check

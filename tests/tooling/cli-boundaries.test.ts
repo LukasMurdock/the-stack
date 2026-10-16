@@ -110,10 +110,29 @@ test("ci:wait options: defaults, bounds and malformed input", () => {
 		assert.throws(() => parseCiWaitOptions(argv), message);
 });
 
-test("ship options: defaults, merge methods and malformed input", () => {
+test("ship options: trunk by default, PR mode with a number, malformed input", () => {
+	assert.deepEqual(parseShipOptions([]), {
+		kind: "run",
+		options: {
+			mode: "trunk",
+			requireReviewsCount: 0,
+			dryRun: false,
+			liveTimeoutMs: LIVE_WAIT_TIMEOUT_MS_DEFAULT,
+		},
+	});
+	assert.deepEqual(parseShipOptions(["--dry-run", "--require-reviews=2"]), {
+		kind: "run",
+		options: {
+			mode: "trunk",
+			requireReviewsCount: 2,
+			dryRun: true,
+			liveTimeoutMs: LIVE_WAIT_TIMEOUT_MS_DEFAULT,
+		},
+	});
 	assert.deepEqual(parseShipOptions(["7"]), {
 		kind: "run",
 		options: {
+			mode: "pr",
 			pullRequestNumber: 7,
 			mergeMethod: "merge",
 			ciTimeoutMs: 30 * 60_000,
@@ -122,14 +141,21 @@ test("ship options: defaults, merge methods and malformed input", () => {
 	});
 	const squash = parseShipOptions(["#7", "--squash", "--timeout=10"]);
 	assert.equal(squash.kind, "run");
-	if (squash.kind === "run") {
+	assert.equal(squash.kind === "run" && squash.options.mode, "pr");
+	if (squash.kind === "run" && squash.options.mode === "pr") {
 		assert.equal(squash.options.mergeMethod, "squash");
 		assert.equal(squash.options.ciTimeoutMs, 600_000);
 	}
 	for (const [argv, message] of [
-		[[], /Missing <pr>/],
 		[["main"], /must be a pull request number/],
-		[["7", "8"], /Expected one <pr>/],
+		[["7", "8"], /Expected at most one <pr>/],
+		[["--squash"], /--squash only applies with a <pr>/],
+		[["--timeout", "5"], /--timeout only applies with a <pr>/],
+		[["7", "--dry-run"], /--dry-run only applies to trunk mode/],
+		[["7", "--require-reviews", "1"], /--require-reviews only applies/],
+		[["--require-reviews", "33"], /at most 32/],
+		[["--require-reviews=-1"], /whole number/],
+		[["--dry-run=yes"], /does not take an argument/],
 		[["7", "--sqash"], /Unknown option '--sqash'/],
 		[["7", "--squash", "--rebase"], /Choose one merge method/],
 		[["7", "--timeout", "x"], /whole number/],
@@ -457,7 +483,11 @@ test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", (
 		/whole number/
 	);
 	assertUsageError(runScript("ci-wait.ts", ["--timeout=0"]), /at least 1/);
-	assertUsageError(runScript("ship.ts", []), /Missing <pr>/);
+	assertUsageError(runScript("ship.ts", ["7", "--dry-run"]), /trunk mode/);
+	assertUsageError(
+		runScript("ship.ts", ["--require-reviews", "x"]),
+		/whole number/
+	);
 	assertUsageError(runScript("proof.ts", ["--chek"]), /--chek/);
 	assertUsageError(
 		runScript("proof.ts", ["--check", "--require-reviews", "x"]),
@@ -517,7 +547,7 @@ test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", (
 	assertUsageError(runScript("demo-record.ts", ["nope"]), /No spec/);
 });
 
-test("ship with default arguments parses and stops at the placeholder production origin", () => {
+test("ship <pr> parses and stops at the placeholder production origin", () => {
 	const result = runScript("ship.ts", ["7"]);
 	assert.equal(result.status, 1, result.stderr);
 	assert.match(result.stderr, /Set deploymentCloudflare\.vars\.APP_URL/);

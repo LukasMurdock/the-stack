@@ -23,6 +23,16 @@ export const PROOF_REVIEW_FILE_BYTES_MAX = 16_384;
 export const PROOF_NOTE_BYTES_MAX = 262_144;
 // git answers in milliseconds; a hung filesystem must not block forever.
 export const PROOF_GIT_TIMEOUT_MS = 30_000;
+// The clean-tree rule `pnpm proof` and `pnpm ship` share: tracked changes and
+// untracked files count, because the build would see them but the commit
+// (and so its proof) does not. Ignored files do not count.
+export const WORKING_TREE_STATUS_ARGS = [
+	"status",
+	"--porcelain=v1",
+	"--untracked-files=normal",
+] as const;
+// Enough changed paths to recognise the problem without flooding the terminal.
+export const CHANGES_SHOWN_MAX = 10;
 
 const SHA_PATTERN = /^[0-9a-f]{40}$/;
 const sha = z.string().regex(SHA_PATTERN);
@@ -257,6 +267,27 @@ export function proofSummary(record: ProofRecord): string {
 	).length;
 	lines.push(`  reviews ${record.reviews.length} (${approvals} approving)`);
 	return lines.join("\n");
+}
+
+// `git status` output (WORKING_TREE_STATUS_ARGS) -> the changes that make the
+// tree unclean. A path in exemptPaths (exact, repository-relative) is ignored.
+export function workingTreeChanges(
+	status: string,
+	exemptPaths: readonly string[] = []
+): readonly string[] {
+	const changes: string[] = [];
+	for (const line of status.split("\n")) {
+		if (line.trim() === "") continue;
+		if (exemptPaths.some((exempt) => line.endsWith(` ${exempt}`))) continue;
+		changes.push(line);
+	}
+	return changes;
+}
+
+export function formatChanges(changes: readonly string[]): string {
+	const shown = changes.slice(0, CHANGES_SHOWN_MAX).join("\n");
+	if (changes.length <= CHANGES_SHOWN_MAX) return shown;
+	return `${shown}\n... and ${changes.length - CHANGES_SHOWN_MAX} more`;
 }
 
 // --- git boundary ---------------------------------------------------------

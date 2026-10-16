@@ -59,10 +59,14 @@ test each CLI as a subprocess (`tests/tooling/cli-boundaries.test.ts`).
 - CI: `pnpm ci:wait [ref|pr]` waits for GitHub checks (default `HEAD`, which
   must be pushed), prints failing jobs' log tails, and exits non-zero on
   failure. Run it in the background instead of hand-written polling loops.
-- Release: `pnpm ship <pr>` waits for CI, merges, fast-forwards main, runs
-  `pnpm run deploy`, then waits until `/api/health` reports the merged commit and
-  prints the production URL and admin sign-in. Rerun it after a failure; it does
-  not merge twice. Only the operator's request authorizes a ship.
+- Release: `pnpm ship` (trunk, the default) checks a clean tree, a passing
+  proof of HEAD and that origin's main fast-forwards to it, pushes HEAD to main
+  with `refs/notes/proof` in one atomic push, runs `pnpm run deploy`, then waits
+  until `/api/health` reports the commit and prints the production URL and
+  admin sign-in. `--dry-run` prints the checks and steps. PR-based teams and
+  outside contributions use `pnpm ship <pr>` instead: it waits for CI, merges
+  and fast-forwards main. Rerun either after a failure; nothing is pushed,
+  merged or deployed twice. Only the operator's request authorizes a ship.
 
 ## Trunk loop and proofs
 
@@ -77,7 +81,9 @@ pushing:
    newer proof of the same commit). Logs are in `.proof/<sha>/`.
    `pnpm proof --check [rev]` passes only for a passing proof of that exact
    tree with e2e run; `--show` prints it.
-4. Push the commit and the note (`git push origin refs/notes/proof`), then ship.
+4. `pnpm ship` pushes the commit and its note together and deploys. If main
+   moved, rebase onto `origin/main` and prove again. CI on main fails when
+   HEAD has no passing proof.
 
 A proof shows that this commit's tree passed the suite on the recorded machine.
 It is self-attested evidence, not security: anyone who can push can write a
