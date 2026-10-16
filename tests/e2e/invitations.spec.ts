@@ -1,12 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { createOrganization, createProject } from "./organizations";
+import { createOrganization, roleLabel } from "./organizations";
 
 test("invitation acceptance survives a lost response and grants viewer access", async ({
 	page,
 	browser,
 }) => {
 	const name = await createOrganization(page);
-	await createProject(page);
 	await page.getByRole("link", { name: "Members", exact: true }).click();
 	await page.getByLabel("Email address").fill("viewer@example.test");
 	await page.getByRole("button", { name: "Create invitation" }).click();
@@ -51,15 +50,7 @@ test("invitation acceptance survives a lost response and grants viewer access", 
 		await expect(
 			viewer.getByRole("button", { name: "Create invitation" })
 		).toHaveCount(0);
-		await viewer
-			.getByRole("link", { name: "Projects", exact: true })
-			.click();
-		await expect(
-			viewer.getByRole("heading", { name: "Launch pilot", exact: true })
-		).toBeVisible();
-		await expect(
-			viewer.getByRole("button", { name: "Create project", exact: true })
-		).toHaveCount(0);
+		await expect(roleLabel(viewer, "viewer")).toBeVisible();
 	} finally {
 		await viewerContext.close();
 	}

@@ -34,7 +34,18 @@ test each CLI as a subprocess (`tests/tooling/cli-boundaries.test.ts`).
   moving a route usually mean a stale tree.
 - Tests: fake R2 with `tests/helpers/fake-r2.ts`. Columns are snake_case in SQL
   (`casing: "snake_case"`), so raw-SQL seeds use `organization_id`, not the key.
-- Feature conventions: read `src/content/docs/v1/first-feature.md` and `extend.md`.
+- Feature conventions: read `src/content/docs/v1/extend.md`.
+
+<!-- example:start -->
+
+- Projects is the removable example and first-feature walkthrough
+  (`src/content/docs/v1/first-feature.md`). Core code and tests must not depend
+  on it; wrap any line a shared file needs for it in `example:start`/`example:end`
+  comments so `pnpm example:remove` (checked by
+  `tests/tooling/example-remove.test.ts`) can delete it in one step.
+
+<!-- example:end -->
+
 - Paged lists return `pagedResponse` with a `page.total` from `readPage`; never
   count a page's rows. Break `created_at` ties with `insertionOrder(table)`, not
   random ids. Search user text with `literalContains`; D1 rejects long `LIKE`s.

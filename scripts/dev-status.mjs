@@ -51,7 +51,9 @@ process.stdout.write("\n");
 
 line("Marketing", `${appOrigin}/`);
 line("App", `${appOrigin}/app/organizations`);
+// example:start
 line("First feature", `${appOrigin}/docs/v1/first-feature/`);
+// example:end
 line("Docs", `${appOrigin}/docs`);
 line("API health", `${appOrigin}/api/health`);
 line("API docs", `${appOrigin}/api/scalar`);

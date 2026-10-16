@@ -25,7 +25,7 @@ test("failure reasons are codes the ingestion contract accepts, never messages",
 		assert.ok(
 			turretOutcomeBodySchema.safeParse({
 				attemptId: crypto.randomUUID(),
-				workflow: "project.create",
+				workflow: "invitation.accept",
 				event: "failed",
 				ts: 1,
 				reason,
@@ -39,7 +39,7 @@ test("success rate counts finished attempts and outcome links default to failure
 	assert.equal(successRate({ succeeded: 0, failed: 0, abandoned: 0 }), null);
 	assert.deepEqual(outcomesSearchSchema.parse({ workflow: "checkout" }), {
 		preset: "7d",
-		workflow: "project.create",
+		workflow: "invitation.accept",
 		status: "failed",
 		offset: 0,
 	});

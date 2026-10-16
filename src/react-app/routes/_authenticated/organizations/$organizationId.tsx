@@ -29,6 +29,7 @@ function OrganizationLayout() {
 				<div className="flex flex-wrap items-center justify-between gap-3">
 					<p className="text-lg font-semibold">{organization.name}</p>
 					<span className="text-sm capitalize text-muted-foreground">
+						<span className="sr-only">Your role: </span>
 						{organization.role}
 					</span>
 				</div>
@@ -36,6 +37,7 @@ function OrganizationLayout() {
 					aria-label="Organization"
 					className="flex gap-5 border-b pb-3 text-sm"
 				>
+					{/* example:start */}
 					<Link
 						to="/organizations/$organizationId/projects"
 						params={{ organizationId }}
@@ -43,6 +45,7 @@ function OrganizationLayout() {
 					>
 						Projects
 					</Link>
+					{/* example:end */}
 					<Link
 						to="/organizations/$organizationId/members"
 						params={{ organizationId }}

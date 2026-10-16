@@ -670,67 +670,6 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"checkConstraints": {}
-		},
-		"projects": {
-			"name": "projects",
-			"columns": {
-				"id": {
-					"name": "id",
-					"type": "text",
-					"primaryKey": true,
-					"notNull": true,
-					"autoincrement": false
-				},
-				"organization_id": {
-					"name": "organization_id",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true,
-					"autoincrement": false
-				},
-				"name": {
-					"name": "name",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true,
-					"autoincrement": false
-				},
-				"description": {
-					"name": "description",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true,
-					"autoincrement": false
-				},
-				"created_at": {
-					"name": "created_at",
-					"type": "integer",
-					"primaryKey": false,
-					"notNull": true,
-					"autoincrement": false
-				}
-			},
-			"indexes": {
-				"projects_organization_idx": {
-					"name": "projects_organization_idx",
-					"columns": ["organization_id", "created_at", "id"],
-					"isUnique": false
-				}
-			},
-			"foreignKeys": {
-				"projects_organization_id_organizations_id_fk": {
-					"name": "projects_organization_id_organizations_id_fk",
-					"tableFrom": "projects",
-					"tableTo": "organizations",
-					"columnsFrom": ["organization_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "no action"
-				}
-			},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {},
-			"checkConstraints": {}
 		}
 	},
 	"views": {},

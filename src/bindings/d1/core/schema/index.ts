@@ -7,4 +7,6 @@ export const coreUsers = sqliteTable("core_users", {
 
 export * from "./better-auth";
 export * from "./organizations";
+// example:start
 export * from "./projects";
+// example:end

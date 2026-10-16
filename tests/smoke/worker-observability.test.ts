@@ -621,7 +621,7 @@ test("request policy keeps metrics, trace names, breadcrumbs, and errors distinc
 	app.use("*", observeRequest);
 	app.all("*", (c) => c.json({ error: "Expected failure" }, 500));
 	for (const [path, category, spanName, breadcrumb, error] of [
-		["/api/projects", "application", "api.request", true, true],
+		["/api/organizations", "application", "api.request", true, true],
 		["/api/auth/get-session", "auth", "auth.request", false, true],
 		["/api/internal/turret/issues", "admin", "turret.admin", false, false],
 		["/api/internal/example", "admin", "api.request", true, true],
@@ -700,13 +700,13 @@ test("declared route labels group resource IDs and bound unmatched paths across 
 	};
 	const app = new Hono<{ Bindings: Bindings }>();
 	app.use("*", observeRequest);
-	app.get("/api/organizations/:organizationId/projects", (c) =>
+	app.get("/api/organizations/:organizationId/members", (c) =>
 		c.json({ error: "failure" }, 500)
 	);
 	app.get("/api/auth/*", (c) => c.json({ ok: true }));
 	for (const path of [
-		"/api/organizations/550e8400-e29b-41d4-a716-446655440000/projects?token=secret",
-		"/api/organizations/12345678-1234-4123-8123-123456789012/projects",
+		"/api/organizations/550e8400-e29b-41d4-a716-446655440000/members?token=secret",
+		"/api/organizations/12345678-1234-4123-8123-123456789012/members",
 		"/api/unmatched/private-user-id",
 		"/api/auth/reset-password/private-token",
 	])
@@ -717,8 +717,8 @@ test("declared route labels group resource IDs and bound unmatched paths across 
 		);
 	await f.flush();
 	assert.deepEqual(labels, [
-		"/api/organizations/:organizationId/projects",
-		"/api/organizations/:organizationId/projects",
+		"/api/organizations/:organizationId/members",
+		"/api/organizations/:organizationId/members",
 		"/api/*",
 		"/api/auth/*",
 	]);

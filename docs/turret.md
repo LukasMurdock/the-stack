@@ -291,7 +291,7 @@ The export omits who was affected: no user IDs, emails, or contact details. Repo
 
 ## Product Outcomes
 
-Errors and feedback miss tasks that fail quietly. Outcomes measure whether people complete a small set of important workflows. They're listed in `turretWorkflowSchema` (`src/contracts/turret-outcomes.ts`), currently creating a project and accepting an invitation.
+Errors and feedback miss tasks that fail quietly. Outcomes measure whether people complete a small set of important workflows. They're listed in `turretWorkflowSchema` (`src/contracts/turret-outcomes.ts`), such as accepting an invitation.
 
 An attempt starts, may fail any number of times, and ends at its first success. Events are recorded per attempt in `turret_outcome_attempts`, tied to the replay session that started it. Events can arrive out of order or more than once. Events from another replay session never change an attempt, and nothing changes after the first success.
 

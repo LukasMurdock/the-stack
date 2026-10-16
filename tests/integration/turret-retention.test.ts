@@ -161,7 +161,7 @@ test("cleanup limits session batches and removes legacy linked telemetry and fee
 		"INSERT INTO turret_issue_feedback (feedback_id, fingerprint, created_at) VALUES ('legacy', 'report:legacy', 0)"
 	);
 	f.sqlite.exec(
-		"INSERT INTO turret_outcome_attempts (id, workflow, session_id, user_id, started_at, last_event_at, expires_at, created_at) VALUES ('attempt', 'project.create', 'expired-0', 'user', 0, 0, 5000, 0)"
+		"INSERT INTO turret_outcome_attempts (id, workflow, session_id, user_id, started_at, last_event_at, expires_at, created_at) VALUES ('attempt', 'invitation.accept', 'expired-0', 'user', 0, 0, 5000, 0)"
 	);
 	const bucket = new FakeR2Bucket(() =>
 		assert.fail("No replay objects to delete")
