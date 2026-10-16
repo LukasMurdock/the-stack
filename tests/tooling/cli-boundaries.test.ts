@@ -28,6 +28,7 @@ import {
 	SHOT_PATHS_MAX,
 } from "../../scripts/shot.ts";
 import { API_REQUEST_BYTES_MAX, parseApiOptions } from "../../scripts/api.ts";
+import { parseProofOptions } from "../../scripts/proof.ts";
 import {
 	parseDemoRecordOptions,
 	parseDemoVideoEnv,
@@ -374,6 +375,67 @@ test("demo:record options: spec names, single tests and the output file", () => 
 		assert.throws(() => parseDemoRecordOptions(argv, root), message);
 });
 
+test("proof options: one mode, its own flags, and a rev", () => {
+	assert.deepEqual(parseProofOptions([]), {
+		kind: "run",
+		options: { mode: "run", skipE2e: false, keep: false },
+	});
+	assert.deepEqual(parseProofOptions(["--skip-e2e", "--keep"]), {
+		kind: "run",
+		options: { mode: "run", skipE2e: true, keep: true },
+	});
+	assert.deepEqual(parseProofOptions(["--check"]), {
+		kind: "run",
+		options: {
+			mode: "check",
+			rev: "HEAD",
+			allowSkippedE2e: false,
+			requireReviewsCount: 0,
+		},
+	});
+	assert.deepEqual(
+		parseProofOptions([
+			"--check",
+			"main~1",
+			"--allow-skipped-e2e",
+			"--require-reviews",
+			"2",
+		]),
+		{
+			kind: "run",
+			options: {
+				mode: "check",
+				rev: "main~1",
+				allowSkippedE2e: true,
+				requireReviewsCount: 2,
+			},
+		}
+	);
+	assert.deepEqual(parseProofOptions(["--show", "abc123"]), {
+		kind: "run",
+		options: { mode: "show", rev: "abc123" },
+	});
+	assert.deepEqual(parseProofOptions(["--add-review", "r.json"]), {
+		kind: "run",
+		options: { mode: "add-review", rev: "HEAD", reviewFile: "r.json" },
+	});
+	assert.deepEqual(parseProofOptions(["-h"]), { kind: "help" });
+	for (const [argv, message] of [
+		[["--check", "--show"], /Choose one of --check, --show/],
+		[["--check", "--skip-e2e"], /--skip-e2e only applies when running/],
+		[["--show", "--keep"], /--keep only applies when running/],
+		[["--allow-skipped-e2e"], /only applies with --check/],
+		[["--check", "--require-reviews=-1"], /whole number/],
+		[["--check", "--require-reviews", "33"], /at most 32/],
+		[["--check", "a", "b"], /at most one rev/],
+		[["HEAD~1"], /always runs on HEAD/],
+		[["--add-review"], /argument missing/],
+		[["--skip-e2e=yes"], /does not take an argument/],
+		[["--chek"], /Unknown option '--chek'/],
+	] as const)
+		assert.throws(() => parseProofOptions(argv), message);
+});
+
 test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", () => {
 	for (const [name, args] of [
 		["ci-wait.ts", ["--help"]],
@@ -384,6 +446,7 @@ test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", (
 		["shot.ts", ["--help"]],
 		["api.ts", ["-h"]],
 		["demo-record.ts", ["--help"]],
+		["proof.ts", ["--help"]],
 	] as const) {
 		const help = runScript(name, args);
 		assert.equal(help.status, 0, `${name}: ${help.stderr}`);
@@ -395,6 +458,11 @@ test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", (
 	);
 	assertUsageError(runScript("ci-wait.ts", ["--timeout=0"]), /at least 1/);
 	assertUsageError(runScript("ship.ts", []), /Missing <pr>/);
+	assertUsageError(runScript("proof.ts", ["--chek"]), /--chek/);
+	assertUsageError(
+		runScript("proof.ts", ["--check", "--require-reviews", "x"]),
+		/whole number/
+	);
 	assertUsageError(runScript("ship.ts", ["7", "--sqash"]), /--sqash/);
 	assertUsageError(
 		runScript("dev-server.ts", ["start", "--port", "abc"]),

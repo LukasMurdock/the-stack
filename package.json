@@ -18,6 +18,7 @@
 		"check": "pnpm run build && wrangler deploy --config dist/server/wrangler.json --dry-run",
 		"deploy": "node scripts/deploy.mjs",
 		"secret": "node -e \"console.log(require('node:crypto').randomBytes(32).toString('base64url'))\"",
+		"proof": "node scripts/proof.ts",
 		"ship": "node scripts/ship.ts",
 		"ci:wait": "node scripts/ci-wait.ts",
 		"admin:bootstrap": "node scripts/admin-bootstrap.ts",

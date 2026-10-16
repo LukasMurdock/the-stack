@@ -108,3 +108,6 @@ worker-configuration.d.ts
 # Void generated configuration and local platform state
 .void/
 .void-wrangler.jsonc
+
+# pnpm proof logs (the record itself is a git note under refs/notes/proof)
+/.proof/

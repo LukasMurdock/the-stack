@@ -22,7 +22,7 @@ test each CLI as a subprocess (`tests/tooling/cli-boundaries.test.ts`).
 - Validate cheapest first: the touched test file
   (`pnpm exec tsx --tsconfig tsconfig.app.json --test <file>` or
   `pnpm test:e2e <spec>`), then `pnpm verify:fast` (lint, types and behavior
-  tests, no build) while iterating, `pnpm verify` before a PR, and
+  tests, no build) while iterating, `pnpm proof` after committing, and
   `pnpm test:e2e` for browser contracts.
 - Browser runs claim `STACK_E2E_PORT` or the first free port from 4322 and keep
   state and build output in `.wrangler/e2e/<port>`, so parallel checkouts and
@@ -63,6 +63,28 @@ test each CLI as a subprocess (`tests/tooling/cli-boundaries.test.ts`).
   `pnpm run deploy`, then waits until `/api/health` reports the merged commit and
   prints the production URL and admin sign-in. Rerun it after a failure; it does
   not merge twice. Only the operator's request authorizes a ship.
+
+## Trunk loop and proofs
+
+Work lands on `main` without pull requests, so the evidence is produced before
+pushing:
+
+1. Iterate with the touched test file and `pnpm verify:fast`.
+2. Commit. `pnpm proof` refuses uncommitted or untracked changes.
+3. `pnpm proof` checks HEAD out into a temporary directory, runs
+   `pnpm install --frozen-lockfile`, `pnpm verify` and `pnpm test:e2e` there,
+   and stores a JSON record as a git note (`refs/notes/proof`, replaced by a
+   newer proof of the same commit). Logs are in `.proof/<sha>/`.
+   `pnpm proof --check [rev]` passes only for a passing proof of that exact
+   tree with e2e run; `--show` prints it.
+4. Push the commit and the note (`git push origin refs/notes/proof`), then ship.
+
+A proof shows that this commit's tree passed the suite on the recorded machine.
+It is self-attested evidence, not security: anyone who can push can write a
+note, and it says nothing about behavior the tests do not cover. Reviews are a
+contract, not code: a reviewer (human, model or tool) records its verdict with
+`pnpm proof --add-review <file.json>`; `--check --require-reviews <n>` enforces
+a count where policy asks for one.
 
 ## Showing UI changes
 

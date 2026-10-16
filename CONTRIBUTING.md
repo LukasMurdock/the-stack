@@ -69,6 +69,11 @@ behavior suite without building. For full local verification:
 pnpm verify
 ```
 
+Before pushing to `main`, commit and run `pnpm proof`: it runs install,
+`pnpm verify` and `pnpm test:e2e` on the committed tree in a clean temporary
+checkout and records the result as a git note; push it with
+`git push origin refs/notes/proof`. See "Trunk loop and proofs" in `AGENTS.md`.
+
 To reset local state from scratch:
 
 ```bash
