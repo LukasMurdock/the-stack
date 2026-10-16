@@ -314,7 +314,7 @@ async function removeExample(options: ExampleRemoveOptions): Promise<void> {
 	);
 	if (plan.migration.kind === "delete")
 		process.stdout.write(
-			"Local databases that applied the example keep an unused projects table until node scripts/reset-local.mjs clears local state.\n"
+			"Local databases that applied the example keep an unused projects table until pnpm local:reset clears local state.\n"
 		);
 }
 
