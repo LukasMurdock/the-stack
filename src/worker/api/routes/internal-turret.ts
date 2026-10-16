@@ -38,6 +38,7 @@ import { startOfUtcWeekMs } from "./_shared/time";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
+type WeeklyPoint = { weekStartMs: number; value: number };
 
 function pctDelta(current: number, previous: number): number | null {
 	if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
@@ -329,6 +330,11 @@ export const routes = internalTurretApp
 						lt(turretSessions.startedAt, new Date(nowMs))
 					)
 				);
+			// An aggregate without GROUP BY always returns exactly one row.
+			if (replayUsers === undefined)
+				throw new Error(
+					"Invariant violated: an aggregate returns a row."
+				);
 			const usersWithRetainedReplays24h = replayUsers.count;
 
 			// 8 completed weeks ending at currentWeekStart (start of this week).
@@ -352,19 +358,27 @@ export const routes = internalTurretApp
 				totalUsersPrevWeek
 			);
 
-			const seriesTotalUsersWeekly = totalsBefore
-				.slice(1)
-				.map((value: number, idx: number) => {
-					const end = weekEnds[idx + 1];
-					return { weekStartMs: end - WEEK_MS, value };
+			const seriesTotalUsersWeekly: WeeklyPoint[] = [];
+			const seriesNewUsersWeekly: WeeklyPoint[] = [];
+			for (let index = 1; index < weekEnds.length; index += 1) {
+				const end = weekEnds[index];
+				const total = totalsBefore[index];
+				const previous = totalsBefore[index - 1];
+				if (
+					end === undefined ||
+					total === undefined ||
+					previous === undefined
+				)
+					throw new Error(
+						"Invariant violated: one total per week end."
+					);
+				const weekStartMs = end - WEEK_MS;
+				seriesTotalUsersWeekly.push({ weekStartMs, value: total });
+				seriesNewUsersWeekly.push({
+					weekStartMs,
+					value: total - previous,
 				});
-			const seriesNewUsersWeekly = totalsBefore
-				.slice(1)
-				.map((_: number, idx: number) => {
-					const end = weekEnds[idx + 1];
-					const value = totalsBefore[idx + 1] - totalsBefore[idx];
-					return { weekStartMs: end - WEEK_MS, value };
-				});
+			}
 			const newUsersDeltaPctWoW = pctDelta(
 				seriesNewUsersWeekly[seriesNewUsersWeekly.length - 1]?.value ??
 					0,

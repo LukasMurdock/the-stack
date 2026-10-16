@@ -17,7 +17,7 @@ function requiredSameOrigin(
 function getBearerToken(req: Request): string | null {
 	const auth = req.headers.get("Authorization") ?? "";
 	const match = auth.match(/^Bearer\s+(.+)$/i);
-	return match ? match[1] : null;
+	return match?.[1] ?? null;
 }
 
 export { requiredSameOrigin, getBearerToken };

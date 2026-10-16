@@ -1,5 +1,5 @@
 import { createAuthClient } from "better-auth/client";
-import { observeTurretCapture } from "./lifecycle";
+import { observeTurretCapture, sessionSource } from "./lifecycle";
 
 // This Astro entry uses the framework-independent client, without React or router imports.
 const authClient = createAuthClient();
@@ -15,7 +15,7 @@ function start(): void {
 	if (window.__turretAutoStarted) return;
 	window.__turretAutoStarted = true;
 
-	observeTurretCapture(authClient.$store.atoms.session);
+	observeTurretCapture(sessionSource(authClient.$store.atoms));
 }
 
 start();

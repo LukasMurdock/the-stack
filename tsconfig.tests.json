@@ -4,7 +4,10 @@
 		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tests.tsbuildinfo",
 		"types": ["vite/client", "node", "./worker-configuration.d.ts"],
 		"lib": ["ES2024", "DOM", "DOM.Iterable"],
-		"allowJs": true
+		"allowJs": true,
+		// Inherited from tsconfig.app.json, but 76 test-only sites still index
+		// without a check; the app and Worker projects keep the flag on.
+		"noUncheckedIndexedAccess": false
 	},
 	"include": [
 		"tests/**/*.ts",

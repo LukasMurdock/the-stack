@@ -1,6 +1,9 @@
 import React from "react";
 import { authClient } from "../auth";
-import { observeTurretCapture } from "../features/turret/lifecycle";
+import {
+	observeTurretCapture,
+	sessionSource,
+} from "../features/turret/lifecycle";
 import {
 	CatchBoundary,
 	ErrorComponent,
@@ -59,7 +62,7 @@ function RootComponent() {
 		router,
 	]);
 	React.useLayoutEffect(
-		() => observeTurretCapture(authClient.$store.atoms.session),
+		() => observeTurretCapture(sessionSource(authClient.$store.atoms)),
 		[]
 	);
 

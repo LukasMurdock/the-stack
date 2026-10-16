@@ -22,6 +22,9 @@
 		"noUnusedParameters": true,
 		"noFallthroughCasesInSwitch": true,
 		"noUncheckedSideEffectImports": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitReturns": true,
+		"noImplicitOverride": true,
 		"paths": {
 			"@/*": ["./src/*"]
 		}

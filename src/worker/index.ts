@@ -108,6 +108,7 @@ app.use("/api/*", async (c, next) => {
 
 	await next();
 	setCorsHeaders(c, origin);
+	return;
 });
 
 // Canonicalize `/api/*` to no trailing slash.
