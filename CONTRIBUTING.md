@@ -53,7 +53,8 @@ Keep `oxlint` and `@oxlint/plugins` at matching exact versions.
 `@typescript/native` provides `tsc`. The `typescript` alias supplies the
 TypeScript 6 API required by framework tools and lint plugins.
 
-For full local verification:
+While iterating, `pnpm verify:fast` runs lint, formatting, type checks and the
+behavior suite without building. For full local verification:
 
 ```bash
 pnpm verify

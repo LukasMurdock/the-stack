@@ -48,9 +48,10 @@ It ends with `Local setup complete.`, app URLs, and the credential-file location
 Rerunning setup preserves records and an existing administrator password.
 The dev server runs at <http://localhost:4321>.
 
-If your coding agent starts Astro in the background, use
-`pnpm exec astro dev logs --follow` to read server output and local auth links.
-Use `pnpm exec astro dev stop` to stop that background server.
+If your coding agent starts Astro in the background, use `pnpm dev:wait` to
+wait until it is healthy and `pnpm exec astro dev logs --follow` to read server
+output and local auth links. Use `pnpm dev:stop` to stop that server and its
+workerd processes.
 
 Local defaults, including `APP_URL` and `ADMIN_EMAIL=admin@localhost.test`, live in
 `localCloudflare.vars` in `config/cloudflare.mjs`. To choose another local admin email, add `ADMIN_EMAIL` to

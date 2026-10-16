@@ -9,8 +9,19 @@ Design defaults for newly created apps; do not invent an operational environment
 ## Workflows
 
 - Install: Node 24.21.0+ and the pinned pnpm version; `pnpm install`.
-- Local setup: `pnpm local:setup`; develop: `pnpm dev`.
-- Validate: `pnpm verify`; browser contracts: `pnpm test:e2e`.
+- Local setup: `pnpm local:setup`; develop: `pnpm dev`. It refuses to start
+  while this checkout's server or another process holds the port.
+  `pnpm dev:wait` polls `/api/health` with a deadline, `pnpm dev:stop` stops
+  Astro and workerd, and `pnpm status` shows the PID. Do not `pkill -f`.
+- Validate cheapest first: the touched test file
+  (`pnpm exec tsx --tsconfig tsconfig.app.json --test <file>` or
+  `pnpm test:e2e <spec>`), then `pnpm verify:fast` (lint, types and behavior
+  tests, no build) while iterating, `pnpm verify` before a PR, and
+  `pnpm test:e2e` for browser contracts.
+- Browser runs claim `STACK_E2E_PORT` or the first free port from 4322 and keep
+  state and build output in `.wrangler/e2e/<port>`, so parallel checkouts and
+  agents do not collide. A build is reused while its inputs are unchanged;
+  `STACK_E2E_REBUILD=1` forces a rebuild.
 - Feature conventions: read `src/content/docs/v1/first-feature.md` and `extend.md`.
 - Paged lists return `pagedResponse` with a `page.total` from `readPage`; never
   count a page's rows. Break `created_at` ties with `insertionOrder(table)`, not

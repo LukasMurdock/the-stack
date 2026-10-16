@@ -133,10 +133,11 @@ and checks that their schemas match the test fixtures. CI and `pnpm verify` requ
 `pnpm test:tooling` checks lint configuration and plugin integration when changing
 template tooling. `pnpm verify` runs lint, formatting, the build, test type checks,
 and the behavior suite.
-`pnpm test:e2e` builds a Worker with isolated local D1 state under `.wrangler/e2e`;
-it applies real migrations and uses local Worker bindings, including R2 for the
-replay round trip. It does not reset normal local data. Install Chromium once with
-`pnpm exec playwright install chromium`.
+`pnpm test:e2e` builds a Worker with isolated local D1 state under
+`.wrangler/e2e/<port>`; it applies real migrations and uses local Worker bindings,
+including R2 for the replay round trip. It does not reset normal local data.
+Later runs reuse the build and migrated state until a build input changes.
+Install Chromium once with `pnpm exec playwright install chromium`.
 
 Apply production migrations deliberately before publishing compatible code.
 See the [deployment runbook](/docs/v1/deploy-runbook).
