@@ -1,6 +1,10 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 
+/**
+ * @param {string} message
+ * @returns {never}
+ */
 function die(message) {
 	process.stderr.write(`${message}\n`);
 	process.exit(1);

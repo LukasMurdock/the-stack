@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { deploymentCloudflare } from "../config/cloudflare.mjs";
-import { releaseSummary } from "./lib/release.mjs";
+import { releaseSummary } from "./lib/release.ts";
 import { provisionResources } from "./provision-resources.mjs";
 
+/** @param {string[]} args */
 function run(args) {
 	const result = spawnSync("pnpm", args, { stdio: "inherit" });
 	if (result.error) throw result.error;
@@ -14,7 +15,7 @@ try {
 	run(["exec", "void", "connect", "--platform", "cloudflare"]);
 	const { configPath, config } = await provisionResources();
 	run(["run", "check"]);
-	for (const database of config.d1_databases)
+	for (const database of config.d1_databases ?? [])
 		run([
 			"exec",
 			"wrangler",

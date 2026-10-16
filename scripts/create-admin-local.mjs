@@ -2,14 +2,19 @@ import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { createRequire } from "node:module";
+import { parseArgs as parseCommandLine } from "node:util";
 
+import SqliteDatabase from "better-sqlite3";
 import { hashPassword } from "better-auth/crypto";
 import { loadLocalEnv } from "./local-env.mjs";
 
-const require = createRequire(import.meta.url);
-const SqliteDatabase = require("better-sqlite3");
+const USAGE =
+	"Usage: node scripts/create-admin-local.mjs [--email you@example.com] [--force-reset-password]";
 
+/**
+ * @param {string} message
+ * @returns {never}
+ */
 function die(message) {
 	process.stderr.write(`${message}\n`);
 	process.exit(1);
@@ -20,42 +25,40 @@ function randomPassword(length = 32) {
 		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
 	const bytes = crypto.randomBytes(length);
 	let out = "";
-	for (let i = 0; i < bytes.length; i++) {
-		out += alphabet[bytes[i] % alphabet.length];
-	}
+	// 256 is a multiple of the 64-character alphabet, so there is no bias.
+	for (const byte of bytes) out += alphabet.charAt(byte % alphabet.length);
 	return out;
 }
 
+// Strict: a mistyped flag such as --emial must not fall back to ADMIN_EMAIL
+// and create or reset that administrator instead.
+/** @param {string[]} argv */
 function parseArgs(argv) {
-	const args = {
-		email: undefined,
-		forceResetPassword: false,
-	};
-
-	for (let i = 0; i < argv.length; i++) {
-		const a = argv[i];
-		if (a === "--email") {
-			args.email = argv[i + 1];
-			i++;
-			continue;
-		}
-		if (a.startsWith("--email=")) {
-			args.email = a.slice("--email=".length);
-			continue;
-		}
-		if (a === "--force-reset-password") {
-			args.forceResetPassword = true;
-			continue;
-		}
-		if (a === "-h" || a === "--help") {
-			process.stdout.write(
-				"Usage: node scripts/create-admin-local.mjs [--email you@example.com] [--force-reset-password]\n"
-			);
-			process.exit(0);
-		}
+	let parsed;
+	try {
+		parsed = parseCommandLine({
+			args: argv,
+			options: {
+				email: { type: "string" },
+				"force-reset-password": { type: "boolean" },
+				help: { type: "boolean", short: "h" },
+			},
+			strict: true,
+		});
+	} catch (error) {
+		process.stderr.write(
+			`${error instanceof Error ? error.message : String(error)}\n\n${USAGE}\n`
+		);
+		process.exit(2);
 	}
-
-	return args;
+	if (parsed.values.help) {
+		process.stdout.write(`${USAGE}\n`);
+		process.exit(0);
+	}
+	return {
+		email: parsed.values.email,
+		forceResetPassword: parsed.values["force-reset-password"] === true,
+	};
 }
 
 function findCoreDbSqlitePath() {
@@ -69,6 +72,7 @@ function findCoreDbSqlitePath() {
 	return path.resolve(process.cwd(), out);
 }
 
+/** @param {{ email: string; password: string }} credential */
 function writeAdminPasswordFile({ email, password }) {
 	const outPath = path.resolve(process.cwd(), ".wrangler/.admin-password");
 	fs.mkdirSync(path.dirname(outPath), { recursive: true });
@@ -109,10 +113,14 @@ const ensureAdmin = db.transaction(() => {
 			"select id, email from auth_user where lower(email) = lower(?) limit 1"
 		)
 		.get(emailLower);
+	const existingUserId =
+		existingUser && typeof existingUser === "object" && "id" in existingUser
+			? String(existingUser.id)
+			: undefined;
 
 	let userId;
-	if (existingUser) {
-		userId = existingUser.id;
+	if (existingUserId !== undefined) {
+		userId = existingUserId;
 		// Normalize email casing + ensure admin role.
 		db.prepare(
 			"update auth_user set email = ?, role = 'admin', email_verified = 1 where id = ?"
@@ -130,10 +138,15 @@ const ensureAdmin = db.transaction(() => {
 		)
 		.get(userId);
 
+	const account =
+		existingAccount && typeof existingAccount === "object"
+			? existingAccount
+			: undefined;
 	const hasPassword =
-		!!existingAccount &&
-		typeof existingAccount.password === "string" &&
-		existingAccount.password.length > 0;
+		account !== undefined &&
+		"password" in account &&
+		typeof account.password === "string" &&
+		account.password.length > 0;
 
 	if (hasPassword && !args.forceResetPassword) {
 		return { status: "already", email: emailLower };
@@ -144,7 +157,10 @@ const ensureAdmin = db.transaction(() => {
 		status: "needs_password",
 		email: emailLower,
 		userId,
-		existingAccountId: existingAccount?.id ?? null,
+		existingAccountId:
+			account !== undefined && "id" in account
+				? String(account.id)
+				: null,
 		password,
 	};
 });
@@ -157,8 +173,11 @@ if (result.status === "already") {
 	);
 	process.exit(0);
 }
+const { password, userId } = result;
+if (password === undefined || userId === undefined)
+	throw new Error("Invariant violated: a new password needs a user id.");
 
-const passwordHash = await hashPassword(result.password);
+const passwordHash = await hashPassword(password);
 
 const writePassword = db.transaction(() => {
 	const now = Date.now();
@@ -171,7 +190,7 @@ const writePassword = db.transaction(() => {
 		const accountRowId = crypto.randomUUID();
 		db.prepare(
 			"insert into auth_account (id, account_id, provider_id, user_id, password, updated_at) values (?, ?, 'credential', ?, ?, ?)"
-		).run(accountRowId, result.userId, result.userId, passwordHash, now);
+		).run(accountRowId, userId, userId, passwordHash, now);
 	}
 });
 
@@ -179,9 +198,9 @@ writePassword();
 
 const passwordFile = writeAdminPasswordFile({
 	email: result.email,
-	password: result.password,
+	password,
 });
 
 process.stdout.write(`Created/updated admin user: ${result.email}\n`);
-process.stdout.write(`Password (printed once): ${result.password}\n`);
+process.stdout.write(`Password (printed once): ${password}\n`);
 process.stdout.write(`Saved: ${path.relative(process.cwd(), passwordFile)}\n`);

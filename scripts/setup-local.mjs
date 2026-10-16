@@ -2,15 +2,21 @@ import { execFileSync } from "node:child_process";
 
 import { loadLocalEnv } from "./local-env.mjs";
 
+/** @param {string} message */
 function log(message) {
 	process.stdout.write(`${message}\n`);
 }
 
+/**
+ * @param {string} command
+ * @param {string[]} args
+ */
 function runCommand(command, args) {
 	log(`\n> ${command} ${args.join(" ")}`);
 	execFileSync(command, args, { stdio: "inherit" });
 }
 
+/** @param {string} scriptPath */
 function runNodeScript(scriptPath) {
 	log(`\n> node ${scriptPath}`);
 	execFileSync("node", [scriptPath], { stdio: "inherit" });
@@ -23,7 +29,8 @@ if (parsed.error) {
 	throw parsed.error;
 }
 // Local setup and the Worker must agree even if the shell exports another secret.
-process.env.BETTER_AUTH_SECRET = parsed.parsed.BETTER_AUTH_SECRET;
+const localSecret = parsed.parsed?.BETTER_AUTH_SECRET;
+if (localSecret !== undefined) process.env.BETTER_AUTH_SECRET = localSecret;
 
 const requiredKeys = ["BETTER_AUTH_SECRET", "APP_URL", "ADMIN_EMAIL"];
 const missing = requiredKeys.filter((key) => {

@@ -10,13 +10,6 @@ import {
 	readCloudflareConfig,
 } from "../../scripts/provision-resources.mjs";
 
-type DatabaseBinding = {
-	binding: string;
-	database_name: string;
-	database_id: string;
-	migrations_dir: string;
-};
-
 // Exercise the installed Void provisioning engine; fake only its remote
 // transport so creation, lock persistence, and retries need no cloud account.
 test("Void provisions separate Core/Turret resources and reuses their lock on retry", async (t) => {
@@ -27,7 +20,7 @@ test("Void provisions separate Core/Turret resources and reuses their lock on re
 	);
 	for (const database of deploymentCloudflare.d1_databases)
 		assert.equal("database_id" in database, false);
-	assert.notEqual(Reflect.get(declared[0], "r2").bucketName, "default");
+	assert.notEqual(declared[0]?.r2?.bucketName, "default");
 	const root = mkdtempSync(path.join(tmpdir(), "stack-provision-"));
 	t.after(() => rmSync(root, { recursive: true, force: true }));
 	const config = {
@@ -74,18 +67,21 @@ test("Void provisions separate Core/Turret resources and reuses their lock on re
 						status: 1,
 						stderr: "simulated second-database failure",
 					};
-				const entry = resolved.d1_databases.find(
-					(db: { binding: string }) =>
-						db.binding === operation.binding
+				const entry = resolved.d1_databases?.find(
+					(db) => db.binding === operation.binding
 				);
+				assert.ok(entry);
 				entry.database_id = `${++databaseCount}1111111-1111-4111-8111-111111111111`;
 			} else if (operation.type === "kv.namespace.create") {
-				resolved.kv_namespaces.find(
-					(kv: { binding: string }) =>
-						kv.binding === operation.binding
-				).id = String(++namespaceCount).repeat(32);
+				const namespace = resolved.kv_namespaces?.find(
+					(kv) => kv.binding === operation.binding
+				);
+				assert.ok(namespace);
+				namespace.id = String(++namespaceCount).repeat(32);
 			} else if (operation.type === "r2.bucket.create") {
-				resolved.r2_buckets[0].bucket_name = operation.name;
+				const bucket = resolved.r2_buckets?.[0];
+				assert.ok(bucket);
+				bucket.bucket_name = operation.name;
 			} else
 				throw new Error(
 					`Unexpected remote operation: ${operation.type}`
@@ -107,12 +103,12 @@ test("Void provisions separate Core/Turret resources and reuses their lock on re
 	const first = await provisionResources(root, options);
 	assert.equal(databaseCount, 2);
 	assert.equal(namespaceCount, 2);
-	assert.notEqual(
-		first.config.d1_databases[0].database_id,
-		first.config.d1_databases[1].database_id
-	);
+	const [core, turret] = first.config.d1_databases ?? [];
+	assert.ok(core);
+	assert.ok(turret);
+	assert.notEqual(core.database_id, turret.database_id);
 	assert.equal(
-		first.config.r2_buckets[0].bucket_name,
+		first.config.r2_buckets?.[0]?.bucket_name,
 		"fixture-stack-replay"
 	);
 	const lock = JSON.parse(
@@ -135,12 +131,10 @@ test("Void provisions separate Core/Turret resources and reuses their lock on re
 		() =>
 			provisioningPlans({
 				...first.config,
-				d1_databases: first.config.d1_databases.map(
-					(db: DatabaseBinding) => ({
-						...db,
-						database_id: first.config.d1_databases[0].database_id,
-					})
-				),
+				d1_databases: [core, turret].map((db) => ({
+					...db,
+					database_id: core.database_id,
+				})),
 			}),
 		/own database ID/
 	);

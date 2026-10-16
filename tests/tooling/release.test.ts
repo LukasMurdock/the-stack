@@ -1,14 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCommit } from "../../scripts/lib/build-commit.mjs";
+import { buildCommit } from "../../scripts/lib/build-commit.ts";
 import {
+	type CheckRun,
 	mergeAction,
+	parseCheckRuns,
 	parseTarget,
 	productionOrigin,
 	summarizeChecks,
-} from "../../scripts/lib/release.mjs";
-import { minutesOption, waitForChecks } from "../../scripts/ci-wait.mjs";
-import { ship } from "../../scripts/ship.mjs";
+} from "../../scripts/lib/release.ts";
+import {
+	CI_POLL_INTERVAL_MS,
+	CI_WAIT_TIMEOUT_MS_DEFAULT,
+	type ReleaseIo,
+	waitForChecks,
+} from "../../scripts/ci-wait.ts";
+import {
+	LIVE_WAIT_TIMEOUT_MS_DEFAULT,
+	ship,
+	type ShipOptions,
+} from "../../scripts/ship.ts";
 
 type Result = { status: number; stdout: string; stderr: string };
 type Handler = string | ((args: string[]) => Result | string);
@@ -16,6 +27,16 @@ type Handler = string | ((args: string[]) => Result | string);
 const ok = (stdout = ""): Result => ({ status: 0, stdout, stderr: "" });
 const sha = "a".repeat(40);
 const mergeSha = "b".repeat(40);
+const ciTiming = {
+	ciTimeoutMs: CI_WAIT_TIMEOUT_MS_DEFAULT,
+	pollIntervalMs: CI_POLL_INTERVAL_MS,
+};
+const shipOptions: ShipOptions = {
+	pullRequestNumber: 7,
+	mergeMethod: "merge",
+	ciTimeoutMs: CI_WAIT_TIMEOUT_MS_DEFAULT,
+	liveTimeoutMs: LIVE_WAIT_TIMEOUT_MS_DEFAULT,
+};
 const config = {
 	vars: {
 		APP_URL: "https://app.test.dev/",
@@ -23,7 +44,12 @@ const config = {
 	},
 };
 
-function run(name: string, status: string, conclusion: string | null, job = 1) {
+function run(
+	name: string,
+	status: string,
+	conclusion: string | null,
+	job = 1
+): CheckRun {
 	return {
 		name,
 		status,
@@ -41,23 +67,24 @@ function fakeIo(
 ) {
 	const calls: string[] = [];
 	const lines: string[] = [];
-	let clock = 0;
-	const io = {
+	let clockMs = 0;
+	const io: ReleaseIo & { calls: string[]; lines: string[] } = {
 		calls,
 		lines,
-		exec(command: string, args: string[]) {
+		exec(command, args) {
 			const call = [command, ...args].join(" ");
 			calls.push(call);
 			const key = Object.keys(handlers)
 				.sort((a, b) => b.length - a.length)
 				.find((prefix) => call.startsWith(prefix));
 			if (!key) return ok();
-			const handler = handlers[key]!;
+			const handler = handlers[key];
+			if (handler === undefined) return ok();
 			const result =
-				typeof handler === "string" ? handler : handler(args);
+				typeof handler === "string" ? handler : handler([...args]);
 			return typeof result === "string" ? ok(result) : result;
 		},
-		async fetch(url: string) {
+		async fetch(url) {
 			calls.push(`fetch ${url}`);
 			if (url.endsWith("/api/readiness"))
 				return new Response("{}", { status: 200 });
@@ -66,27 +93,29 @@ function fakeIo(
 				? Response.json({ ok: true, ...body })
 				: new Response("down", { status: 503 });
 		},
-		async sleep(ms: number) {
-			clock += ms;
+		async sleep(durationMs) {
+			clockMs += durationMs;
 		},
-		now: () => clock,
-		log(line: string) {
+		nowMs: () => clockMs,
+		log(line) {
 			lines.push(line);
 		},
 	};
 	return io;
 }
 
-function checkRuns(...sequence: ReturnType<typeof run>[][]): Handler {
-	return () =>
-		JSON.stringify({
-			check_runs: sequence.length > 1 ? sequence.shift() : sequence[0],
-		});
+function checkRuns(...sequence: CheckRun[][]): Handler {
+	return () => {
+		const runs =
+			(sequence.length > 1 ? sequence.shift() : sequence[0]) ?? [];
+		return JSON.stringify({ total_count: runs.length, check_runs: runs });
+	};
 }
 
 function prView(...states: string[]): Handler {
 	return () => {
-		const state = states.length > 1 ? states.shift()! : states[0]!;
+		const state =
+			(states.length > 1 ? states.shift() : states[0]) ?? "OPEN";
 		return JSON.stringify({
 			number: 7,
 			title: "Feature",
@@ -151,10 +180,10 @@ test("ci:wait polls until checks pass, and reports failing jobs with log tails",
 			[run("fast", "completed", "success")]
 		),
 	});
-	assert.equal((await waitForChecks(passing, sha)).state, "passed");
+	assert.equal((await waitForChecks(passing, sha, ciTiming)).state, "passed");
 	assert.equal(passing.calls.filter((c) => c.startsWith("gh api")).length, 3);
 	assert.match(
-		passing.calls[0]!,
+		passing.calls[0] ?? "",
 		/repos\/\{owner\}\/\{repo\}\/commits\/a+\/check-runs/
 	);
 
@@ -169,7 +198,10 @@ test("ci:wait polls until checks pass, and reports failing jobs with log tails",
 			"fast\tPost\t2026-10-05T23:45:39.0000000Z Post job cleanup.",
 		].join("\n"),
 	});
-	await assert.rejects(waitForChecks(failing, sha), /CI failed: fast/);
+	await assert.rejects(
+		waitForChecks(failing, sha, ciTiming),
+		/CI failed: fast/
+	);
 	const output = failing.lines.join("\n");
 	assert.match(output, /fail\s+fast \(failure\)/);
 	assert.match(output, /^line 59\n##\[error\]tests failed$/m);
@@ -179,7 +211,10 @@ test("ci:wait polls until checks pass, and reports failing jobs with log tails",
 		"gh api": checkRuns([run("fast", "in_progress", null)]),
 	});
 	await assert.rejects(
-		waitForChecks(stuck, sha, { timeoutMs: 60_000, intervalMs: 10_000 }),
+		waitForChecks(stuck, sha, {
+			ciTimeoutMs: 60_000,
+			pollIntervalMs: 10_000,
+		}),
 		/did not finish within 1 minutes/
 	);
 });
@@ -200,7 +235,7 @@ test("ship waits for CI, merges once, deploys, and confirms production serves th
 			{ commit: mergeSha, version: "v-new" },
 		]
 	);
-	await ship(io, 7, { config });
+	await ship(io, shipOptions, config);
 	const commands = io.calls.filter((c) => !c.startsWith("fetch"));
 	const merge = commands.findIndex((c) => c.startsWith("gh pr merge"));
 	const deploy = commands.indexOf("node scripts/deploy.mjs");
@@ -235,13 +270,13 @@ test("ship resumes a merged PR without merging again and skips a deploy already 
 		{ commit: "old" },
 		{ commit: mergeSha },
 	]);
-	await ship(redeploy, 7, { config });
+	await ship(redeploy, shipOptions, config);
 	assert.ok(!redeploy.calls.some((c) => c.startsWith("gh pr merge")));
 	assert.ok(!redeploy.calls.some((c) => c.startsWith("gh api")));
 	assert.ok(redeploy.calls.includes("node scripts/deploy.mjs"));
 
 	const live = fakeIo(handlers, [{ commit: mergeSha }]);
-	await ship(live, 7, { config });
+	await ship(live, shipOptions, config);
 	assert.ok(!live.calls.includes("node scripts/deploy.mjs"));
 });
 
@@ -251,11 +286,11 @@ test("ship stops before production changes when it cannot ship safely", async ()
 		"gh pr view": prView("OPEN"),
 		"gh api": checkRuns([run("fast", "completed", "failure")]),
 	});
-	await assert.rejects(ship(failedCi, 7, { config }), /CI failed/);
+	await assert.rejects(ship(failedCi, shipOptions, config), /CI failed/);
 	assert.ok(!failedCi.calls.some((c) => /gh pr merge|deploy\.mjs/.test(c)));
 
 	const dirty = fakeIo({ "git status --porcelain": " M file.ts" });
-	await assert.rejects(ship(dirty, 7, { config }), /Commit or stash/);
+	await assert.rejects(ship(dirty, shipOptions, config), /Commit or stash/);
 
 	const notLive = fakeIo(
 		{
@@ -266,30 +301,65 @@ test("ship stops before production changes when it cannot ship safely", async ()
 		[{ commit: "old" }]
 	);
 	await assert.rejects(
-		ship(notLive, 7, { config, liveTimeoutMs: 30_000 }),
+		ship(notLive, { ...shipOptions, liveTimeoutMs: 30_000 }, config),
 		/Production serves old; expected b+/
 	);
 
 	assert.throws(
-		() => mergeAction({ number: 7, state: "CLOSED" }),
+		() => mergeAction({ number: 7, state: "CLOSED", isDraft: false }),
 		/closed without merging/
 	);
 	assert.throws(
-		() =>
-			productionOrigin({ vars: { APP_URL: "https://your-app.example" } }),
+		() => productionOrigin("https://your-app.example"),
 		/Set deploymentCloudflare\.vars\.APP_URL/
 	);
 });
 
 test("the build commit comes from STACK_COMMIT or the checkout", () => {
-	assert.equal(buildCommit({ STACK_COMMIT: "abc123" }), "abc123");
+	assert.equal(buildCommit({ STACK_COMMIT: sha }), sha);
 	assert.match(buildCommit({}) ?? "", /^[0-9a-f]{40}$/);
 });
 
-test("--timeout and its default are both read as minutes", () => {
-	assert.equal(minutesOption([], "--timeout", 30), 30 * 60_000);
-	const args = ["12", "--timeout", "5"];
-	assert.equal(minutesOption(args, "--timeout", 30), 5 * 60_000);
-	assert.deepEqual(args, ["12"]);
-	assert.throws(() => minutesOption(["--timeout", "x"], "--timeout", 30));
+test("ci:wait refuses to judge a commit whose check runs do not fit one page", () => {
+	const page = [run("fast", "completed", "success")];
+	assert.equal(
+		parseCheckRuns(JSON.stringify({ total_count: 1, check_runs: page }))
+			.length,
+		1
+	);
+	assert.throws(
+		() =>
+			parseCheckRuns(
+				JSON.stringify({ total_count: 101, check_runs: page })
+			),
+		/101 check runs; ci:wait reads at most 100/
+	);
+	assert.throws(() =>
+		parseCheckRuns(JSON.stringify({ message: "Not Found" }))
+	);
+});
+
+test("ship reports why production never served the commit", async () => {
+	const unreachable = fakeIo({
+		"git status --porcelain": "",
+		"gh pr view": prView("MERGED"),
+		"git rev-parse HEAD": mergeSha,
+	});
+	unreachable.fetch = async () => {
+		throw new TypeError("fetch failed", {
+			cause: new Error("getaddrinfo ENOTFOUND app.test.dev"),
+		});
+	};
+	await assert.rejects(
+		ship(unreachable, { ...shipOptions, liveTimeoutMs: 10_000 }, config),
+		/Production serves no commit \(fetch failed: getaddrinfo ENOTFOUND app\.test\.dev\)/
+	);
+});
+
+test("the build commit rejects a STACK_COMMIT that is not a full SHA", () => {
+	assert.equal(buildCommit({ STACK_COMMIT: sha }), sha);
+	assert.throws(
+		() => buildCommit({ STACK_COMMIT: "abc123" }),
+		/40-character/
+	);
 });
