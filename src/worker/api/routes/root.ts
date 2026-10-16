@@ -1,4 +1,5 @@
 import { configuredGoogleProvider } from "../../auth";
+import { buildCommit } from "../../build-info";
 import type { Bindings } from "../../index";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import {
@@ -40,6 +41,15 @@ const rootRoutes = rootApp.openapi(getRoot, (c) => {
 const HealthResponseSchema = z
 	.object({
 		ok: z.boolean().openapi({ example: true }),
+		// `pnpm ship` waits until production serves the commit it deployed.
+		commit: z.string().nullable().openapi({
+			description: "Git commit the running build was made from",
+			example: "5cc7317d0b2c4e1f9a8b7c6d5e4f3a2b1c0d9e8f",
+		}),
+		version: z.string().nullable().openapi({
+			description: "Cloudflare Worker version ID (CF_VERSION_METADATA)",
+			example: "f3134dc9-eb82-4b22-98e0-54778b199d59",
+		}),
 		auth: z.object({
 			signupMode: z.enum(authSignupModeSchema.options).openapi({
 				example: "invite_only",
@@ -119,6 +129,8 @@ const routes = rootRoutes
 		return c.json(
 			{
 				ok: true,
+				commit: buildCommit,
+				version: c.env.CF_VERSION_METADATA?.id ?? null,
 				auth: {
 					signupMode,
 					selfSignUpEnabled: isOpenSignupMode(signupMode),

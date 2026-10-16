@@ -1,4 +1,6 @@
 import { spawnSync } from "node:child_process";
+import { deploymentCloudflare } from "../config/cloudflare.mjs";
+import { releaseSummary } from "./lib/release.mjs";
 import { provisionResources } from "./provision-resources.mjs";
 
 function run(args) {
@@ -25,6 +27,12 @@ try {
 			configPath,
 		]);
 	run(["exec", "void", "deploy", "--platform", "cloudflare"]);
+	const { APP_URL, ADMIN_EMAIL } = deploymentCloudflare.vars;
+	// `pnpm ship` prints this once production serves the new commit.
+	if (!process.env.STACK_SHIP)
+		process.stdout.write(
+			`\n${releaseSummary({ origin: new URL(APP_URL).origin, adminEmail: ADMIN_EMAIL })}\n`
+		);
 } catch (error) {
 	process.stderr.write(
 		`${error instanceof Error ? error.message : String(error)}\n`
