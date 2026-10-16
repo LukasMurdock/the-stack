@@ -228,6 +228,10 @@ export const routes = app
 					now: Date.now(),
 				}),
 			]);
+			if (result === undefined)
+				throw new Error(
+					"Invariant violated: one result per statement."
+				);
 			if (result.meta.changes === 0)
 				return c.json({ error: "Not Found" }, 404);
 			return c.json({ ok: true as const }, 200);

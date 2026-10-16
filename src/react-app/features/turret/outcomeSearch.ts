@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+	type TurretWorkflow,
 	turretOutcomeStatusSchema,
 	turretWorkflowSchema,
 } from "../../../contracts/turret-outcomes";
@@ -16,11 +17,13 @@ export const outcomeStatusLabels = {
 	in_progress: "In progress",
 } satisfies Record<z.infer<typeof turretOutcomeStatusSchema>, string>;
 
+const WORKFLOW_DEFAULT: TurretWorkflow = "project.create";
+
 export const outcomesSearchSchema = z.object({
 	preset: outcomePresetSchema.default("7d").catch("7d"),
 	workflow: turretWorkflowSchema
-		.default(turretWorkflowSchema.options[0])
-		.catch(turretWorkflowSchema.options[0]),
+		.default(WORKFLOW_DEFAULT)
+		.catch(WORKFLOW_DEFAULT),
 	// Failures are where investigation starts.
 	status: turretOutcomeStatusSchema.default("failed").catch("failed"),
 	offset: turretListPageSchema.shape.offset.catch(

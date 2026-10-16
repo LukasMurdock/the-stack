@@ -123,6 +123,8 @@ export async function linkFeedbackToIssue(
 			linked
 		).getSQL(),
 	]);
+	if (link === undefined)
+		throw new Error("Invariant violated: one result per statement.");
 	return link.meta.changes > 0;
 }
 

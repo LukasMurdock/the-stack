@@ -47,6 +47,7 @@ const requireInternalTurretAdmin: MiddlewareHandler<TurretAdminEnv> = async (
 	c.set("turretAdminId", user.id);
 
 	await next();
+	return;
 };
 
 export { requireInternalTurretAdmin };

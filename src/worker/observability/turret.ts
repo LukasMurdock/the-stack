@@ -207,9 +207,12 @@ export async function recordBreadcrumb(
 				expiresAt: new Date(expiresAt),
 				createdAt: new Date(now),
 			}));
+			const [firstRow] = rows;
+			if (firstRow === undefined)
+				throw new Error("Invariant violated: d1Spans is not empty.");
 			const parametersPerSpan = turretDb
 				.insert(turretSchema.turretRequestSpans)
-				.values(rows[0])
+				.values(firstRow)
 				.toSQL().params.length;
 			const batchSize = Math.floor(100 / parametersPerSpan);
 			if (batchSize < 1)

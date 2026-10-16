@@ -8,6 +8,16 @@ type SessionSource = {
 	subscribe: (listener: (state: SessionState) => void) => () => void;
 };
 
+// Better Auth's client keeps its atoms in a string-keyed record.
+export function sessionSource(
+	atoms: Readonly<Record<string, SessionSource>>
+): SessionSource {
+	const session = atoms.session;
+	if (session === undefined)
+		throw new Error("Better Auth's client exposes no session atom.");
+	return session;
+}
+
 // Subscribing mounts Better Auth's session refresh, including cross-tab updates.
 // Both React and Astro use this owner; neither starts or stops a recorder itself.
 export function observeTurretCapture(source: SessionSource): () => void {

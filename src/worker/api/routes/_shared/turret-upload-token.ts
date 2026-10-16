@@ -10,9 +10,7 @@ type UploadTokenPayload = z.infer<typeof uploadTokenPayloadSchema>;
 
 function base64UrlEncode(bytes: Uint8Array): string {
 	let binary = "";
-	for (let i = 0; i < bytes.length; i++) {
-		binary += String.fromCharCode(bytes[i]);
-	}
+	for (const byte of bytes) binary += String.fromCharCode(byte);
 	const b64 = btoa(binary);
 	return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
@@ -79,6 +77,7 @@ async function verifyUploadToken(
 	const parts = token.split(".");
 	if (parts.length !== 2) return null;
 	const [payloadB64, sigHex] = parts;
+	if (payloadB64 === undefined || sigHex === undefined) return null;
 
 	const expected = await hmacSha256Hex(key, payloadB64);
 	if (!timingSafeEqual(sigHex, expected)) return null;

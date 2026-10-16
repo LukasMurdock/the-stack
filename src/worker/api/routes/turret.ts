@@ -57,6 +57,7 @@ const requireTurretOrigin: MiddlewareHandler<{ Bindings: Bindings }> = async (
 		});
 	}
 	await next();
+	return;
 };
 
 // Upload endpoints share mode and token authorization, before request-body validation.
@@ -82,6 +83,7 @@ const requireUpload: MiddlewareHandler<TurretEnv> = async (c, next) => {
 		return c.json({ error: "Unauthorized" }, 401);
 	c.set("upload", payload);
 	await next();
+	return;
 };
 const chunkBodyLimit = bodyLimit({
 	maxSize: REPLAY_CHUNK_BYTES_MAX,

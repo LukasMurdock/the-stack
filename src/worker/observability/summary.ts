@@ -97,11 +97,12 @@ async function queryOperations(
 				binding.query({ query: OPERATION_ROUTES_SQL, params }),
 			])
 		);
-		if (totals.data.length !== 1)
+		const [totalsRow] = totals.data;
+		if (totals.data.length !== 1 || totalsRow === undefined)
 			throw new Error("Operational aggregate returned no unique row");
 		return turretSummarySchema.shape.operations.parse({
 			state: "ready",
-			totals: operationTotals(totals.data[0]),
+			totals: operationTotals(totalsRow),
 			routes: routes.data.map((row) => ({
 				...operationTotals(row),
 				surface: row.surface,

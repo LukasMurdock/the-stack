@@ -65,9 +65,8 @@ function randomPassword(length = 48): string {
 	const bytes = new Uint8Array(length);
 	crypto.getRandomValues(bytes);
 	let out = "";
-	for (let i = 0; i < bytes.length; i++) {
-		out += alphabet[bytes[i] % alphabet.length];
-	}
+	// 256 is a multiple of the 64-character alphabet, so there is no bias.
+	for (const byte of bytes) out += alphabet.charAt(byte % alphabet.length);
 	return out;
 }
 
