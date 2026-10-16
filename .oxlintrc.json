@@ -149,7 +149,9 @@
 				"prefer-const": "error",
 				"prefer-rest-params": "error",
 				"prefer-spread": "error",
-				"no-useless-assignment": "error"
+				"no-useless-assignment": "error",
+				"typescript/switch-exhaustiveness-check": "error",
+				"typescript/no-unnecessary-type-assertion": "error"
 			},
 			"plugins": ["typescript", "react"],
 			"jsPlugins": [
@@ -165,6 +167,20 @@
 			"env": {
 				"es2020": true,
 				"browser": true
+			}
+		},
+		{
+			"files": [
+				"scripts/**/*.ts",
+				"src/worker/**/*.ts",
+				"src/bindings/**/*.ts",
+				"src/features/**/*.ts",
+				"crons/**/*.ts"
+			],
+			"plugins": ["typescript"],
+			"rules": {
+				"typescript/no-floating-promises": "error",
+				"typescript/no-misused-promises": "error"
 			}
 		}
 	],

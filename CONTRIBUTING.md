@@ -49,6 +49,9 @@ When updating the vendored lint plugin, use the revision in
 `tools/oxlint/anti-slop/UPSTREAM.json`, preserve its licenses and provenance,
 and run `pnpm test:tooling` for lint configuration and plugin integration checks.
 Keep `oxlint` and `@oxlint/plugins` at matching exact versions.
+`oxlint-tsgolint` runs the type-aware rules (`oxlint --type-aware`): exhaustive
+switches and unnecessary assertions everywhere, and promise ownership outside
+the React UI.
 
 `@typescript/native` provides `tsc`. The `typescript` alias supplies the
 TypeScript 6 API required by framework tools and lint plugins.
