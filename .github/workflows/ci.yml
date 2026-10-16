@@ -42,6 +42,10 @@ jobs:
             - name: Test type checks
               run: pnpm cf:typegen && pnpm exec astro sync && pnpm test:types
 
+            - name: Install Chromium for tooling checks
+              # pnpm shot/demo:record tooling tests drive a real browser.
+              run: pnpm exec playwright install --with-deps chromium
+
             - name: Template tooling checks
               run: pnpm test:tooling
 
@@ -71,6 +75,10 @@ jobs:
 
             - name: Format check
               run: pnpm run format:check
+
+            - name: Install Chromium for tooling checks
+              # pnpm shot/demo:record tooling tests drive a real browser.
+              run: pnpm exec playwright install --with-deps chromium
 
             - name: Full checks
               run: pnpm verify

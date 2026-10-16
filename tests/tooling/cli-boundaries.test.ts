@@ -365,7 +365,9 @@ test("demo:record options: spec names, single tests and the output file", () => 
 		[[], /Give a spec/],
 		[["nope"], /No spec "nope" in tests\/e2e\. Specs: .*session/],
 		[["tests/e2e/organizations.ts"], /No spec/],
-		[["../the-stack/tests/e2e/session.spec.ts"], /No spec/],
+		// Escapes the checkout whatever its directory is named (CI checks out
+		// into the-stack/the-stack, where "../the-stack/..." stays inside).
+		[["../outside-checkout/tests/e2e/session.spec.ts"], /No spec/],
 		[["session", "smoke"], /one spec at a time/],
 		[["session", "--out", "demo.mp4"], /must end in \.webm/],
 	] as const)
