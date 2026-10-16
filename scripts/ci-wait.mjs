@@ -122,7 +122,7 @@ export async function waitForChecks(
 
 export function minutesOption(args, name, fallback) {
 	const index = args.indexOf(name);
-	if (index === -1) return fallback;
+	if (index === -1) return fallback * 60_000;
 	const minutes = Number(args[index + 1]);
 	if (!(minutes > 0)) throw new ReleaseError(`${name} needs minutes.`);
 	args.splice(index, 2);
