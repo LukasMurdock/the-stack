@@ -1,8 +1,9 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
 import { organizations, projects } from "../../bindings/d1/core/schema";
 import { createProjectSchema } from "./contracts";
 import { resourceIdSchema } from "../../contracts/operation";
-import { PAGE_SIZE, pageSchema } from "../../contracts/pagination";
+import { pageSchema } from "../../contracts/pagination";
+import { insertionOrder } from "../../bindings/d1/insertion-order";
 import {
 	membershipPredicate,
 	requireMembership,
@@ -12,6 +13,7 @@ import {
 	ProductError,
 	type OperationContext,
 } from "../shared/context";
+import { matchedRows, readPage } from "../shared/paging";
 
 export async function listProjects(
 	context: OperationContext,
@@ -21,18 +23,19 @@ export async function listProjects(
 	commandInput(resourceIdSchema, organizationId);
 	const { offset } = commandInput(pageSchema, input);
 	await requireMembership(context, organizationId);
-	return context.db
-		.select()
-		.from(projects)
-		.where(
-			and(
-				eq(projects.organizationId, organizationId),
-				membershipPredicate(context, organizationId, "read")
+	return readPage(
+		context.db
+			.select({ ...getTableColumns(projects), matched: matchedRows })
+			.from(projects)
+			.where(
+				and(
+					eq(projects.organizationId, organizationId),
+					membershipPredicate(context, organizationId, "read")
+				)
 			)
-		)
-		.orderBy(desc(projects.createdAt), projects.id)
-		.limit(PAGE_SIZE)
-		.offset(offset);
+			.orderBy(desc(projects.createdAt), desc(insertionOrder(projects))),
+		offset
+	);
 }
 export async function createProject(
 	context: OperationContext,

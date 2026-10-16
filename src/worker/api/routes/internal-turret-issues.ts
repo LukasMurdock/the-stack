@@ -229,7 +229,7 @@ async function readIssue(db: D1Database, fingerprint: string, now: number) {
 		turretDb.all<Record<string, unknown>>(sql`
 		SELECT id, url, created_by AS createdBy, created_at AS createdAt
 		FROM turret_issue_links WHERE fingerprint = ${fingerprint}
-		ORDER BY created_at ASC, id ASC
+		ORDER BY created_at ASC, rowid ASC
 	`),
 	]);
 	const row = rows[0];

@@ -40,7 +40,7 @@ test("changing organization resets project pagination, drafts and failed mutatio
 	page,
 }) => {
 	const fixture = await organizations(page);
-	for (let i = 0; i < PAGE_SIZE; i++) {
+	for (let i = 0; i <= PAGE_SIZE; i++) {
 		const response = await page.request.post(
 			`/api/organizations/${fixture.firstId}/projects`,
 			{
@@ -58,8 +58,17 @@ test("changing organization resets project pagination, drafts and failed mutatio
 	const projects = page.locator("section").filter({
 		has: page.getByRole("heading", { name: "Projects", exact: true }),
 	});
+	await expect(
+		projects.getByText(`1–${PAGE_SIZE} of ${PAGE_SIZE + 1}`, {
+			exact: true,
+		})
+	).toBeVisible();
 	await projects.getByRole("button", { name: "Next", exact: true }).click();
-	await expect(page.getByText("Page 2", { exact: true })).toBeVisible();
+	const lastPage = `${PAGE_SIZE + 1}–${PAGE_SIZE + 1} of ${PAGE_SIZE + 1}`;
+	await expect(projects.getByText(lastPage, { exact: true })).toBeVisible();
+	await expect(
+		projects.getByRole("button", { name: "Next", exact: true })
+	).toBeDisabled();
 	await page.getByLabel("Project name").fill("First organization's draft");
 	await page
 		.getByLabel("Description")
@@ -85,7 +94,10 @@ test("changing organization resets project pagination, drafts and failed mutatio
 		"data-scope-navigation",
 		"same-document"
 	);
-	await expect(page.getByText("Page 1", { exact: true })).toBeVisible();
+	// The second organization has no projects: a reset page shows no pager.
+	await expect(
+		page.getByRole("navigation", { name: "Pagination", exact: true })
+	).toHaveCount(0);
 	await expect(page.getByLabel("Project name")).toHaveValue("");
 	await expect(page.getByLabel("Description")).toHaveValue("");
 	await expect(page.getByRole("alert")).toHaveCount(0);
@@ -116,11 +128,21 @@ test("changing organization discards invitation results, drafts and pagination",
 	await expect(page.getByLabel("Invitation link")).toBeVisible();
 	await page.getByLabel("Email address").fill("draft@example.test");
 	await page.getByLabel("Access", { exact: true }).selectOption("editor");
-	const pagination = page
-		.getByRole("navigation", { name: "Pagination", exact: true })
-		.nth(1);
+	// The UI invitation plus PAGE_SIZE from setup make one more than a page;
+	// the single member fits on one, so this is the only pager.
+	const pagination = page.getByRole("navigation", {
+		name: "Pagination",
+		exact: true,
+	});
 	await pagination.getByRole("button", { name: "Next", exact: true }).click();
-	await expect(pagination.getByText("Page 2", { exact: true })).toBeVisible();
+	await expect(
+		pagination.getByText(
+			`${PAGE_SIZE + 1}–${PAGE_SIZE + 1} of ${PAGE_SIZE + 1}`,
+			{
+				exact: true,
+			}
+		)
+	).toBeVisible();
 	// History entries: second/members -> list -> first/members.
 	await page.evaluate(() => window.history.go(-2));
 	await expect(page).toHaveURL(`${fixture.secondPath}/members`);
@@ -136,5 +158,5 @@ test("changing organization discards invitation results, drafts and pagination",
 	await expect(page.getByLabel("Access", { exact: true })).toHaveValue(
 		"viewer"
 	);
-	await expect(pagination.getByText("Page 1", { exact: true })).toBeVisible();
+	await expect(pagination).toHaveCount(0);
 });

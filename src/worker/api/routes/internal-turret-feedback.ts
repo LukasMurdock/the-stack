@@ -1,4 +1,5 @@
 import { literalContains } from "../../../bindings/d1/literal-search";
+import { insertionOrder } from "../../../bindings/d1/insertion-order";
 import { and, desc, eq, gte, lt, sql, type SQL } from "drizzle-orm";
 import {
 	turretIssueFeedback,
@@ -186,7 +187,7 @@ export const routes = internalTurretFeedbackApp
 					.select(feedbackProjection)
 					.from(table)
 					.where(and(...filters))
-					.orderBy(desc(table.createdAt), desc(table.id))
+					.orderBy(desc(table.createdAt), desc(insertionOrder(table)))
 					.limit(limit)
 					.offset(offset)
 			);

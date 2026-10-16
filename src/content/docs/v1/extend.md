@@ -87,6 +87,20 @@ Lists return pages of 50 rows, using `offset` up to 100,000. HTTP bodies for the
 resources are limited to 16 KiB. Offset pagination is deliberately simple; it is
 not a consistent snapshot while records are being added or removed.
 
+A paged list is declared once per layer. Its response contract is
+`pagedResponse({ projects: z.array(projectSchema) })` from
+`contracts/pagination.ts`, which adds `page: { offset, total }`. The operation
+selects `matched: matchedRows` and returns `readPage(query, offset)` from
+`features/shared/paging.ts`; the route responds with `{ projects: rows, page }`.
+`matchedRows` is a window count, so the total comes from the same query, filters,
+and permission predicates as the rows. Screens show counts from `page.total`,
+never from the rows they hold, and page with `react-app/components/Pagination`.
+
+Lists in creation order break `created_at` ties with
+`insertionOrder(table)` from `bindings/d1/insertion-order.ts` (raw SQL: `rowid`),
+not the random `id`: rows written in one request share a millisecond. Integration
+tests can freeze `Date.now` to cover such ties.
+
 Creates are single attempts with no automatic retries or idempotency protocol.
 If a response is lost, inspect the list before submitting again. Add stronger
 workflow guarantees when the product requires them.
@@ -226,5 +240,6 @@ relationship; it provides no compatibility reader or historical backfill.
 `worker/observability/route-label.ts` produces route labels from Hono's declared
 endpoints, with bounded labels for unmatched requests and Astro. Raw request paths
 cannot be supplied to operational metrics.
-`bindings/d1/literal-search.ts` owns SQLite literal-substring search, including
-pattern escaping and the SQL escape declaration. Use it for comparable searches.
+`bindings/d1/literal-search.ts` owns case-insensitive literal-substring search.
+It uses `instr()` rather than `LIKE`, whose wildcards need escaping and whose
+patterns D1 rejects over 50 bytes. Use it for comparable searches.

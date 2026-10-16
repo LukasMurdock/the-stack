@@ -1,4 +1,5 @@
 import { and, asc, eq, exists } from "drizzle-orm";
+import { insertionOrder } from "../../../../bindings/d1/insertion-order";
 import type { TurretDb } from "../../../../bindings/d1/turret/db";
 import {
 	turretRequestSpans,
@@ -31,7 +32,10 @@ export async function loadReplaySessionSpansGrouped(input: {
 					)
 			)
 		)
-		.orderBy(asc(turretRequestSpans.createdAt), asc(turretRequestSpans.id))
+		.orderBy(
+			asc(turretRequestSpans.createdAt),
+			asc(insertionOrder(turretRequestSpans))
+		)
 		.limit(limit + 1)
 		.offset(offset);
 	const hasMore = rows.length > limit;

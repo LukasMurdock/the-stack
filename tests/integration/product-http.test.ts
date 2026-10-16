@@ -9,7 +9,10 @@ import { hashPassword } from "better-auth/crypto";
 import { createAuth } from "../../src/worker/auth";
 import { api } from "../../src/worker/api";
 import { organizationResponseSchema } from "../../src/contracts/organizations";
-import { projectResponseSchema } from "../../src/features/projects/contracts";
+import {
+	projectResponseSchema,
+	projectsResponseSchema,
+} from "../../src/features/projects/contracts";
 import { productErrorSchema } from "../../src/contracts/operation";
 
 const origin = "http://localhost:4321";
@@ -171,6 +174,12 @@ test("HTTP authentication, validation, typed outcomes and resource routes work t
 	);
 	assert.equal(response.status, 201, await response.clone().text());
 	projectResponseSchema.parse(await response.json());
+	const listed = projectsResponseSchema.parse(
+		await (
+			await request(`/organizations/${organization.id}/projects`)
+		).json()
+	);
+	assert.deepEqual(listed.page, { offset: 0, total: 1 });
 	const tooLarge = await request(
 		`/organizations/${organization.id}/projects`,
 		"POST",

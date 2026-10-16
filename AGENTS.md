@@ -12,6 +12,9 @@ Design defaults for newly created apps; do not invent an operational environment
 - Local setup: `pnpm local:setup`; develop: `pnpm dev`.
 - Validate: `pnpm verify`; browser contracts: `pnpm test:e2e`.
 - Feature conventions: read `src/content/docs/v1/first-feature.md` and `extend.md`.
+- Paged lists return `pagedResponse` with a `page.total` from `readPage`; never
+  count a page's rows. Break `created_at` ties with `insertionOrder(table)`, not
+  random ids. Search user text with `literalContains`; D1 rejects long `LIKE`s.
 - Deploy: configure the app name, origin, sender, and secrets, then
   `pnpm run deploy`. Void provisions resources through the two-database adapter,
   migrations run independently, and Void publishes the app. See `docs/DEPLOYMENT_GUIDE.md`.

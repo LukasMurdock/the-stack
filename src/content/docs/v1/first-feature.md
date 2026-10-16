@@ -93,7 +93,8 @@ Keep both `requireMembership(..., "edit")` and the predicate inside the SQL
 statement. A browser role check helps presentation; the server must enforce access,
 including membership changes between the initial check and the write.
 
-`listProjects` selects all table columns, so it already reads the new field.
+`listProjects` selects all table columns with `getTableColumns(projects)`, so it
+already reads the new field.
 
 ## 4. Follow the typed API to the browser
 
@@ -163,7 +164,7 @@ its editor's create input. After the existing name and description assertions, a
 ```ts
 assert.equal(project.status, "active");
 assert.equal(
-	(await projects.listProjects(f.actor("viewer"), f.organizationId))[0]
+	(await projects.listProjects(f.actor("viewer"), f.organizationId)).rows[0]
 		?.status,
 	"active"
 );

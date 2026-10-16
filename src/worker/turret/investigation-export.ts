@@ -211,7 +211,7 @@ export async function buildInvestigationExport(input: {
 				SELECT created_at AS createdAt, detail_json AS detailJson
 				FROM turret_issue_activity
 				WHERE fingerprint = ${fingerprint} AND kind = 'note'
-				ORDER BY created_at ASC, id ASC LIMIT ${NOTES_MAX}
+				ORDER BY created_at ASC, rowid ASC LIMIT ${NOTES_MAX}
 			`),
 			readRecovery(db, fingerprint, now),
 		]);

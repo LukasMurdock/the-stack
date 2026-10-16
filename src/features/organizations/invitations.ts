@@ -1,4 +1,4 @@
-import { PAGE_SIZE, pageSchema } from "../../contracts/pagination";
+import { pageSchema } from "../../contracts/pagination";
 import { and, eq, exists, gt, isNull, sql } from "drizzle-orm";
 import { resourceIdSchema } from "../../contracts/operation";
 import { membershipPredicate, requireMembership } from "./authorization";
@@ -7,6 +7,7 @@ import {
 	ProductError,
 	type OperationContext,
 } from "../shared/context";
+import { matchedRows, readPage } from "../shared/paging";
 import {
 	auth_user,
 	invitations,
@@ -41,24 +42,26 @@ export async function listInvitations(
 	const { offset } = commandInput(pageSchema, input);
 	commandInput(resourceIdSchema, organizationId);
 	await requireMembership(context, organizationId, "manage");
-	return context.db
-		.select({
-			id: invitations.id,
-			email: invitations.email,
-			role: invitations.role,
-			expiresAt: invitations.expiresAt,
-		})
-		.from(invitations)
-		.where(
-			and(
-				eq(invitations.organizationId, organizationId),
-				activeInvitationPredicate(Date.now()),
-				membershipPredicate(context, organizationId, "manage")
+	return readPage(
+		context.db
+			.select({
+				id: invitations.id,
+				email: invitations.email,
+				role: invitations.role,
+				expiresAt: invitations.expiresAt,
+				matched: matchedRows,
+			})
+			.from(invitations)
+			.where(
+				and(
+					eq(invitations.organizationId, organizationId),
+					activeInvitationPredicate(Date.now()),
+					membershipPredicate(context, organizationId, "manage")
+				)
 			)
-		)
-		.orderBy(invitations.expiresAt, invitations.id)
-		.limit(PAGE_SIZE)
-		.offset(offset);
+			.orderBy(invitations.expiresAt, invitations.id),
+		offset
+	);
 }
 async function hashToken(token: string) {
 	const digest = await crypto.subtle.digest(

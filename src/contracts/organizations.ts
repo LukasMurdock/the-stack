@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { passwordSchema } from "./auth";
 import { resourceIdSchema } from "./operation";
+import { pagedResponse } from "./pagination";
 import {
 	memberRoleSchema,
 	assignableRoleSchema,
@@ -20,7 +21,7 @@ export const organizationSchema = z.object({
 	name: z.string(),
 	role: memberRoleSchema,
 });
-export const organizationsResponseSchema = z.object({
+export const organizationsResponseSchema = pagedResponse({
 	organizations: z.array(organizationSchema),
 });
 export const organizationResponseSchema = z.object({
@@ -37,7 +38,7 @@ export const invitationResponseSchema = z.object({
 		expiresAt: z.number(),
 	}),
 });
-export const invitationsResponseSchema = z.object({
+export const invitationsResponseSchema = pagedResponse({
 	invitations: z.array(
 		z.object({
 			id: resourceIdSchema,
@@ -65,7 +66,7 @@ export const memberSchema = z.object({
 	email: z.string(),
 	role: memberRoleSchema,
 });
-export const membersResponseSchema = z.object({
+export const membersResponseSchema = pagedResponse({
 	members: z.array(memberSchema),
 });
 // Organization IDs are UUIDs; Better Auth user IDs are bounded opaque strings.

@@ -74,18 +74,14 @@ const deleteMember = createRoute({
 });
 
 export const routes = app
-	.openapi(getMembers, async (c) =>
-		c.json(
-			{
-				members: await organizations.listMembers(
-					c.get("operation"),
-					c.req.valid("param").organizationId,
-					c.req.valid("query")
-				),
-			},
-			200
-		)
-	)
+	.openapi(getMembers, async (c) => {
+		const { rows, page } = await organizations.listMembers(
+			c.get("operation"),
+			c.req.valid("param").organizationId,
+			c.req.valid("query")
+		);
+		return c.json({ members: rows, page }, 200);
+	})
 	.openapi(putMember, async (c) => {
 		const p = c.req.valid("param");
 		await organizations.changeMember(

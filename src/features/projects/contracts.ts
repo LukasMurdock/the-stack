@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { resourceIdSchema } from "../../contracts/operation";
+import { pagedResponse } from "../../contracts/pagination";
 export const createProjectSchema = z.object({
 	name: z
 		.string()
@@ -22,7 +23,7 @@ export const projectSchema = createProjectSchema.extend({
 	createdAt: z.number(),
 });
 export const projectResponseSchema = z.object({ project: projectSchema });
-export const projectsResponseSchema = z.object({
+export const projectsResponseSchema = pagedResponse({
 	projects: z.array(projectSchema),
 });
 export type Project = z.infer<typeof projectSchema>;
