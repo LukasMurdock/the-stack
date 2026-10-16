@@ -10,6 +10,8 @@ void routes;
 
 const healthResponseSchema = z.object({
 	ok: z.boolean(),
+	commit: z.string().nullable(),
+	version: z.string().nullable(),
 	auth: z.object({
 		signupMode: z.enum(["invite_only", "open"]),
 		selfSignUpEnabled: z.boolean(),
@@ -37,6 +39,7 @@ async function getHealth(
 	credentials: {
 		GOOGLE_CLIENT_ID?: string;
 		GOOGLE_CLIENT_SECRET?: string;
+		CF_VERSION_METADATA?: WorkerVersionMetadata;
 	} = {}
 ): Promise<HealthResponse> {
 	const res = await rootApp.fetch(
@@ -58,6 +61,17 @@ test("health defaults to invite_only auth mode", async () => {
 	assert.equal(payload.turret.effectiveMode, "basic");
 	assert.equal(payload.turret.ingestEnabled, false);
 	assert.equal(payload.turret.reason, "missing_turret_signing_key");
+});
+
+test("health reports the serving Worker version and build commit pnpm ship waits for", async () => {
+	const unversioned = await getHealth(undefined);
+	assert.equal(unversioned.version, null);
+	// The commit is injected by the Vite build; direct imports have none.
+	assert.equal(unversioned.commit, null);
+	const versioned = await getHealth(undefined, {
+		CF_VERSION_METADATA: { id: "version-1", tag: "", timestamp: "" },
+	});
+	assert.equal(versioned.version, "version-1");
 });
 
 test("health reports open auth mode when configured", async () => {

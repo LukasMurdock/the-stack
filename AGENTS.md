@@ -18,6 +18,13 @@ Design defaults for newly created apps; do not invent an operational environment
 - Deploy: configure the app name, origin, sender, and secrets, then
   `pnpm run deploy`. Void provisions resources through the two-database adapter,
   migrations run independently, and Void publishes the app. See `docs/DEPLOYMENT_GUIDE.md`.
+- CI: `pnpm ci:wait [ref|pr]` waits for GitHub checks (default `HEAD`, which
+  must be pushed), prints failing jobs' log tails, and exits non-zero on
+  failure. Run it in the background instead of hand-written polling loops.
+- Release: `pnpm ship <pr>` waits for CI, merges, fast-forwards main, runs
+  `pnpm run deploy`, then waits until `/api/health` reports the merged commit and
+  prints the production URL and admin sign-in. Rerun it after a failure; it does
+  not merge twice. Only the operator's request authorizes a ship.
 
 ## Infrastructure
 

@@ -57,6 +57,31 @@ configured bindings; there is no separate dataset-create command. See
 [Cloudflare's setup guide](https://developers.cloudflare.com/analytics/analytics-engine/get-started/).
 The Analytics SQL binding and Turret's hourly cleanup job are included.
 
+It ends by printing the production URL, the sign-in path (`/app/login`), and
+how the first administrator gets credentials (below).
+
+## Ship a pull request
+
+After the first deploy, release merged work with one command:
+
+```bash
+pnpm ci:wait 42      # optional: just wait for PR #42's checks
+pnpm ship 42         # [--squash|--rebase] [--timeout <minutes>]
+```
+
+`pnpm ship` uses the `gh` CLI (honoring `GH_HOST`, `GH_TOKEN`, and `GH_REPO`) to
+wait for every check run on the PR head, then `gh pr merge --match-head-commit`
+so a head that moved after CI cannot merge. It fast-forwards the base branch,
+runs `pnpm run deploy`, and polls `${APP_URL}/api/health` until it reports the
+merged commit several times in a row (Cloudflare can briefly serve the previous
+version), then checks `/api/readiness`. Health reports `commit`, the Git SHA the
+build was made from, and `version`, the Cloudflare Worker version ID.
+
+Reruns are safe: a merged PR skips CI and merging, and a commit production
+already serves skips the deploy. Auto-merge or merge queues are not driven;
+rerun `pnpm ship` once the PR has merged. `ci:wait` alone accepts a PR number or
+any pushed ref (default `HEAD`).
+
 ## Resource state and retries
 
 Commit `void.lock.json` after provisioning. It contains resolved resource IDs,
@@ -88,7 +113,9 @@ After deploying, check `/api/health`, `/api/readiness`, and `/api/doc`, test
 sign-in and organization permissions, and complete the [email](email.md) and
 [observability](observability-operations.md) acceptance checks. Bootstrap the first
 administrator with `POST /api/internal/bootstrap-admin` and the
-`x-bootstrap-secret` header.
+`x-bootstrap-secret` header (your `BOOTSTRAP_SECRET`). It creates `ADMIN_EMAIL`'s
+account and emails a password-reset link; no production password is stored.
+Then sign in at `/app/login`.
 
 Local development and browser tests use isolated local resources with remote
 bindings disabled. `pnpm preview` runs locally. Cloud previews need their own

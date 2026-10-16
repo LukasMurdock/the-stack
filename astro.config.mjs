@@ -6,6 +6,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 import { voidPlugin } from "void";
 import { writeLocalCloudflareConfig } from "./scripts/local-cloudflare.mjs";
+import { buildCommit } from "./scripts/lib/build-commit.mjs";
 
 const isE2E = process.env.STACK_E2E === "1";
 
@@ -36,6 +37,8 @@ export default defineConfig({
 	// Pages or islands can opt into SSR with `export const prerender = false`.
 	output: "static",
 	vite: {
+		// Reported by /api/health so `pnpm ship` can confirm what is live.
+		define: { __STACK_COMMIT__: JSON.stringify(buildCommit()) },
 		optimizeDeps: {
 			exclude: ["astro:middleware", "rrweb"],
 		},
