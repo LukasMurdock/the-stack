@@ -6,6 +6,9 @@ Void owns the infrastructure configuration and application deployment workflow.
 This repository is a starter, with no existing production deployment or data.
 Design defaults for newly created apps; do not invent an operational environment.
 
+Write code by `TIGERSTYLE.md`. Where it differs from this repository's
+established conventions (tabs, oxfmt output), the repository wins.
+
 ## Workflows
 
 - Install: Node 24.21.0+ and the pinned pnpm version; `pnpm install`.
