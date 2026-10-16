@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
 	chmodSync,
+	cpSync,
+	existsSync,
+	symlinkSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -147,18 +150,45 @@ test("pnpm logs tails the configured app name and forwards arguments", async (t)
 	assert.match(missing.stderr, /wrangler was not found.*pnpm logs/);
 });
 
+// A copy of the checkout's files (including uncommitted edits) sharing its
+// node_modules, so a command can rewrite generated files without touching the
+// working tree that concurrent tests, tsc and lint read.
+function isolatedCheckout(t: test.TestContext) {
+	const copy = temporaryDirectory(t, "stack-checkout-");
+	const listed = spawnSync(
+		"git",
+		["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+		{ cwd: root, encoding: "utf8", timeout: COMMAND_TIMEOUT_MS }
+	);
+	assert.equal(listed.status, 0, listed.stderr);
+	for (const file of listed.stdout.split("\0")) {
+		// Deleted-but-tracked files are listed too; skip them.
+		if (file === "" || !existsSync(path.join(root, file))) continue;
+		// Tracked symlinks (e.g. .agents/skills) are copied as links.
+		cpSync(path.join(root, file), path.join(copy, file), {
+			recursive: true,
+			verbatimSymlinks: true,
+		});
+	}
+	symlinkSync(
+		path.join(root, "node_modules"),
+		path.join(copy, "node_modules")
+	);
+	return copy;
+}
+
 test("pnpm routes regenerates a stale route tree", (t) => {
 	const tree = "src/react-app/routeTree.gen.ts";
-	const committed = readFileSync(tree, "utf8");
-	t.after(() => writeFileSync(tree, committed));
-	writeFileSync(tree, "// stale\n");
+	const expected = readFileSync(tree, "utf8");
+	const copy = isolatedCheckout(t);
+	writeFileSync(path.join(copy, tree), "// stale\n");
 	const result = spawnSync("pnpm", ["routes"], {
-		cwd: root,
+		cwd: copy,
 		encoding: "utf8",
 		timeout: COMMAND_TIMEOUT_MS,
 	});
 	assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-	assert.equal(readFileSync(tree, "utf8"), committed);
+	assert.equal(readFileSync(path.join(copy, tree), "utf8"), expected);
 });
 
 test("routes:new scaffolds a route and names the regeneration command", (t) => {
