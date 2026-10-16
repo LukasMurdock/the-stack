@@ -116,10 +116,25 @@ function recordAdminUserCreatedEvent(args: {
 	});
 }
 
+type FlagFallback = {
+	readonly key: string;
+	readonly cause: string;
+	readonly detail?: string;
+};
+
+// Flags that served their default because of a misconfiguration (a type
+// mismatch, a value outside the schema, a binding error). One event per
+// request; the registry bounds how many keys it can name.
+function recordFlagFallbacks(fallbacks: readonly FlagFallback[]): void {
+	if (fallbacks.length === 0) return;
+	simpleLog.warn({ action: "flags.default_served", flags: fallbacks });
+}
+
 export {
 	createApiRequestLogger,
+	recordFlagFallbacks,
 	recordAdminUserCreatedEvent,
 	recordEmailLogOnlyEvent,
 	recordEmailSendFailure,
 };
-export type { WorkerRequestLogFields };
+export type { FlagFallback, WorkerRequestLogFields };

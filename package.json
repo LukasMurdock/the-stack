@@ -13,6 +13,8 @@
 		"local:setup": "node scripts/setup-local.mjs",
 		"local:seed": "node scripts/seed-local.mjs",
 		"local:reset": "node scripts/reset-local.mjs",
+		"flags": "node scripts/flags.ts",
+		"flags:local": "node scripts/flags.ts sync",
 		"admin:create": "pnpm run db:local:migrate && node scripts/create-admin-local.mjs",
 		"build": "pnpm run cf:typegen && STACK_BUILD=deploy astro sync && tsc -b && STACK_BUILD=deploy astro build",
 		"check": "pnpm run build && wrangler deploy --config dist/server/wrangler.json --dry-run",

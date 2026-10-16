@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import ts from "typescript";
 import { z } from "zod";
+import { ensureFlagshipApp, runWrangler } from "./lib/flagship.ts";
 import { loadVoidProvisioning } from "./lib/void-cloudflare.mjs";
 
 const cloudflareConfigSchema = z.looseObject({
@@ -22,6 +23,14 @@ const cloudflareConfigSchema = z.looseObject({
 			z.looseObject({
 				binding: z.string(),
 				bucket_name: z.string().optional(),
+			})
+		)
+		.optional(),
+	flagship: z
+		.array(
+			z.looseObject({
+				binding: z.string(),
+				app_id: z.string().optional(),
 			})
 		)
 		.optional(),
@@ -115,11 +124,70 @@ export function provisioningPlans(config) {
 	return plans;
 }
 
+// Void 0.28 has no Flagship provisioning and refuses to deploy a flagship
+// binding without an app ID, so the adapter finds or creates the app named
+// after the Worker, writes its app_id into the materialized config, and has
+// Void record it in void.lock.json. Later deploys reuse the recorded ID.
+/**
+ * @param {string} root
+ * @param {string} configPath
+ * @param {(root: string) => void} persistCloudflareConfig
+ * @param {import("./lib/flagship.ts").WranglerRunner} runFlagship
+ */
+export function provisionFlagship(
+	root,
+	configPath,
+	persistCloudflareConfig,
+	runFlagship
+) {
+	const config = readCloudflareConfig(configPath);
+	const bindings = config.flagship ?? [];
+	if (bindings.length > 1)
+		throw new Error(
+			"This adapter provisions one Flagship binding (FLAGS)."
+		);
+	const [binding] = bindings;
+	if (binding === undefined || binding.app_id) return undefined;
+	const app = ensureFlagshipApp(
+		{ appName: config.name, configPath },
+		runFlagship
+	);
+	writeFlagshipAppId(configPath, binding.binding, app.appId);
+	persistCloudflareConfig(root);
+	return app;
+}
+
+// The materialized file is Void's `// void:` provenance lines followed by
+// JSON; keep the lines and rewrite the JSON with the app ID added.
+/**
+ * @param {string} configPath
+ * @param {string} bindingName
+ * @param {string} appId
+ */
+function writeFlagshipAppId(configPath, bindingName, appId) {
+	const text = readFileSync(configPath, "utf8");
+	const provenance = text.match(/^\s*\/\/ void:.*$/gm) ?? [];
+	const parsed = ts.parseConfigFileTextToJson(configPath, text);
+	if (parsed.error)
+		throw new Error(`Invalid Cloudflare configuration: ${configPath}`);
+	const config = z
+		.looseObject({
+			flagship: z.array(z.looseObject({ binding: z.string() })),
+		})
+		.parse(parsed.config);
+	config.flagship = config.flagship.map((entry) =>
+		entry.binding === bindingName ? { ...entry, app_id: appId } : entry
+	);
+	const lines = provenance.map((line) => `${line.trim()}\n`).join("");
+	writeFileSync(configPath, `${lines}${JSON.stringify(config, null, 2)}\n`);
+}
+
 /**
  * @param {string} [root]
- * @param {Record<string, unknown>} [options]
+ * @param {Record<string, unknown> & { runFlagship?: import("./lib/flagship.ts").WranglerRunner }} [options]
  */
 export async function provisionResources(root = process.cwd(), options = {}) {
+	const { runFlagship = runWrangler, ...voidOptions } = options;
 	const sdk = await loadVoidProvisioning();
 	const configPath = sdk.materializeCloudflareConfig(root);
 	const config = readCloudflareConfig(configPath);
@@ -129,7 +197,7 @@ export async function provisionResources(root = process.cwd(), options = {}) {
 			configPath,
 			plan,
 			{
-				...options,
+				...voidOptions,
 				accountId: config.account_id,
 			}
 		);
@@ -143,6 +211,16 @@ export async function provisionResources(root = process.cwd(), options = {}) {
 				"Void could not provision every required resource. Deployment stopped."
 			);
 	}
+	const flagship = provisionFlagship(
+		root,
+		configPath,
+		sdk.persistCloudflareConfig,
+		runFlagship
+	);
+	if (flagship !== undefined)
+		process.stdout.write(
+			`Flagship app ${flagship.action === "created" ? "created" : "found"} for ${config.name}: ${flagship.appId} (recorded in void.lock.json)\n`
+		);
 	const resolved = readCloudflareConfig(configPath);
 	assertSeparateDatabases(resolved);
 	return { configPath, config: resolved };

@@ -33,6 +33,13 @@ import {
 	parseDemoRecordOptions,
 	parseDemoVideoEnv,
 } from "../../scripts/demo-record.ts";
+import { parseFlagsOptions } from "../../scripts/flags.ts";
+import { LOCAL_FLAG_STORE } from "../../scripts/lib/flagship.ts";
+import {
+	booleanFlag,
+	featureFlags,
+	numberFlag,
+} from "../../src/contracts/feature-flags.ts";
 
 // #24: the default --timeout was read as 30 ms instead of 30 minutes, inside
 // the entry point that no test ran. These tests parse exactly what a user
@@ -462,6 +469,109 @@ test("proof options: one mode, its own flags, and a rev", () => {
 		assert.throws(() => parseProofOptions(argv), message);
 });
 
+test("flags options: list by default, sync, on/off targets and malformed input", () => {
+	const metadata = {
+		owner: "platform",
+		description: "A test flag.",
+		expires: "2027-01-01",
+		exposure: "client",
+	} as const;
+	const registry = {
+		"new-checkout": booleanFlag({ ...metadata, default: false }),
+		"upload-limit": numberFlag({ ...metadata, default: 10 }),
+	};
+	const parse = (argv: readonly string[], env = {}) =>
+		parseFlagsOptions(argv, env, registry);
+	assert.deepEqual(parse([]), {
+		kind: "run",
+		options: { kind: "list", store: LOCAL_FLAG_STORE, subject: {} },
+	});
+	assert.deepEqual(
+		parse(["list", "--user", "u-1", "--organization", "o_2"]),
+		{
+			kind: "run",
+			options: {
+				kind: "list",
+				store: LOCAL_FLAG_STORE,
+				subject: { userId: "u-1", organizationId: "o_2" },
+			},
+		}
+	);
+	assert.deepEqual(parse(["sync", "--reset"]), {
+		kind: "run",
+		options: { kind: "sync", store: LOCAL_FLAG_STORE, reset: true },
+	});
+	const on = parse(
+		["on", "new-checkout", "--organization", "org-1", "--e2e"],
+		{
+			STACK_E2E_PORT: "4555",
+		}
+	);
+	assert.equal(on.kind, "run");
+	assert.ok(on.kind === "run" && on.options.kind === "serve");
+	assert.deepEqual(on.options.target, { kind: "organization", id: "org-1" });
+	assert.equal(on.options.variation, "on");
+	assert.match(on.options.store.persistTo, /\.wrangler\/e2e\/4555\/state$/);
+	assert.deepEqual(parse(["off", "new-checkout"]), {
+		kind: "run",
+		options: {
+			kind: "serve",
+			store: LOCAL_FLAG_STORE,
+			key: "new-checkout",
+			variation: "off",
+			target: { kind: "everyone" },
+		},
+	});
+	assert.deepEqual(parse(["--help"]), { kind: "help" });
+	for (const [argv, message] of [
+		[["frob"], /Unknown command/],
+		[["on"], /Give the flag key/],
+		[["on", "missing-flag"], /not declared/],
+		[["on", "upload-limit"], /number flag/],
+		[["on", "new-checkout", "extra"], /Unexpected argument/],
+		[["on", "new-checkout", "--user", "a b"], /--user must be an ID/],
+		[
+			["on", "new-checkout", "--user", "a", "--organization", "b"],
+			/not both/,
+		],
+		[["off", "new-checkout", "--user", "a"], /sync --reset/],
+		[["list", "--reset"], /only applies to sync/],
+		[["sync", "--user", "a"], /sync takes no/],
+		[["list", "extra"], /Unexpected argument/],
+		[["--usr", "a"], /--usr/],
+	] as const)
+		assert.throws(() => parse(argv), message);
+	assert.throws(
+		() => parse(["--e2e"], { STACK_E2E_PORT: "80" }),
+		/STACK_E2E_PORT/
+	);
+});
+
+test("flags sync and list run for real against a browser-test store", (t) => {
+	// A port no browser run claims: only this test touches its store.
+	const env = { STACK_E2E_PORT: "65431" };
+	t.after(() =>
+		rmSync(path.join(root, ".wrangler", "e2e", env.STACK_E2E_PORT), {
+			recursive: true,
+			force: true,
+		})
+	);
+	const sync = runScript("flags.ts", ["sync", "--e2e"], { env });
+	assert.equal(sync.status, 0, sync.stderr);
+	const declared = Object.keys(featureFlags);
+	assert.match(sync.stdout, new RegExp(`${declared.length} declared flag`));
+	for (const key of declared)
+		assert.match(sync.stdout, new RegExp(`created  ${key}`));
+	const list = runScript("flags.ts", ["--e2e"], { env });
+	assert.equal(list.status, 0, list.stderr);
+	assert.match(list.stdout, /^Feature flags/);
+	for (const key of declared) {
+		assert.match(list.stdout, new RegExp(`^${key} `, "m"));
+		assert.match(list.stdout, /local: serves /);
+	}
+	if (declared.length === 0) assert.match(list.stdout, /No flags declared/);
+});
+
 test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", () => {
 	for (const [name, args] of [
 		["ci-wait.ts", ["--help"]],
@@ -473,6 +583,7 @@ test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", (
 		["api.ts", ["-h"]],
 		["demo-record.ts", ["--help"]],
 		["proof.ts", ["--help"]],
+		["flags.ts", ["--help"]],
 	] as const) {
 		const help = runScript(name, args);
 		assert.equal(help.status, 0, `${name}: ${help.stderr}`);
@@ -545,6 +656,11 @@ test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", (
 	assertUsageError(runScript("api.ts", ["POST", "x", "{"]), /JSON/);
 	assertUsageError(runScript("demo-record.ts", []), /Give a spec/);
 	assertUsageError(runScript("demo-record.ts", ["nope"]), /No spec/);
+	assertUsageError(runScript("flags.ts", ["frob"]), /Unknown command/);
+	assertUsageError(
+		runScript("flags.ts", ["on", "not-a-declared-flag"]),
+		/not declared/
+	);
 });
 
 test("ship <pr> parses and stops at the placeholder production origin", () => {

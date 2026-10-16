@@ -9,6 +9,7 @@ function log(message) {
 
 const cwd = process.cwd();
 const d1StatePath = path.resolve(cwd, ".wrangler/state/v3/d1");
+const flagStatePath = path.resolve(cwd, ".wrangler/state/v3/flagship");
 const adminPasswordPath = path.resolve(cwd, ".wrangler/.admin-password");
 
 if (fs.existsSync(d1StatePath)) {
@@ -16,6 +17,11 @@ if (fs.existsSync(d1StatePath)) {
 	log("Removed local D1 state (.wrangler/state/v3/d1)");
 } else {
 	log("Local D1 state not found; nothing to remove");
+}
+
+if (fs.existsSync(flagStatePath)) {
+	fs.rmSync(flagStatePath, { recursive: true, force: true });
+	log("Removed local flag store (.wrangler/state/v3/flagship)");
 }
 
 if (fs.existsSync(adminPasswordPath)) {

@@ -15,8 +15,13 @@ export async function loadVoidProvisioning() {
 	const { l: provisionCloudflareResources } = await import(
 		new URL("./provision-DDh7ITVS.mjs", entry).href
 	);
-	const { r: materializeCloudflareConfig } = await import(
-		new URL("./cloudflare-config-DV60XFFK.mjs", entry).href
-	);
-	return { provisionCloudflareResources, materializeCloudflareConfig };
+	// persistCloudflareConfig records a Flagship app_id written into the
+	// materialized config in void.lock.json, as Void does for its own IDs.
+	const { r: materializeCloudflareConfig, i: persistCloudflareConfig } =
+		await import(new URL("./cloudflare-config-DV60XFFK.mjs", entry).href);
+	return {
+		provisionCloudflareResources,
+		materializeCloudflareConfig,
+		persistCloudflareConfig,
+	};
 }

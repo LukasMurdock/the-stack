@@ -1,3 +1,5 @@
+export const localFlagshipAppId = "the-stack-local";
+
 // Core and Turret have separate D1 databases and migration histories.
 export const localCloudflare = {
 	name: "the-stack-local",
@@ -75,6 +77,14 @@ export const localCloudflare = {
 		{
 			binding: "TURRET_ANALYTICS",
 			dataset: "turret_analytics",
+		},
+	],
+	// Local and browser-test Workers read the local flag store under their
+	// persist directory; this id only names the store's app.
+	flagship: [
+		{
+			binding: "FLAGS",
+			app_id: localFlagshipAppId,
 		},
 	],
 	triggers: {
@@ -156,6 +166,13 @@ export const deploymentCloudflare = {
 		{
 			binding: "TURRET_ANALYTICS",
 			dataset: "turret_analytics",
+		},
+	],
+	// `pnpm run deploy` creates or reuses the Flagship app named after the
+	// Worker and records its app_id in void.lock.json, like the D1 IDs.
+	flagship: [
+		{
+			binding: "FLAGS",
 		},
 	],
 	triggers: {

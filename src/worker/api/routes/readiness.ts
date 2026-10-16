@@ -5,6 +5,7 @@ import {
 	describeEmailDelivery,
 	type EmailDelivery,
 } from "../../../contracts/email-delivery";
+import { flagBindingStatus } from "../../flags";
 
 const app = new OpenAPIHono<{ Bindings: Bindings }>();
 // Email is optional for readiness: without it the app serves, but the listed
@@ -21,7 +22,20 @@ const emailStatus = z.discriminatedUnion("delivery", [
 		disabled: z.array(z.enum(EMAIL_DEPENDENT_FEATURES)),
 	}),
 ]);
-const ready = z.object({ ok: z.boolean(), email: emailStatus });
+// Flags are optional too: without the FLAGS binding every flag serves its
+// registry default.
+const flagsStatus = z.discriminatedUnion("binding", [
+	z.object({ binding: z.literal("configured") }),
+	z.object({
+		binding: z.literal("missing"),
+		serving: z.literal("defaults"),
+	}),
+]);
+const ready = z.object({
+	ok: z.boolean(),
+	email: emailStatus,
+	flags: flagsStatus,
+});
 const getReadiness = createRoute({
 	method: "get",
 	path: "/readiness",
@@ -53,6 +67,7 @@ export function emailReadiness(env: Bindings): z.infer<typeof emailStatus> {
 export const routes = app.openapi(getReadiness, async (c) => {
 	c.header("Cache-Control", "no-store");
 	const email = emailReadiness(c.env);
+	const flags = flagBindingStatus(c.env.FLAGS);
 	try {
 		// Compile a query over required application columns without reading user
 		// data. A live binding alone does not prove migrations were applied.
@@ -64,8 +79,8 @@ export const routes = app.openapi(getReadiness, async (c) => {
  left join auth_session s on s.user_id = u.id
  left join auth_storage a on a.key = s.token
  where 0`).all();
-		return c.json({ ok: true, email }, 200);
+		return c.json({ ok: true, email, flags }, 200);
 	} catch {
-		return c.json({ ok: false, email }, 503);
+		return c.json({ ok: false, email, flags }, 503);
 	}
 });

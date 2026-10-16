@@ -1,5 +1,7 @@
+import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { z } from "zod";
+import { flagsResponseSchema } from "../../src/contracts/feature-flags";
 import { PAGE_SIZE } from "../../src/contracts/pagination";
 import { projectResponseSchema } from "../../src/features/projects/contracts";
 import {
@@ -177,4 +179,42 @@ test("changing organization resets project pagination, drafts and failed mutatio
 	await expect(page.getByLabel("Project name")).toHaveValue("");
 	await expect(page.getByLabel("Description")).toHaveValue("");
 	await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("the project count ships dark until projects-total is on for the organization", async ({
+	page,
+}) => {
+	const name = await createOrganization(page);
+	const organizationId = /\/organizations\/([^/]+)/.exec(
+		new URL(page.url()).pathname
+	)?.[1];
+	if (organizationId === undefined)
+		throw new Error("Organization ID is required.");
+	const count = page.getByText(`0 projects in ${name}`, { exact: true });
+	const flagsServed = page.waitForResponse((response) =>
+		response.url().includes("/api/flags?")
+	);
+	await page.getByRole("link", { name: "Projects", exact: true }).click();
+	// The store starts at the registry default, so the Worker serves off.
+	const served = flagsResponseSchema.parse(await (await flagsServed).json());
+	expect(served.flags["projects-total"]).toBe(false);
+	await expect(
+		page.getByRole("heading", { name: "Projects", exact: true })
+	).toBeVisible();
+	await expect(count).toHaveCount(0);
+	// The same command a developer runs, against this run's local store.
+	execFileSync(
+		process.execPath,
+		[
+			"scripts/flags.ts",
+			"on",
+			"projects-total",
+			"--organization",
+			organizationId,
+			"--e2e",
+		],
+		{ env: process.env, stdio: "pipe" }
+	);
+	await page.reload();
+	await expect(count).toBeVisible();
 });

@@ -17,6 +17,8 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { hashPassword } from "better-auth/crypto";
 import { localCloudflare } from "../../config/cloudflare.mjs";
+import { featureFlags } from "../../src/contracts/feature-flags.ts";
+import { flagStoreAt, syncFlags } from "../lib/flagship.ts";
 import {
 	type Command,
 	isEntryPoint,
@@ -176,6 +178,9 @@ async function prepareState(
 		if (seedUsers(path.join(paths.state, name), passwordHash))
 			seeded = true;
 	if (!seeded) throw new Error("Browser fixture CORE_DB was not found.");
+	// Every run starts with each declared flag at its registry default;
+	// a spec turns one on with `pnpm flags on <key> --e2e`.
+	syncFlags(flagStoreAt(paths.state), featureFlags, { reset: true });
 	rmSync(paths.stateTemplate, { recursive: true, force: true });
 	cpSync(paths.state, paths.stateTemplate, { recursive: true });
 	writeFileSync(

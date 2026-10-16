@@ -3,6 +3,7 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 import { createAuth } from "../auth";
 import { routes as readinessRoutes } from "./routes/readiness";
+import { routes as flagsRoutes } from "./routes/flags";
 import { routes as rootRoutes } from "./routes/root";
 import { routes as bootstrapRoutes } from "./routes/bootstrap";
 import { routes as adminUserRoutes } from "./routes/admin-users";
@@ -30,6 +31,7 @@ const api = new OpenAPIHono<{ Bindings: Bindings }>();
 const apiRoutes = api
 	.route("/", rootRoutes)
 	.route("/", readinessRoutes)
+	.route("/", flagsRoutes)
 	.route("/", organizationsRoutes)
 	.route("/", organizationMemberRoutes)
 	.route("/", organizationInvitationRoutes)

@@ -10,6 +10,10 @@ import {
 	EMAIL_DEPENDENT_FEATURES,
 	describeEmailDelivery,
 } from "../src/contracts/email-delivery.ts";
+import {
+	featureFlags,
+	flagRegistryProblems,
+} from "../src/contracts/feature-flags.ts";
 import { loadLocalEnv } from "./local-env.mjs";
 
 /** @param {string} message */
@@ -198,6 +202,35 @@ if (productionEmail.delivery === "unavailable") {
 	);
 }
 
+// Flags are optional: without the FLAGS binding every flag serves its
+// registry default, which is safe but means nothing can be turned on.
+const declaredFlags = Object.keys(featureFlags).length;
+if (localCloudflare.flagship.some((entry) => entry.binding === "FLAGS")) {
+	ok(
+		`Local flags: FLAGS reads the local flag store (${declaredFlags} declared; \`pnpm flags\` lists them)`
+	);
+} else {
+	warn("Local flags: no FLAGS binding, so every flag serves its default");
+}
+if (deploymentCloudflare.flagship.some((entry) => entry.binding === "FLAGS")) {
+	const appId = recordedFlagshipAppId();
+	ok(
+		appId === undefined
+			? `Production flags: \`pnpm run deploy\` creates or reuses the Flagship app "${deploymentCloudflare.name}"`
+			: `Production flags: Flagship app ${appId} (void.lock.json)`
+	);
+} else {
+	warn(
+		"Production flags: no FLAGS binding, so every flag serves its default"
+	);
+}
+for (const { key, problem } of flagRegistryProblems(featureFlags, {
+	nowUnixMs: Date.now(),
+})) {
+	// The registry unit test fails verify; here it is a reminder.
+	warn(`Feature flag ${key}: ${problem}`);
+}
+
 const adminPasswordPath = path.resolve(cwd, ".wrangler/.admin-password");
 if (fs.existsSync(adminPasswordPath)) {
 	ok("Admin credential file present (.wrangler/.admin-password)");
@@ -209,4 +242,23 @@ if (fs.existsSync(adminPasswordPath)) {
 
 if (failed) {
 	process.exit(1);
+}
+
+// The app ID deploy recorded, if it has run. Void owns this file's format.
+/** @returns {string | undefined} */
+function recordedFlagshipAppId() {
+	const lockPath = path.resolve(cwd, "void.lock.json");
+	if (!fs.existsSync(lockPath)) return undefined;
+	/** @type {unknown} */
+	const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+	if (typeof lock !== "object" || lock === null || !("resolved" in lock))
+		return undefined;
+	const { resolved } = lock;
+	if (typeof resolved !== "object" || resolved === null) return undefined;
+	if (!("flagship" in resolved) || !Array.isArray(resolved.flagship))
+		return undefined;
+	for (const entry of resolved.flagship)
+		if (entry?.binding === "FLAGS" && typeof entry.app_id === "string")
+			return entry.app_id;
+	return undefined;
 }

@@ -76,3 +76,42 @@ test("readiness reports what email can do without failing the app", async (t) =>
 		{ delivery: "provider", transport: "resend" }
 	);
 });
+
+test("readiness reports whether FLAGS is bound; without it defaults are served", async (t) => {
+	const f = productFixture();
+	t.after(() => f.sqlite.close());
+	async function flagsStatus(bindings: Parameters<typeof testBindings>[0]) {
+		const response = await routes.request(
+			"http://local.test/readiness",
+			{},
+			testBindings({ CORE_DB: f.binding, ...bindings })
+		);
+		assert.equal(response.status, 200, "flags never decide readiness");
+		return z.object({ flags: z.unknown() }).parse(await response.json())
+			.flags;
+	}
+	assert.deepEqual(await flagsStatus({}), {
+		binding: "missing",
+		serving: "defaults",
+	});
+	// Readiness only checks that the binding exists; it evaluates nothing.
+	const unused = () => Promise.reject(new Error("not evaluated"));
+	assert.deepEqual(
+		await flagsStatus({
+			FLAGS: {
+				get: unused,
+				getValue: unused,
+				getDetails: unused,
+				getBooleanValue: unused,
+				getStringValue: unused,
+				getNumberValue: unused,
+				getObjectValue: unused,
+				getBooleanDetails: unused,
+				getStringDetails: unused,
+				getNumberDetails: unused,
+				getObjectDetails: unused,
+			},
+		}),
+		{ binding: "configured" }
+	);
+});

@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { localConfigPath } from "./local-cloudflare.mjs";
 
 execFileSync(
@@ -10,7 +11,8 @@ execFileSync(
 		"types",
 		"--strict-vars=false",
 		"--config",
-		localConfigPath,
+		// Relative, so the generated header does not name this machine's path.
+		path.relative(process.cwd(), localConfigPath),
 	],
 	{
 		stdio: "inherit",

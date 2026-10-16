@@ -50,6 +50,8 @@ if (missing.length > 0) {
 runNodeScript("scripts/dev-doctor.mjs");
 
 runCommand("pnpm", ["run", "db:local:migrate"]);
+// Declared flags with their defaults, so local evaluation is deterministic.
+runCommand("pnpm", ["run", "flags:local"]);
 runNodeScript("scripts/create-admin-local.mjs");
 
 log("\nLocal setup complete.");

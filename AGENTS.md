@@ -92,6 +92,32 @@ contract, not code: a reviewer (human, model or tool) records its verdict with
 `pnpm proof --add-review <file.json>`; `--check --require-reviews <n>` enforces
 a count where policy asks for one.
 
+## Feature flags
+
+Flags are Cloudflare Flagship behind the `FLAGS` binding
+([docs/feature-flags.md](docs/feature-flags.md),
+[Flagship](https://developers.cloudflare.com/flagship/)).
+
+- Ship unfinished work behind a flag instead of holding it off `main`.
+- Declare it in `src/contracts/feature-flags.ts` with an owner and an
+  `expires` date; reading an undeclared key does not compile.
+- Default to off, the existing safe behavior: the default is served whenever
+  Flagship is missing or fails.
+- Read flags once per request with `requestFlags` (Worker) or
+  `useFlag` (browser, client flags only).
+- Remove the flag and its dead branch once it is fully rolled out or expired;
+  `verify` fails after `expires`.
+- Migrations cannot hide behind flags: they are add-only and expand first.
+- Local: `pnpm flags` lists what the local store serves,
+  `pnpm flags on <key> --user <id>` turns one on for you, and
+  `pnpm flags:local --reset` restores the defaults.
+
+<!-- example:start -->
+
+- `projects-total` gates the Projects example's count (`tests/e2e/projects.spec.ts`).
+
+<!-- example:end -->
+
 ## Showing UI changes
 
 Use these instead of throwaway Playwright or curl scripts, and give the human

@@ -14,6 +14,7 @@ import { organizationQuery } from "../organizations/queries";
 import { Pagination } from "../../components/Pagination";
 import { MutationFeedback } from "../../forms/feedback";
 import { useWorkflowOutcome } from "../turret/outcomes";
+import { useFlag } from "../../flags";
 export function ProjectsPage({
 	userId,
 	organizationId,
@@ -28,9 +29,18 @@ export function ProjectsPage({
 	const { organization } = useSuspenseQuery(
 		organizationQuery(userId, organizationId)
 	).data;
+	// Unfinished work ships dark: the count appears only where Flagship
+	// serves projects-total on (see "Feature flags" in AGENTS.md).
+	const showTotal = useFlag("projects-total", { userId, organizationId });
 	return (
 		<section className="space-y-6">
 			<h1 className="text-2xl font-semibold">Projects</h1>
+			{showTotal && (
+				<p className="text-sm text-muted-foreground">
+					{page.total} {page.total === 1 ? "project" : "projects"} in{" "}
+					{organization.name}
+				</p>
+			)}
 			<ul className="divide-y rounded-lg border">
 				{projects.map((project) => (
 					<li key={project.id} className="space-y-1 p-4">

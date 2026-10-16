@@ -46,6 +46,7 @@ export const MARKED_FILES = [
 	"src/worker/api/index.ts",
 	"src/bindings/d1/core/schema/index.ts",
 	"src/contracts/turret-outcomes.ts",
+	"src/contracts/feature-flags.ts",
 	"src/react-app/routes/_authenticated/organizations/$organizationId.tsx",
 	"src/components/docs/DocsNav.tsx",
 	"src/pages/docs/index.astro",

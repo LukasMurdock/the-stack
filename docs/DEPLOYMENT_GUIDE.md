@@ -41,7 +41,8 @@ The deploy command:
 
 1. Uses Void to connect and pin the intended Cloudflare account.
 2. Uses Void's provisioning engine to create or reuse **separate** Core and
-   Turret D1 databases, both KV namespaces, and the replay R2 bucket.
+   Turret D1 databases, both KV namespaces, and the replay R2 bucket, then
+   finds or creates the Flagship app for the `FLAGS` binding (below).
 3. Builds and validates the Worker, then applies each database's own migrations.
 4. Runs `void deploy --platform cloudflare` to configure email, publish the
    Worker, check readiness, and update schedules.
@@ -114,6 +115,33 @@ uses the recorded IDs and Void's resource discovery instead of creating copies.
 If one database fails, migrations and application publication do not run. Core
 and Turret must have distinct names and IDs, preserving their separate D1 limits.
 
+## Feature flags (Flagship)
+
+The `FLAGS` binding needs a [Flagship](https://developers.cloudflare.com/flagship/)
+app; Void 0.28 cannot create one and refuses to publish the binding without
+its ID. `pnpm run deploy` therefore looks for an app named after the Worker
+(`appName`) with `wrangler flagship apps list`, creates it with
+`wrangler flagship apps create` if there is none, and records its `app_id` in
+`void.lock.json` like the database IDs. Later deploys reuse the recorded ID.
+
+The deploy credentials need Flagship read and write access. If listing or
+creating fails, deploy stops before publishing and prints the command to run:
+
+```bash
+pnpm exec wrangler flagship apps create <appName>
+```
+
+Rerun `pnpm run deploy` and it finds the app by name. If the credentials cannot
+list apps, also set `app_id` on the `FLAGS` entry of
+`deploymentCloudflare.flagship` in `config/cloudflare.mjs`; an `app_id` there
+is used as is. Without the binding the app still runs and every flag serves its
+registry default (`/api/readiness` reports `flags.binding`).
+
+Flags themselves are created and rolled out in Flagship, not by deploy; a flag
+the app does not have yet serves its default. See
+[feature flags](feature-flags.md#production) for targeting, percentage
+rollouts and the kill switch.
+
 ## Why there is a small adapter
 
 Void 0.28's public inference models one primary D1 database. The Stack uses two.
@@ -121,6 +149,9 @@ Void 0.28's public inference models one primary D1 database. The Stack uses two.
 once for each declared database; that engine owns account checks, discovery,
 creation, locking, retries, and writing `void.lock.json`. The Stack does not
 implement a second set of Cloudflare provisioning requests.
+
+The same adapter fills the gap for Flagship apps (above), through Wrangler's
+documented `flagship apps` commands, and has Void record the ID.
 
 The SDK's internal entry points are isolated in `scripts/lib/void-cloudflare.mjs`
 and checked against the exact pinned Void version. Updating Void requires

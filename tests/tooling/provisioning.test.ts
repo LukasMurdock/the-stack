@@ -5,10 +5,12 @@ import path from "node:path";
 import test from "node:test";
 import { deploymentCloudflare } from "../../config/cloudflare.mjs";
 import {
+	provisionFlagship,
 	provisionResources,
 	provisioningPlans,
 	readCloudflareConfig,
 } from "../../scripts/provision-resources.mjs";
+import type { WranglerResult } from "../../scripts/lib/flagship.ts";
 
 // Exercise the installed Void provisioning engine; fake only its remote
 // transport so creation, lock persistence, and retries need no cloud account.
@@ -35,16 +37,30 @@ test("Void provisions separate Core/Turret resources and reuses their lock on re
 		r2_buckets: [
 			{ binding: "TURRET_REPLAY_BUCKET", bucket_name: "default" },
 		],
+		flagship: [{ binding: "FLAGS" }],
 	};
 	writeFileSync(
 		path.join(root, "void.config.ts"),
 		`export default ${JSON.stringify({ cloudflare: config })};`
 	);
 	const operations: string[] = [];
+	// Flagship goes through Wrangler's CLI, not Void's transport.
+	const flagshipCommands: string[] = [];
 	let failTurret = true;
 	let databaseCount = 0;
 	let namespaceCount = 0;
 	const options = {
+		runFlagship(args: readonly string[]): WranglerResult {
+			flagshipCommands.push(args.slice(0, 3).join(" "));
+			assert.ok(args.includes("--config"));
+			const stdout =
+				args[2] === "list"
+					? JSON.stringify([
+							{ id: "other-app", name: "another-worker" },
+						])
+					: JSON.stringify({ id: "flagship-app-1", name: args[3] });
+			return { status: 0, stdout, stderr: "" };
+		},
 		async enableD1ReadReplication() {},
 		log: { info() {}, warn() {} },
 		async runWrangler(operation: {
@@ -99,6 +115,7 @@ test("Void provisions separate Core/Turret resources and reuses their lock on re
 	);
 	assert.ok(partial.resolved.d1_databases[0].database_id);
 	assert.equal(partial.resolved.d1_databases[1].database_id, undefined);
+	assert.deepEqual(flagshipCommands, []);
 	failTurret = false;
 	const first = await provisionResources(root, options);
 	assert.equal(databaseCount, 2);
@@ -116,14 +133,26 @@ test("Void provisions separate Core/Turret resources and reuses their lock on re
 	);
 	assert.deepEqual(lock.resolved.d1_databases, first.config.d1_databases);
 	assert.deepEqual(lock.resolved.kv_namespaces, first.config.kv_namespaces);
+	// No app named after the Worker existed, so one was created and its ID
+	// recorded where Void keeps provisioned IDs.
+	assert.deepEqual(flagshipCommands, [
+		"flagship apps list",
+		"flagship apps create",
+	]);
+	assert.deepEqual(lock.resolved.flagship, [
+		{ binding: "FLAGS", app_id: "flagship-app-1" },
+	]);
+	assert.deepEqual(lock.source.flagship, [{ binding: "FLAGS" }]);
 	const createdOperations = operations.filter((type) =>
 		type.endsWith(".create")
 	);
 	assert.equal(createdOperations.length, 6);
 	operations.length = 0;
+	flagshipCommands.length = 0;
 	const second = await provisionResources(root, options);
 	assert.deepEqual(second.config, first.config);
 	assert.deepEqual(operations, []);
+	assert.deepEqual(flagshipCommands, []);
 
 	// A configuration accidentally pointing two bindings at one physical D1
 	// must fail before it can provision or apply either migration history.
@@ -137,5 +166,74 @@ test("Void provisions separate Core/Turret resources and reuses their lock on re
 				})),
 			}),
 		/own database ID/
+	);
+});
+
+test("Flagship provisioning reuses an app by name and fails with the command to run", (t) => {
+	const root = mkdtempSync(path.join(tmpdir(), "stack-flagship-"));
+	t.after(() => rmSync(root, { recursive: true, force: true }));
+	const configPath = path.join(root, ".void-wrangler.jsonc");
+	const write = () =>
+		writeFileSync(
+			configPath,
+			`// void:managed-queues:v1:abc\n${JSON.stringify({ name: "fixture-stack", flagship: [{ binding: "FLAGS" }] })}\n`
+		);
+	const persisted: string[] = [];
+	const persist = (directory: string) => persisted.push(directory);
+	const ok = (stdout: unknown): WranglerResult => ({
+		status: 0,
+		stdout: JSON.stringify(stdout),
+		stderr: "",
+	});
+
+	write();
+	const reused = provisionFlagship(root, configPath, persist, (args) => {
+		assert.equal(args[2], "list", "an existing app is never recreated");
+		return ok([{ id: "existing-app", name: "fixture-stack" }]);
+	});
+	assert.deepEqual(reused, { appId: "existing-app", action: "reused" });
+	assert.deepEqual(persisted, [root]);
+	const text = readFileSync(configPath, "utf8");
+	assert.match(text, /^\/\/ void:managed-queues:v1:abc\n/);
+	assert.deepEqual(readCloudflareConfig(configPath).flagship, [
+		{ binding: "FLAGS", app_id: "existing-app" },
+	]);
+	// A recorded app_id is reused without calling Flagship at all.
+	assert.equal(
+		provisionFlagship(root, configPath, persist, () => {
+			throw new Error("Flagship must not be called");
+		}),
+		undefined
+	);
+
+	write();
+	assert.throws(
+		() =>
+			provisionFlagship(root, configPath, persist, () => ({
+				status: 1,
+				stdout: "",
+				stderr: "Authentication error [code: 10000]",
+			})),
+		(error: unknown) => {
+			assert.ok(error instanceof Error);
+			assert.match(error.message, /Authentication error/);
+			assert.match(
+				error.message,
+				/pnpm exec wrangler flagship apps create fixture-stack/
+			);
+			assert.match(error.message, /app_id on the\nFLAGS binding/);
+			return true;
+		}
+	);
+	write();
+	assert.throws(
+		() =>
+			provisionFlagship(root, configPath, persist, () =>
+				ok([
+					{ id: "a", name: "fixture-stack" },
+					{ id: "b", name: "fixture-stack" },
+				])
+			),
+		/Several Flagship apps are named fixture-stack \(a, b\)/
 	);
 });
