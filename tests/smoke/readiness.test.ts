@@ -3,6 +3,9 @@ import test from "node:test";
 import { routes } from "../../src/worker/api/routes/readiness";
 import { productFixture } from "../helpers/product";
 import { testBindings, unavailableD1 } from "../helpers/worker";
+import { z } from "zod";
+
+const readinessSchema = z.object({ ok: z.boolean(), email: z.unknown() });
 
 test("readiness requires the migrated database and never exposes database errors", async (t) => {
 	const f = productFixture();
@@ -14,7 +17,7 @@ test("readiness requires the migrated database and never exposes database errors
 	);
 	assert.equal(ready.status, 200);
 	assert.equal(ready.headers.get("cache-control"), "no-store");
-	assert.deepEqual(await ready.json(), { ok: true });
+	assert.equal(readinessSchema.parse(await ready.json()).ok, true);
 	f.sqlite.exec("drop table projects");
 	const withoutExample = await routes.request(
 		"http://local.test/readiness",
@@ -34,12 +37,54 @@ test("readiness requires the migrated database and never exposes database errors
 		testBindings({ CORE_DB: f.binding })
 	);
 	assert.equal(unmigrated.status, 503);
-	assert.deepEqual(await unmigrated.json(), { ok: false });
+	assert.equal(readinessSchema.parse(await unmigrated.json()).ok, false);
 	const unavailable = await routes.request(
 		"http://local.test/readiness",
 		{},
 		testBindings({ CORE_DB: unavailableD1("private binding details") })
 	);
 	assert.equal(unavailable.status, 503);
-	assert.deepEqual(await unavailable.json(), { ok: false });
+	const unavailableBody = JSON.stringify(await unavailable.json());
+	assert.equal(readinessSchema.parse(JSON.parse(unavailableBody)).ok, false);
+	assert.ok(!unavailableBody.includes("private binding details"));
+});
+
+test("readiness reports what email can do without failing the app", async (t) => {
+	const f = productFixture();
+	t.after(() => f.sqlite.close());
+	async function emailStatus(bindings: Parameters<typeof testBindings>[0]) {
+		const response = await routes.request(
+			"http://local.test/readiness",
+			{},
+			testBindings({ CORE_DB: f.binding, ...bindings })
+		);
+		assert.equal(response.status, 200, "email never decides readiness");
+		return z.object({ email: z.unknown() }).parse(await response.json())
+			.email;
+	}
+	assert.deepEqual(
+		await emailStatus({ APP_ENV: "local", EMAIL_TRANSPORT: "log" }),
+		{ delivery: "log_only" }
+	);
+	assert.deepEqual(
+		await emailStatus({
+			APP_ENV: "production",
+			EMAIL_TRANSPORT: "cloudflare",
+			EMAIL_FROM: "noreply@your-app.example",
+		}),
+		{
+			delivery: "unavailable",
+			reason: "EMAIL_FROM uses the placeholder domain your-app.example.",
+			disabled: ["invitations", "password reset", "email verification"],
+		}
+	);
+	assert.deepEqual(
+		await emailStatus({
+			APP_ENV: "production",
+			EMAIL_TRANSPORT: "resend",
+			EMAIL_FROM: "Team <noreply@mail.company.com>",
+			RESEND_API_KEY: "re_live_key",
+		}),
+		{ delivery: "provider", transport: "resend" }
+	);
 });

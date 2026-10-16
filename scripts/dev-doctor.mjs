@@ -2,6 +2,14 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+import {
+	deploymentCloudflare,
+	localCloudflare,
+} from "../config/cloudflare.mjs";
+import {
+	EMAIL_DEPENDENT_FEATURES,
+	describeEmailDelivery,
+} from "../src/contracts/email-delivery.ts";
 import { loadLocalEnv } from "./local-env.mjs";
 
 /** @param {string} message */
@@ -146,6 +154,48 @@ try {
 		`Void not available via pnpm exec (install dependencies with pnpm install): ${describe(error)}`
 	);
 	failed = true;
+}
+
+// Email is optional, so these only warn. Production secrets and the
+// Void-provisioned SEND_EMAIL binding are not visible here; this catches the
+// configuration mistakes that can be seen locally.
+// .env overrides the local Worker's configured vars, as in `pnpm dev`.
+const localVars = localCloudflare.vars;
+const localEmail = describeEmailDelivery({
+	appEnv: process.env.APP_ENV ?? localVars.APP_ENV,
+	transport: process.env.EMAIL_TRANSPORT ?? localVars.EMAIL_TRANSPORT,
+	sender: process.env.EMAIL_FROM ?? localVars.EMAIL_FROM,
+	sendEmailBinding: "present",
+	resendApiKey: process.env.RESEND_API_KEY?.trim() ? "present" : "absent",
+});
+if (localEmail.delivery === "log_only") {
+	ok("Local email is log-only: auth links print in the dev server output");
+} else if (localEmail.delivery === "provider") {
+	ok(`Local email sends through ${localEmail.transport}`);
+} else {
+	warn(`Local email cannot send: ${localEmail.reason}`);
+}
+const productionVars = deploymentCloudflare.vars;
+const productionEmail = describeEmailDelivery({
+	appEnv: productionVars.APP_ENV,
+	transport: productionVars.EMAIL_TRANSPORT,
+	sender: productionVars.EMAIL_FROM,
+	sendEmailBinding: "present",
+	resendApiKey: "present",
+});
+if (productionEmail.delivery === "unavailable") {
+	warn(
+		[
+			`Production email is not configured: ${productionEmail.reason}`,
+			`     Disabled until it is: ${EMAIL_DEPENDENT_FEATURES.join(", ")}.`,
+			"     Bootstrap the first admin with `pnpm admin:bootstrap`, then add",
+			"     people from /app/ts_admin/users with Create user. See docs/email.md.",
+		].join("\n")
+	);
+} else if (productionEmail.delivery === "provider") {
+	ok(
+		`Production email: ${productionEmail.transport} from ${productionVars.EMAIL_FROM} (confirm the domain with \`pnpm exec void email status --platform cloudflare\`)`
+	);
 }
 
 const adminPasswordPath = path.resolve(cwd, ".wrangler/.admin-password");

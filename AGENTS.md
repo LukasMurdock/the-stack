@@ -41,6 +41,10 @@ test each CLI as a subprocess (`tests/tooling/cli-boundaries.test.ts`).
 - Deploy: configure the app name, origin, sender, and secrets, then
   `pnpm run deploy`. Void provisions resources through the two-database adapter,
   migrations run independently, and Void publishes the app. See `docs/DEPLOYMENT_GUIDE.md`.
+- First production admin: `BOOTSTRAP_SECRET=... pnpm admin:bootstrap` prints its
+  password once (no email needed); add people from Admin → Users → Create user.
+  Never write a generated password to a file or log. `pnpm run doctor` and
+  `/api/readiness` report whether email can send.
 - CI: `pnpm ci:wait [ref|pr]` waits for GitHub checks (default `HEAD`, which
   must be pushed), prints failing jobs' log tails, and exits non-zero on
   failure. Run it in the background instead of hand-written polling loops.

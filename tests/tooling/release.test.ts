@@ -256,7 +256,7 @@ test("ship waits for CI, merges once, deploys, and confirms production serves th
 	assert.match(output, /Worker version v-new/);
 	assert.match(output, /Sign in:\s+https:\/\/app\.test\.dev\/app\/login/);
 	assert.match(output, /admin@app\.test\.dev/);
-	assert.match(output, /bootstrap-admin/);
+	assert.match(output, /pnpm admin:bootstrap/);
 });
 
 test("ship resumes a merged PR without merging again and skips a deploy already live", async () => {

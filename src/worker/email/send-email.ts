@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { z } from "zod";
 import { log } from "evlog";
+import { isLocalAppEnv } from "../../contracts/email-delivery";
 import { recordEmailLogOnlyEvent } from "../observability/evlog";
 import {
 	traceOperation,
@@ -23,7 +24,7 @@ export type EmailResult =
 	| { transport: "cloudflare" | "resend"; messageId: string };
 
 export function isLocalEmailEnvironment(env: EmailEnvironment): boolean {
-	return ["local", "dev", "development", "test"].includes(env.APP_ENV ?? "");
+	return isLocalAppEnv(env.APP_ENV);
 }
 
 function configurationError(message: string): Error {

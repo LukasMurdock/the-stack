@@ -10,7 +10,16 @@ pubDate: "2026-02-27"
 
 - `AUTH_SIGNUP_MODE=invite_only` (default): no public self-signup.
 - `AUTH_SIGNUP_MODE=open`: allow public self-signup.
-- `BOOTSTRAP_SECRET`: required for `/api/internal/bootstrap-admin`.
+- `BOOTSTRAP_SECRET`: required for `/api/internal/bootstrap-admin`, which
+  `pnpm admin:bootstrap` calls to create the first production administrator
+  and print its password once.
+
+## Adding people without email
+
+Admin → Users → Create user makes an account with a server-generated starting
+password, shown once to the administrator (`POST /api/internal/users`,
+administrators only). "Mark email as verified" lets the person accept
+invitations without a verification email.
 
 ## Local admin bootstrap
 

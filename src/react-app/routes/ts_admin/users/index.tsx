@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { authClient } from "../../../auth";
+import { CreateUserDialog } from "../../../features/admin/CreateUserDialog";
+import { EmailDeliveryNotice } from "../../../features/admin/EmailDeliveryNotice";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -135,12 +137,18 @@ function TsAdminUsersPage() {
 
 	return (
 		<section className="space-y-4">
-			<div className="space-y-1">
-				<h1 className="text-2xl font-semibold tracking-tight">Users</h1>
-				<p className="text-sm text-muted-foreground">
-					Admin-only user management.
-				</p>
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div className="space-y-1">
+					<h1 className="text-2xl font-semibold tracking-tight">
+						Users
+					</h1>
+					<p className="text-sm text-muted-foreground">
+						Admin-only user management.
+					</p>
+				</div>
+				<CreateUserDialog />
 			</div>
+			<EmailDeliveryNotice />
 
 			<Card>
 				<CardHeader>

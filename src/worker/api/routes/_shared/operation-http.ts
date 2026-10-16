@@ -15,6 +15,7 @@ import {
 	type OperationContext,
 } from "../../../../features/shared/context";
 import { requiredSameOrigin } from "./request-security";
+import { isAdminRole } from "../../../../features/auth/policy";
 
 export type OperationEnv = {
 	Bindings: Bindings;
@@ -42,6 +43,36 @@ export const requireUser: MiddlewareHandler<OperationEnv> = async (c, next) => {
 		actor: {
 			userId: session.user.id,
 		},
+	});
+	await next();
+};
+
+// Account administration: an admin session on the application origin. Better
+// Auth checks the same session again inside its admin endpoints.
+export const requireAdmin: MiddlewareHandler<OperationEnv> = async (
+	c,
+	next
+) => {
+	c.header("Cache-Control", "no-store");
+	if (requiredSameOrigin(c.env.APP_URL, c.req.raw)) {
+		throw new ProductError(
+			"forbidden",
+			"Use the application origin for this request."
+		);
+	}
+	const session = await createAuth(c.env, c.executionCtx).api.getSession({
+		headers: c.req.raw.headers,
+	});
+	if (!session?.user)
+		throw new ProductError("unauthorized", "Sign in to continue.");
+	if (!isAdminRole(session.user.role))
+		throw new ProductError(
+			"forbidden",
+			"Administrator access is required."
+		);
+	c.set("operation", {
+		db: makeCoreDb(c.env.CORE_DB),
+		actor: { userId: session.user.id },
 	});
 	await next();
 };

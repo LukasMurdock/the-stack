@@ -1,8 +1,27 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { Bindings } from "../../index";
+import {
+	EMAIL_DEPENDENT_FEATURES,
+	describeEmailDelivery,
+	type EmailDelivery,
+} from "../../../contracts/email-delivery";
 
 const app = new OpenAPIHono<{ Bindings: Bindings }>();
-const ready = z.object({ ok: z.boolean() });
+// Email is optional for readiness: without it the app serves, but the listed
+// features cannot work. Reporting it here tells the owner before a user does.
+const emailStatus = z.discriminatedUnion("delivery", [
+	z.object({
+		delivery: z.literal("provider"),
+		transport: z.enum(["cloudflare", "resend"]),
+	}),
+	z.object({ delivery: z.literal("log_only") }),
+	z.object({
+		delivery: z.literal("unavailable"),
+		reason: z.string(),
+		disabled: z.array(z.enum(EMAIL_DEPENDENT_FEATURES)),
+	}),
+]);
+const ready = z.object({ ok: z.boolean(), email: emailStatus });
 const getReadiness = createRoute({
 	method: "get",
 	path: "/readiness",
@@ -17,8 +36,23 @@ const getReadiness = createRoute({
 		},
 	},
 });
+
+export function emailReadiness(env: Bindings): z.infer<typeof emailStatus> {
+	const delivery: EmailDelivery = describeEmailDelivery({
+		appEnv: env.APP_ENV,
+		transport: env.EMAIL_TRANSPORT,
+		sender: env.EMAIL_FROM,
+		sendEmailBinding: env.SEND_EMAIL ? "present" : "absent",
+		resendApiKey: env.RESEND_API_KEY?.trim() ? "present" : "absent",
+	});
+	if (delivery.delivery === "unavailable")
+		return { ...delivery, disabled: [...EMAIL_DEPENDENT_FEATURES] };
+	return delivery;
+}
+
 export const routes = app.openapi(getReadiness, async (c) => {
 	c.header("Cache-Control", "no-store");
+	const email = emailReadiness(c.env);
 	try {
 		// Compile a query over required application columns without reading user
 		// data. A live binding alone does not prove migrations were applied.
@@ -30,8 +64,8 @@ export const routes = app.openapi(getReadiness, async (c) => {
  left join auth_session s on s.user_id = u.id
  left join auth_storage a on a.key = s.token
  where 0`).all();
-		return c.json({ ok: true }, 200);
+		return c.json({ ok: true, email }, 200);
 	} catch {
-		return c.json({ ok: false }, 503);
+		return c.json({ ok: false, email }, 503);
 	}
 });
