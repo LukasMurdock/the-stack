@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
-import { isAlive } from "./scripts/lib/local-server.mjs";
-import { claimE2EPort, releaseE2EPort } from "./scripts/testing/e2e.mjs";
+import { isAlive } from "./scripts/lib/local-server.ts";
+import { claimE2EPort, releaseE2EPort } from "./scripts/testing/e2e.ts";
 
 // The runner claims STACK_E2E_PORT, or the first free port from 4322, and fails
 // fast when an explicit port is taken. Workers and the web server inherit it.
@@ -25,7 +25,7 @@ export default defineConfig({
 	projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 	webServer: {
 		// prepare-e2e reuses this port's build when its inputs are unchanged.
-		command: `node scripts/testing/prepare-e2e.mjs && STACK_E2E=1 node scripts/preview.mjs --port ${port} --host 127.0.0.1 --ignore-lock`,
+		command: `node scripts/testing/prepare-e2e.ts && STACK_E2E=1 node scripts/preview.mjs --port ${port} --host 127.0.0.1 --ignore-lock`,
 		url: `http://localhost:${port}/api/readiness`,
 		reuseExistingServer: false,
 		// Port conflicts fail before this starts; the budget covers a cold

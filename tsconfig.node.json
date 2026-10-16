@@ -17,11 +17,5 @@
 		"noFallthroughCasesInSwitch": true,
 		"noUncheckedSideEffectImports": true
 	},
-	"include": [
-		"astro.config.mjs",
-		"void.config.ts",
-		"config/*.mjs",
-		"scripts/local-cloudflare.mjs",
-		"env.ts"
-	]
+	"include": ["astro.config.mjs", "void.config.ts", "config/*.mjs", "env.ts"]
 }

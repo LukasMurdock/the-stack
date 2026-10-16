@@ -6,12 +6,12 @@ import tailwindcss from "@tailwindcss/vite";
 
 import { voidPlugin } from "void";
 import { writeLocalCloudflareConfig } from "./scripts/local-cloudflare.mjs";
-import { buildCommit } from "./scripts/lib/build-commit.mjs";
-import { defaultE2EPort, e2ePaths } from "./scripts/testing/e2e.mjs";
+import { buildCommit } from "./scripts/lib/build-commit.ts";
+import { e2ePaths, e2ePortFromEnv } from "./scripts/testing/e2e.ts";
 
 const e2e =
 	process.env.STACK_E2E === "1"
-		? e2ePaths(process.env.STACK_E2E_PORT ?? defaultE2EPort)
+		? e2ePaths(e2ePortFromEnv(process.env))
 		: undefined;
 
 export default defineConfig({

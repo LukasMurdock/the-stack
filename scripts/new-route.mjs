@@ -1,11 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
 
+/**
+ * @param {string} message
+ * @returns {never}
+ */
 function die(message) {
 	process.stderr.write(`${message}\n`);
 	process.exit(1);
 }
 
+/** @param {string} value */
 function toKebabSegment(value) {
 	return value
 		.trim()
@@ -15,6 +20,7 @@ function toKebabSegment(value) {
 		.replace(/^-+|-+$/g, "");
 }
 
+/** @param {string} value */
 function toPascal(value) {
 	return value
 		.split(/[^a-zA-Z0-9]+/)

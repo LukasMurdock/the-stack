@@ -15,8 +15,8 @@ if (existsSync(".dev.vars")) {
 const exists = existsSync(filename);
 const source = readFileSync(exists ? filename : "local.env.example", "utf8");
 const configured = dotenv.parse(source).BETTER_AUTH_SECRET;
-const usable = (value) =>
-	Boolean(value?.trim()) && value.trim() !== "replace-me";
+const usable = (/** @type {string | undefined} */ value) =>
+	value !== undefined && value.trim() !== "" && value.trim() !== "replace-me";
 
 if (usable(configured)) {
 	process.stdout.write("Preserved local BETTER_AUTH_SECRET.\n");

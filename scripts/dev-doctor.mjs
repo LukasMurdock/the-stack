@@ -4,16 +4,26 @@ import path from "node:path";
 
 import { loadLocalEnv } from "./local-env.mjs";
 
+/** @param {string} message */
 function ok(message) {
 	process.stdout.write(`OK   ${message}\n`);
 }
 
+/** @param {string} message */
 function warn(message) {
 	process.stdout.write(`WARN ${message}\n`);
 }
 
+/** @param {string} message */
 function fail(message) {
 	process.stdout.write(`FAIL ${message}\n`);
+}
+
+/** @param {unknown} error */
+function describe(error) {
+	return error instanceof Error
+		? error.message.split("\n")[0]
+		: String(error);
 }
 
 const cwd = process.cwd();
@@ -68,7 +78,8 @@ if (!fs.existsSync(devVarsPath)) {
 					ok(`APP_URL is valid (${appUrl.origin})`);
 				}
 			} catch {
-				fail("APP_URL is not a valid URL");
+				// Reporting the bad value is this check's purpose.
+				fail(`APP_URL is not a valid URL: ${process.env.APP_URL}`);
 				failed = true;
 			}
 		}
@@ -119,8 +130,9 @@ try {
 		encoding: "utf8",
 	}).trim();
 	ok(`Node available (${nodeVersion})`);
-} catch {
-	fail("Node is not available in PATH");
+} catch (error) {
+	// Reported as a failed check; the doctor keeps checking the rest.
+	fail(`Node is not available in PATH (${describe(error)})`);
 	failed = true;
 }
 
@@ -129,9 +141,9 @@ try {
 		encoding: "utf8",
 	}).trim();
 	ok(`Void available (${voidVersion})`);
-} catch {
+} catch (error) {
 	fail(
-		"Void not available via pnpm exec (install dependencies with pnpm install)"
+		`Void not available via pnpm exec (install dependencies with pnpm install): ${describe(error)}`
 	);
 	failed = true;
 }

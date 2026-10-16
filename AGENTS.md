@@ -8,6 +8,9 @@ Design defaults for newly created apps; do not invent an operational environment
 
 Write code by `TIGERSTYLE.md`. Where it differs from this repository's
 established conventions (tabs, oxfmt output), the repository wins.
+New scripts are TypeScript run by `node` (erasable syntax only), checked by
+`tsconfig.scripts.json`; parse argv/env once with `scripts/lib/cli.ts`, and
+test each CLI as a subprocess (`tests/tooling/cli-boundaries.test.ts`).
 
 ## Workflows
 

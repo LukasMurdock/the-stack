@@ -1,11 +1,9 @@
 import { localConfigPath } from "./local-cloudflare.mjs";
 import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
-import { createRequire } from "node:module";
+import SqliteDatabase from "better-sqlite3";
 
-const require = createRequire(import.meta.url);
-const SqliteDatabase = require("better-sqlite3");
-
+/** @param {string} databaseBinding */
 function runLocalMigration(databaseBinding) {
 	process.stdout.write(
 		`\n> pnpm exec wrangler d1 migrations apply ${databaseBinding} --local\n`
@@ -29,12 +27,14 @@ function runLocalMigration(databaseBinding) {
 	);
 }
 
+/** @param {string} tableName */
 function findSqlitePath(tableName) {
 	return execFileSync("node", ["scripts/find-d1-sqlite.mjs", tableName], {
 		encoding: "utf8",
 	}).trim();
 }
 
+/** @param {number} tsMs */
 function weekStartMs(tsMs) {
 	const d = new Date(tsMs);
 	const day = d.getUTCDay();
@@ -44,6 +44,7 @@ function weekStartMs(tsMs) {
 	return d.getTime();
 }
 
+/** @param {number} tsMs */
 function iso(tsMs) {
 	return new Date(tsMs).toISOString();
 }
@@ -140,8 +141,7 @@ try {
 		"insert into turret_user_feedback (id, session_id, user_id, user_email, ts, url, kind, message, contact, extra_json, status, expires_at, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?)"
 	);
 
-	for (let i = 0; i < demoUsers.length; i++) {
-		const user = demoUsers[i];
+	for (const [i, user] of demoUsers.entries()) {
 		const signedUpAt = now - (20 - i * 4) * oneDay;
 		insertProfile.run(
 			user.userId,
@@ -214,16 +214,19 @@ try {
 		}
 	}
 
+	const [firstUser] = demoUsers;
+	if (firstUser === undefined)
+		throw new Error("Invariant violated: demo users are declared above.");
 	insertFeedback.run(
 		crypto.randomUUID(),
 		"velocity-session-1-1",
-		demoUsers[0].userId,
-		demoUsers[0].email,
+		firstUser.userId,
+		firstUser.email,
 		now - 30 * 60 * 1000,
 		"/app",
 		"bug",
 		"Seeded feedback: chart does not update fast enough.",
-		demoUsers[0].email,
+		firstUser.email,
 		JSON.stringify({ seeded: true }),
 		retention,
 		now,

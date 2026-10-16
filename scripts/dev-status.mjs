@@ -1,13 +1,17 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { readDevServer } from "./lib/local-server.mjs";
+import { readDevServer } from "./lib/local-server.ts";
 import { loadLocalEnv } from "./local-env.mjs";
 
 const cwd = process.cwd();
 const loaded = loadLocalEnv();
 if (loaded.error) throw loaded.error;
 
+/**
+ * @param {string} label
+ * @param {string} value
+ */
 function line(label, value) {
 	process.stdout.write(`${label.padEnd(18)} ${value}\n`);
 }
@@ -17,7 +21,8 @@ let appOrigin = appUrlRaw.replace(/\/+$/, "");
 try {
 	appOrigin = new URL(appUrlRaw).origin;
 } catch {
-	// keep normalized fallback
+	// Display only: show the trimmed value; `pnpm doctor` reports a
+	// malformed APP_URL as a failure.
 }
 const configuredTurretMode = (process.env.TURRET_MODE || "full")
 	.trim()

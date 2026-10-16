@@ -2,11 +2,19 @@ import { readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 
+/**
+ * @param {string} message
+ * @returns {never}
+ */
 function die(message) {
 	process.stderr.write(`${message}\n`);
 	process.exit(1);
 }
 
+/**
+ * @param {string} dbPath
+ * @param {string} tableName
+ */
 function containsTable(dbPath, tableName) {
 	try {
 		const db = new Database(dbPath, {
@@ -25,6 +33,8 @@ function containsTable(dbPath, tableName) {
 			db.close();
 		}
 	} catch {
+		// Not a SQLite database, or locked by a running workerd: either way
+		// it is not a file this lookup can return.
 		return false;
 	}
 }
@@ -44,14 +54,16 @@ const absPersistDir = path.resolve(process.cwd(), persistDir);
 let entries;
 try {
 	entries = readdirSync(absPersistDir);
-} catch {
-	die(`Could not read persistence dir: ${absPersistDir}`);
+} catch (error) {
+	const code = error instanceof Error && "code" in error ? error.code : error;
+	die(`Could not read persistence dir: ${absPersistDir} (${String(code)})`);
 }
 
 const sqliteFiles = entries
 	.filter((f) => f.endsWith(".sqlite"))
 	.map((f) => path.join(absPersistDir, f));
 
+/** @type {string[]} */
 const matches = [];
 
 for (const file of sqliteFiles) {
@@ -60,8 +72,9 @@ for (const file of sqliteFiles) {
 	}
 }
 
-if (matches.length === 1) {
-	process.stdout.write(matches[0]);
+const [onlyMatch] = matches;
+if (matches.length === 1 && onlyMatch !== undefined) {
+	process.stdout.write(onlyMatch);
 	process.exit(0);
 }
 
@@ -84,7 +97,7 @@ if (matches.length > 1) {
 		return statSync(b).mtimeMs - statSync(a).mtimeMs;
 	});
 
-	process.stdout.write(matches[0]);
+	process.stdout.write(matches[0] ?? "");
 	process.exit(0);
 }
 

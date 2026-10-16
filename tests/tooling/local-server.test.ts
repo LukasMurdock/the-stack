@@ -12,15 +12,15 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
-import { isAlive, stopProcessTree } from "../../scripts/lib/local-server.mjs";
+import { isAlive, stopProcessTree } from "../../scripts/lib/local-server.ts";
 import {
 	buildFingerprint,
 	claimE2EPort,
 	releaseE2EPort,
 	stampMatches,
-} from "../../scripts/testing/e2e.mjs";
+} from "../../scripts/testing/e2e.ts";
 
-const devServer = path.resolve("scripts/dev-server.mjs");
+const devServer = path.resolve("scripts/dev-server.ts");
 
 function temporaryDirectory(t: test.TestContext, prefix: string) {
 	const directory = mkdtempSync(path.join(tmpdir(), prefix));
@@ -262,10 +262,9 @@ test("the E2E build fingerprint tracks build inputs, not tests", (t) => {
 
 	const stamp = path.join(root, "stamp.json");
 	writeFileSync(stamp, JSON.stringify({ fingerprint: initial }));
-	assert.equal(stampMatches(stamp, initial), true);
-	assert.equal(stampMatches(stamp, edited), false);
-	assert.equal(stampMatches(stamp, null), false);
-	process.env.STACK_E2E_REBUILD = "1";
-	t.after(() => delete process.env.STACK_E2E_REBUILD);
-	assert.equal(stampMatches(stamp, initial), false);
+	const reuse = { rebuild: false };
+	assert.equal(stampMatches(stamp, initial, reuse), true);
+	assert.equal(stampMatches(stamp, edited, reuse), false);
+	assert.equal(stampMatches(stamp, null, reuse), false);
+	assert.equal(stampMatches(stamp, initial, { rebuild: true }), false);
 });
