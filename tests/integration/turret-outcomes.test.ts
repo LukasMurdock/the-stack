@@ -11,7 +11,17 @@ import { createAuth } from "../../src/worker/auth";
 import { signUploadToken } from "../../src/worker/api/routes/_shared/turret-upload-token";
 import { makeTurretDb } from "../../src/bindings/d1/turret/db";
 import { recordOutcomeEvent } from "../../src/worker/turret/outcomes";
-import { TURRET_OUTCOME_IDLE_MS } from "../../src/contracts/turret-outcomes";
+import {
+	TURRET_OUTCOME_IDLE_MS,
+	type TurretWorkflow,
+	turretWorkflowSchema,
+} from "../../src/contracts/turret-outcomes";
+
+// A second workflow that no product feature owns, so the mismatch checks hold
+// whichever workflows the contract lists.
+// SAFETY: HTTP parsing rejects this value; recordOutcomeEvent below only
+// compares it with stored workflow strings, which is what these checks need.
+const OTHER_WORKFLOW = "other.workflow" as TurretWorkflow;
 
 test("workflow outcomes record attempts once and summarize them by status", async (t) => {
 	const f = productFixture(migratedSqlite("core", "turret"));
@@ -81,7 +91,7 @@ test("workflow outcomes record attempts once and summarize them by status", asyn
 			const attemptId = crypto.randomUUID();
 			const valid = {
 				attemptId,
-				workflow: "project.create",
+				workflow: "invitation.accept",
 				event: "started",
 				ts: now,
 			};
@@ -116,7 +126,7 @@ test("workflow outcomes record attempts once and summarize them by status", asyn
 				reason?: string
 			) => ({
 				attemptId: id,
-				workflow: "project.create" as const,
+				workflow: "invitation.accept" as const,
 				event,
 				ts,
 				reason,
@@ -160,14 +170,14 @@ test("workflow outcomes record attempts once and summarize them by status", asyn
 			const other = crypto.randomUUID();
 			await recordOutcomeEvent(db, "session", {
 				attemptId: other,
-				workflow: "project.create",
+				workflow: OTHER_WORKFLOW,
 				event: "started",
 				ts: 100,
 			});
 			assert.equal(
 				await recordOutcomeEvent(db, "other", {
 					attemptId: other,
-					workflow: "project.create",
+					workflow: OTHER_WORKFLOW,
 					event: "succeeded",
 					ts: 200,
 				}),
@@ -186,7 +196,7 @@ test("workflow outcomes record attempts once and summarize them by status", asyn
 			assert.equal(
 				await recordOutcomeEvent(db, "missing", {
 					attemptId: crypto.randomUUID(),
-					workflow: "project.create",
+					workflow: "invitation.accept",
 					event: "started",
 					ts: 100,
 				}),
@@ -283,31 +293,37 @@ test("workflow outcomes record attempts once and summarize them by status", asyn
 					),
 				})
 				.parse(await (await admin(`outcomes?${window}`)).json());
-			assert.deepEqual(summary.workflows, [
-				{
-					workflow: "project.create",
-					attempts: 0,
-					succeeded: 0,
-					succeededAfterFailure: 0,
-					failed: 0,
-					abandoned: 0,
-					inProgress: 0,
-					reasons: [],
-				},
-				{
-					workflow: "invitation.accept",
-					attempts: 6,
-					succeeded: 2,
-					succeededAfterFailure: 1,
-					failed: 2,
-					abandoned: 1,
-					inProgress: 1,
-					reasons: [
-						{ reason: "forbidden", attempts: 2 },
-						{ reason: "network", attempts: 2 },
-					],
-				},
-			]);
+			// Every listed workflow appears; only invitation.accept has attempts.
+			const recorded = {
+				workflow: "invitation.accept",
+				attempts: 6,
+				succeeded: 2,
+				succeededAfterFailure: 1,
+				failed: 2,
+				abandoned: 1,
+				inProgress: 1,
+				reasons: [
+					{ reason: "forbidden", attempts: 2 },
+					{ reason: "network", attempts: 2 },
+				],
+			};
+			const idleSummary = (workflow: TurretWorkflow) => ({
+				workflow,
+				attempts: 0,
+				succeeded: 0,
+				succeededAfterFailure: 0,
+				failed: 0,
+				abandoned: 0,
+				inProgress: 0,
+				reasons: [],
+			});
+			assert.deepEqual(
+				summary.workflows,
+				turretWorkflowSchema.options.map((workflow) => {
+					if (workflow === "invitation.accept") return recorded;
+					return idleSummary(workflow);
+				})
+			);
 			const attempts = z
 				.object({
 					attempts: z.array(

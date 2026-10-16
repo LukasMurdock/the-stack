@@ -128,6 +128,33 @@ test("full migration chains preserve declared columns, indexes and foreign keys"
 	}
 });
 
+// A table no schema declares is dead weight, for example one a removed feature's
+// migration still creates. Forks that delete a feature must delete its tables.
+test("migration chains create exactly the tables the schemas declare", (t) => {
+	for (const [name, schema] of [
+		["core", core],
+		["turret", turret],
+	] as const) {
+		const sqlite = migratedSqlite(name);
+		t.after(() => sqlite.close());
+		const migrated = z
+			.array(z.object({ name: z.string() }))
+			.parse(
+				sqlite
+					.prepare(
+						"SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+					)
+					.all()
+			)
+			.map((table) => table.name);
+		const declared = Object.values(schema)
+			.filter((table) => is(table, SQLiteTable))
+			.map((table) => getTableConfig(table).name)
+			.sort();
+		assert.deepEqual(migrated, declared, name);
+	}
+});
+
 test("span cutover discards old diagnostics and requires a breadcrumb relationship", (t) => {
 	const sqlite = migratedSqlite("turret");
 	t.after(() => sqlite.close());

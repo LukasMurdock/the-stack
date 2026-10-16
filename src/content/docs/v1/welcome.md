@@ -58,7 +58,7 @@ Local defaults, including `APP_URL` and `ADMIN_EMAIL=admin@localhost.test`, live
 `.env` before setup. Optional credentials are empty by default. Local email
 is log-only: auth verification and recovery links appear in the dev terminal.
 
-## 3. Sign in and create a record
+## 3. Sign in and create an organization
 
 In a second terminal, read your local login credentials:
 
@@ -71,14 +71,19 @@ cat .wrangler/.admin-password
 2. Sign in using the `email` and `password` from the JSON file. Use **Sign in**;
    public signup is disabled by default.
 3. Enter **My product** as the organization name and select **Create organization**.
-4. Open **My product**, then select **Projects**.
-5. Enter **Launch pilot** and a description, then select **Create project**.
-6. Refresh. The project and description remain because they are stored in local D1.
 
 Creating an organization makes you its owner. Platform administrator privileges
-control the admin area; they do not bypass organization membership. Owners and
-editors can create projects; viewers can read them. An organization can represent
-your own workspace even when you are building alone.
+control the admin area; they do not bypass organization membership. An
+organization can represent your own workspace even when you are building alone.
+
+<!-- example:start -->
+
+Then try the Projects example: open **My product** and select **Projects**. Enter
+**Launch pilot** and a description, then select **Create project**. Refresh; the
+project remains because it is stored in local D1. Owners and editors can create
+projects; viewers can read them.
+
+<!-- example:end -->
 
 Optional: open **Invitations**, invite a second email as a viewer, and open the
 invitation link in another browser profile. New invited users register and verify
@@ -100,10 +105,15 @@ usable; configure replay later if you need it.
 
 ## 5. Build your first feature
 
+<!-- example:start -->
+
 Follow [Build your first feature](/docs/v1/first-feature/) to add project status
 through a database migration, shared validation, the permission-protected operation,
 typed API, query cache, and React form. The starter intentionally ships the
-smaller create/list example; you make the change yourself.
+smaller create/list example; you make the change yourself. When you no longer
+need it, `pnpm example:remove` deletes the example.
+
+<!-- example:end -->
 
 Use the [extension reference](/docs/v1/extend/) for architecture and replacement
 boundaries, [auth guide](/docs/v1/auth/) for onboarding policy, and
@@ -122,8 +132,7 @@ boundaries, [auth guide](/docs/v1/auth/) for onboarding policy, and
 | Port 4321 is occupied                      | Stop the other server, or change `APP_URL` in `.env` and run `pnpm dev --port <matching-port>`.                                                                       |
 
 `pnpm doctor` diagnoses configuration; `pnpm status` prints useful URLs.
-`pnpm local:seed` fills observability demo records, rather than organizations or
-projects, and is not part of this walkthrough.
+`pnpm local:seed` fills observability demo records, not product data, and is not part of this walkthrough.
 
 When your local feature works, follow the [deployment runbook](/docs/v1/deploy-runbook/).
 Production requires your own Cloudflare resources, secrets, origin, and email sender.

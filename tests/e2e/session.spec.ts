@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { joinedViewer } from "./organizations";
+import { joinedViewer, roleLabel } from "./organizations";
 
 test("account replacement refreshes private permissions in both directions", async ({
 	page,
@@ -8,7 +8,7 @@ test("account replacement refreshes private permissions in both directions", asy
 }) => {
 	const viewerContext = await browser.newContext();
 	try {
-		const viewer = await joinedViewer(page, viewerContext, baseURL);
+		const { viewer } = await joinedViewer(page, viewerContext, baseURL);
 		// Replace the account without an intervening signed-out state. Focus refetch
 		// must replace both route identity and cached role, then reverse cleanly.
 		const otherTab = await viewerContext.newPage();
@@ -33,12 +33,7 @@ test("account replacement refreshes private permissions in both directions", asy
 					await viewer.evaluate(() =>
 						document.dispatchEvent(new Event("visibilitychange"))
 					);
-					return viewer
-						.getByRole("button", {
-							name: "Create project",
-							exact: true,
-						})
-						.count();
+					return roleLabel(viewer, "owner").count();
 				},
 				{ timeout: 10_000 }
 			)
@@ -58,19 +53,12 @@ test("account replacement refreshes private permissions in both directions", asy
 					await viewer.evaluate(() =>
 						document.dispatchEvent(new Event("visibilitychange"))
 					);
-					return viewer
-						.getByRole("button", {
-							name: "Create project",
-							exact: true,
-						})
-						.count();
+					return roleLabel(viewer, "owner").count();
 				},
 				{ timeout: 10_000 }
 			)
 			.toBe(0);
-		await expect(
-			viewer.getByRole("heading", { name: "Launch pilot", exact: true })
-		).toBeVisible();
+		await expect(roleLabel(viewer, "viewer")).toBeVisible();
 	} finally {
 		await viewerContext.close();
 	}
@@ -83,7 +71,11 @@ test("signing out in another tab removes the mounted private screen", async ({
 }) => {
 	const viewerContext = await browser.newContext();
 	try {
-		const viewer = await joinedViewer(page, viewerContext, baseURL);
+		const { viewer } = await joinedViewer(page, viewerContext, baseURL);
+		const privateEmail = viewer.getByText("owner@example.test", {
+			exact: true,
+		});
+		await expect(privateEmail).toBeVisible();
 		const otherTab = await viewerContext.newPage();
 		await otherTab.goto("/app/login");
 		await otherTab
@@ -93,9 +85,7 @@ test("signing out in another tab removes the mounted private screen", async ({
 		await expect(
 			viewer.getByRole("heading", { name: "Sign in", exact: true })
 		).toBeVisible();
-		await expect(
-			viewer.getByText("Plan the pilot.", { exact: true })
-		).toHaveCount(0);
+		await expect(privateEmail).toHaveCount(0);
 	} finally {
 		await viewerContext.close();
 	}

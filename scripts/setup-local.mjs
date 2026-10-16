@@ -56,7 +56,8 @@ log("\nLocal setup complete.");
 log("Next: pnpm dev");
 runNodeScript("scripts/dev-status.mjs");
 log("\nSign in with the email and password in .wrangler/.admin-password.");
-log(
-	"Create an organization, open it, then select Projects to create your first record."
-);
-log("Follow the First feature URL above to extend the example.");
+log("Create an organization to start.");
+// example:start
+log("Open it and select Projects to try the example; the First feature URL");
+log("above extends it, and pnpm example:remove deletes it.");
+// example:end

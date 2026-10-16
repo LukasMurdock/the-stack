@@ -18,18 +18,6 @@ test("readiness requires the migrated database and never exposes database errors
 	assert.equal(ready.status, 200);
 	assert.equal(ready.headers.get("cache-control"), "no-store");
 	assert.equal(readinessSchema.parse(await ready.json()).ok, true);
-	f.sqlite.exec("drop table projects");
-	const withoutExample = await routes.request(
-		"http://local.test/readiness",
-		{},
-		testBindings({ CORE_DB: f.binding })
-	);
-	assert.equal(
-		withoutExample.status,
-		200,
-		"removing the example must not break core readiness"
-	);
-
 	f.sqlite.exec("drop table invitations");
 	const unmigrated = await routes.request(
 		"http://local.test/readiness",

@@ -24,6 +24,7 @@
 		"shot": "node scripts/shot.ts",
 		"api": "node scripts/api.ts",
 		"demo:record": "node scripts/demo-record.ts",
+		"example:remove": "node scripts/example-remove.ts",
 		"dev": "node scripts/dev-server.ts start",
 		"dev:stop": "node scripts/dev-server.ts stop",
 		"dev:wait": "node scripts/dev-server.ts wait",

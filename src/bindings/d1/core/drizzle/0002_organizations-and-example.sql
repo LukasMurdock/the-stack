@@ -1,3 +1,5 @@
+-- D1 records applied migrations by filename, so this name stays although the
+-- example projects table now lives in 0003.
 CREATE TABLE `invitations` (
 	`id` text PRIMARY KEY NOT NULL,
 	`organization_id` text NOT NULL,
@@ -34,14 +36,3 @@ CREATE TABLE `organizations` (
 	`created_at` integer NOT NULL,
 	FOREIGN KEY (`created_by`) REFERENCES `auth_user`(`id`) ON UPDATE no action ON DELETE no action
 );
---> statement-breakpoint
-CREATE TABLE `projects` (
-	`id` text PRIMARY KEY NOT NULL,
-	`organization_id` text NOT NULL,
-	`name` text NOT NULL,
-	`description` text NOT NULL,
-	`created_at` integer NOT NULL,
-	FOREIGN KEY (`organization_id`) REFERENCES `organizations`(`id`) ON UPDATE no action ON DELETE cascade
-);
---> statement-breakpoint
-CREATE INDEX `projects_organization_idx` ON `projects` (`organization_id`,`created_at`,`id`);

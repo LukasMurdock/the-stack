@@ -17,16 +17,18 @@ const posts = (await getCollection("docs")).sort(
 		<div class="grid gap-3 md:grid-cols-3">
 			<a href="/docs/v1/welcome/" class="rounded-lg border bg-card p-4 hover:bg-accent/40">
 				<div class="text-sm font-semibold">Getting Started</div>
-				<p class="mt-1 text-sm text-muted-foreground">Fresh clone, sign-in, and your first persisted record.</p>
+				<p class="mt-1 text-sm text-muted-foreground">Fresh clone, sign-in, and your first organization.</p>
 			</a>
 			<a href="/docs/v1/operate/" class="rounded-lg border bg-card p-4 hover:bg-accent/40">
 				<div class="text-sm font-semibold">Operate</div>
 				<p class="mt-1 text-sm text-muted-foreground">Deploy, verify, and rollback runbooks.</p>
 			</a>
+			<!-- example:start -->
 			<a href="/docs/v1/first-feature/" class="rounded-lg border bg-card p-4 hover:bg-accent/40">
 				<div class="text-sm font-semibold">Build Your First Feature</div>
 				<p class="mt-1 text-sm text-muted-foreground">Add a field through D1, the typed API, and a React form.</p>
 			</a>
+			<!-- example:end -->
 		</div>
 		<ul class="grid gap-3 sm:grid-cols-2">
 			{

@@ -3,7 +3,6 @@ import {
 	organizationResponseSchema,
 	invitationResponseSchema,
 } from "../../src/contracts/organizations";
-import { projectResponseSchema } from "../../src/features/projects/contracts";
 
 async function signIn(page: Page, id: "owner" | "viewer") {
 	await expect(
@@ -28,20 +27,49 @@ export async function createOrganization(page: Page) {
 	return name;
 }
 
-export async function createProject(page: Page) {
-	await page.getByRole("link", { name: "Projects", exact: true }).click();
-	await page.getByLabel("Project name").fill("Launch pilot");
-	await page.getByLabel("Description").fill("Plan the pilot.");
+// The signed-in role label in the organization layout: a role probe that
+// depends only on core organization screens.
+export function roleLabel(page: Page, role: "owner" | "editor" | "viewer") {
+	return page.getByText(`Your role: ${role}`, { exact: true });
+}
+
+// Two organizations owned by the same user, the first opened in the UI.
+export async function twoOrganizations(page: Page) {
+	const firstName = await createOrganization(page);
+	const firstPath = new URL(page.url()).pathname;
+	const firstId = firstPath.split("/").at(-2);
+	if (!firstId) throw new Error("Organization ID is required.");
+	const secondName = `Studio ${crypto.randomUUID()}`;
+	const response = await page.request.post("/api/organizations", {
+		data: { name: secondName },
+	});
+	expect(response.ok()).toBe(true);
+	const { organization: second } = organizationResponseSchema.parse(
+		await response.json()
+	);
+	return {
+		firstId,
+		firstName,
+		secondName,
+		secondPath: `/app/organizations/${second.id}`,
+	};
+}
+
+// Back skips the list page entirely, changing only the organization parameter
+// of the currently mounted route. A full navigation would hide the regression.
+export async function openFirst(page: Page, firstName: string) {
 	await page
-		.getByRole("button", { name: "Create project", exact: true })
+		.getByRole("link", { name: "All organizations", exact: true })
 		.click();
-	await expect(
-		page.getByRole("heading", { name: "Launch pilot", exact: true })
-	).toBeVisible();
+	await page.getByRole("link", { name: firstName, exact: true }).click();
+	await page.evaluate(() => {
+		document.body.dataset.scopeNavigation = "same-document";
+	});
 }
 
 // Session and member tests need an existing organization, not another onboarding walkthrough.
-// Set up through real HTTP boundaries; invitation and project tests retain their UI workflows.
+// Set up through real HTTP boundaries; invitation tests retain their UI workflow.
+// Returns the viewer's page, open on the organization's members screen.
 export async function joinedViewer(
 	owner: Page,
 	context: BrowserContext,
@@ -72,11 +100,6 @@ export async function joinedViewer(
 		await created.json()
 	);
 	const path = `/api/organizations/${organization.id}`;
-	const project = await owner.request.post(`${path}/projects`, {
-		data: { name: "Launch pilot", description: "Plan the pilot." },
-	});
-	expect(project.ok()).toBe(true);
-	projectResponseSchema.parse(await project.json());
 	const invited = await owner.request.post(`${path}/invitations`, {
 		data: { email: "viewer@example.test", role: "viewer" },
 	});
@@ -94,12 +117,13 @@ export async function joinedViewer(
 	const viewer = await context.newPage();
 	await viewer.goto(
 		new URL(
-			`/app/organizations/${organization.id}/projects`,
+			`/app/organizations/${organization.id}/members`,
 			baseURL
 		).toString()
 	);
 	await expect(
-		viewer.getByRole("heading", { name: "Launch pilot", exact: true })
+		viewer.getByRole("heading", { name: "Members", exact: true })
 	).toBeVisible();
-	return viewer;
+	await expect(roleLabel(viewer, "viewer")).toBeVisible();
+	return { viewer, organizationId: organization.id };
 }

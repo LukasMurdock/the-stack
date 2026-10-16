@@ -1,27 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { productFixture } from "../helpers/product";
+import { organizationFixture, productFixture } from "../helpers/product";
 import { ProductError } from "../../src/features/shared/context";
 import * as organizations from "../../src/features/organizations/operations";
 import * as members from "../../src/features/organizations/members";
 import * as invitations from "../../src/features/organizations/invitations";
-import * as projects from "../../src/features/projects/operations";
 const failure = (code: string) => (error: unknown) =>
 	error instanceof ProductError && error.code === code;
-async function fixture() {
-	const f = productFixture();
-	const organization = await organizations.createOrganization(
-		f.actor("owner"),
-		{ name: "Studio" }
-	);
-	for (const role of ["editor", "viewer"])
-		f.sqlite
-			.prepare("insert into memberships values (?, ?, ?)")
-			.run(organization.id, role, role);
-	return { ...f, organizationId: organization.id };
-}
 test("organization ownership is atomic and tenant reads are scoped", async (t) => {
-	const f = await fixture();
+	const f = await organizationFixture();
 	t.after(() => f.sqlite.close());
 	assert.equal(
 		(
@@ -44,6 +31,10 @@ test("organization ownership is atomic and tenant reads are scoped", async (t) =
 			),
 		failure("not_found")
 	);
+	await assert.rejects(
+		() => organizations.listOrganizations(f.actor("owner"), { offset: -1 }),
+		failure("invalid_input")
+	);
 	f.sqlite.exec(
 		"create trigger reject_owner before insert on memberships begin select raise(abort, 'member unavailable'); end;"
 	);
@@ -57,43 +48,8 @@ test("organization ownership is atomic and tenant reads are scoped", async (t) =
 		1
 	);
 });
-test("example writes require editor access and lists isolate tenants", async (t) => {
-	const f = await fixture();
-	t.after(() => f.sqlite.close());
-	const project = await projects.createProject(
-		f.actor("editor"),
-		f.organizationId,
-		{ name: " Launch ", description: " Plan " }
-	);
-	assert.equal(project.name, "Launch");
-	assert.equal(project.description, "Plan");
-	assert.equal(
-		(await projects.listProjects(f.actor("viewer"), f.organizationId)).rows
-			.length,
-		1
-	);
-	await assert.rejects(
-		() =>
-			projects.createProject(f.actor("viewer"), f.organizationId, {
-				name: "No",
-				description: "",
-			}),
-		failure("forbidden")
-	);
-	await assert.rejects(
-		() => projects.listProjects(f.actor("outsider"), f.organizationId),
-		failure("not_found")
-	);
-	const other = await organizations.createOrganization(f.actor("owner"), {
-		name: "Other",
-	});
-	assert.deepEqual(
-		(await projects.listProjects(f.actor("owner"), other.id)).rows,
-		[]
-	);
-});
 test("member policy protects the owner and applies role changes", async (t) => {
-	const f = await fixture();
+	const f = await organizationFixture();
 	t.after(() => f.sqlite.close());
 	await assert.rejects(
 		() => members.removeMember(f.actor("owner"), f.organizationId, "owner"),
@@ -114,17 +70,18 @@ test("member policy protects the owner and applies role changes", async (t) => {
 	await members.changeMember(f.actor("owner"), f.organizationId, "editor", {
 		role: "viewer",
 	});
-	await assert.rejects(
-		() =>
-			projects.createProject(f.actor("editor"), f.organizationId, {
-				name: "No",
-				description: "",
-			}),
-		failure("forbidden")
+	assert.equal(
+		(
+			await organizations.getOrganization(
+				f.actor("editor"),
+				f.organizationId
+			)
+		).role,
+		"viewer"
 	);
 });
 test("invitations require matching verified email; successful retries do not restore removed membership", async (t) => {
-	const f = await fixture();
+	const f = await organizationFixture();
 	t.after(() => f.sqlite.close());
 	const invite = await invitations.inviteMember(
 		f.actor("owner"),
@@ -184,7 +141,7 @@ test("invitations require matching verified email; successful retries do not res
 	);
 });
 test("expired/revoked invitations fail and membership failure rolls back consumption", async (t) => {
-	const f = await fixture();
+	const f = await organizationFixture();
 	t.after(() => f.sqlite.close());
 	const invite = await invitations.inviteMember(
 		f.actor("owner"),
@@ -235,67 +192,6 @@ test("expired/revoked invitations fail and membership failure rolls back consump
 		[]
 	);
 });
-test("lists page in insertion order with totals from the same filters", async (t) => {
-	const f = await fixture();
-	t.after(() => f.sqlite.close());
-	// Every project lands in one millisecond: the list keeps the order of writes.
-	const now = Date.now();
-	t.mock.method(Date, "now", () => now);
-	const created: string[] = [];
-	for (let index = 0; index < 51; index++)
-		created.push(
-			(
-				await projects.createProject(
-					f.actor("owner"),
-					f.organizationId,
-					{
-						name: `Project ${index}`,
-						description: "",
-					}
-				)
-			).id
-		);
-	const other = await organizations.createOrganization(f.actor("owner"), {
-		name: "Other",
-	});
-	await projects.createProject(f.actor("owner"), other.id, {
-		name: "Elsewhere",
-		description: "",
-	});
-	const list = (offset: number) =>
-		projects.listProjects(f.actor("viewer"), f.organizationId, { offset });
-	const [first, second, past] = [
-		await list(0),
-		await list(50),
-		await list(100),
-	];
-	assert.deepEqual(
-		[first.page, second.page, past.page],
-		[
-			{ offset: 0, total: 51 },
-			{ offset: 50, total: 51 },
-			{ offset: 100, total: 51 },
-		]
-	);
-	assert.deepEqual(
-		[...first.rows, ...second.rows].map((project) => project.id),
-		created.toReversed()
-	);
-	assert.deepEqual(past.rows, []);
-	await assert.rejects(
-		() =>
-			projects.createProject(f.actor("owner"), f.organizationId, {
-				name: " ",
-				description: "",
-			}),
-		failure("invalid_input")
-	);
-	await assert.rejects(
-		() => organizations.listOrganizations(f.actor("owner"), { offset: -1 }),
-		failure("invalid_input")
-	);
-});
-
 test("member and invitation pages use ID tie-breakers for equal sort values", async (t) => {
 	const f = productFixture();
 	t.after(() => f.sqlite.close());
@@ -357,36 +253,8 @@ test("member and invitation pages use ID tie-breakers for equal sort values", as
 	);
 });
 
-test("membership revoked between the access check and insert prevents the write", async (t) => {
-	const f = await fixture();
-	t.after(() => f.sqlite.close());
-	// Intercept the write preparation, after requireMembership has completed.
-	const prepare = f.binding.prepare;
-	f.binding.prepare = (query) => {
-		if (query.startsWith('insert into "projects"'))
-			f.sqlite
-				.prepare("delete from memberships where user_id = 'editor'")
-				.run();
-		return prepare(query);
-	};
-	const context = f.actor("editor");
-
-	await assert.rejects(
-		() =>
-			projects.createProject(context, f.organizationId, {
-				name: "Denied",
-				description: "",
-			}),
-		failure("forbidden")
-	);
-	assert.deepEqual(
-		(await projects.listProjects(f.actor("owner"), f.organizationId)).rows,
-		[]
-	);
-});
-
 test("invitation eligibility agrees at expiry while accepted retries remain independent", async (t) => {
-	const f = await fixture();
+	const f = await organizationFixture();
 	t.after(() => f.sqlite.close());
 	const invite = await invitations.inviteMember(
 		f.actor("owner"),
@@ -469,7 +337,7 @@ test("invitation eligibility agrees at expiry while accepted retries remain inde
 });
 
 test("member operations validate target IDs and preserve opaque Better Auth IDs", async (t) => {
-	const f = await fixture();
+	const f = await organizationFixture();
 	t.after(() => f.sqlite.close());
 	for (const userId of ["", "x".repeat(129)]) {
 		for (const operation of [
@@ -527,7 +395,7 @@ test("invitation creation rechecks membership removal and role downgrade inside 
 		"delete from memberships where user_id='owner'",
 		"update memberships set role='editor' where user_id='owner'",
 	]) {
-		const f = await fixture();
+		const f = await organizationFixture();
 		t.after(() => f.sqlite.close());
 		const prepare = f.binding.prepare;
 		f.binding.prepare = (query) => {

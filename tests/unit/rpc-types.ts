@@ -1,6 +1,8 @@
 import { z } from "zod";
-import { organizationResponseSchema } from "../../src/contracts/organizations";
-import { projectsResponseSchema } from "../../src/features/projects/contracts";
+import {
+	membersResponseSchema,
+	organizationResponseSchema,
+} from "../../src/contracts/organizations";
 import type { InferRequestType } from "hono/client";
 import { apiClient, jsonOrThrow } from "../../src/react-app/api";
 import type { RouteLabel } from "../../src/worker/observability/route-label";
@@ -32,14 +34,14 @@ async function checkRpcContracts() {
 	void timestamp;
 	// @ts-expect-error Error bodies are excluded after jsonOrThrow succeeds.
 	void result.error;
-	const projects = await apiClient.organizations[
+	const members = await apiClient.organizations[
 		":organizationId"
-	].projects.$get({ param: { organizationId: "id" }, query: { offset: 0 } });
-	const validated = await jsonOrThrow(projects, projectsResponseSchema);
-	const name: string | undefined = validated.projects[0]?.name;
+	].members.$get({ param: { organizationId: "id" }, query: { offset: 0 } });
+	const validated = await jsonOrThrow(members, membersResponseSchema);
+	const name: string | undefined = validated.members[0]?.name;
 	void name;
 	// @ts-expect-error Runtime decoders must accept the RPC success payload.
-	await jsonOrThrow(projects, organizationResponseSchema);
+	await jsonOrThrow(members, organizationResponseSchema);
 	const organization = await apiClient.organizations[":organizationId"].$get({
 		param: { organizationId: "id" },
 	});
@@ -68,7 +70,7 @@ async function checkRpcContracts() {
 		},
 	});
 	// @ts-expect-error An opaque default response must not erase the declared JSON success type.
-	await jsonOrThrow(registration, projectsResponseSchema);
+	await jsonOrThrow(registration, membersResponseSchema);
 	const unknown = await jsonOrThrow(Response.json({ ok: true }));
 	// @ts-expect-error A native Response provides no statically known JSON shape.
 	void unknown.ok;

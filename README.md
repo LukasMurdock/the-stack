@@ -16,14 +16,20 @@ settings, records, and credentials on rerun. No Cloudflare account or external
 service credentials are needed locally.
 
 Open <http://localhost:4321/app/organizations> and sign in with the email and
-password saved in `.wrangler/.admin-password`. Create an organization, open it,
-then select **Projects** and create your first record.
+password saved in `.wrangler/.admin-password`, then create an organization.
+Organizations and permissions are core capabilities. The
+[extension reference](src/content/docs/v1/extend.md) explains the architecture
+and boundaries.
 
-Next, follow [Build your first feature](src/content/docs/v1/first-feature.md) to
-add a persisted project status through the database, typed API, and React form.
-Organizations and permissions are core capabilities; Projects is a small,
-replaceable example. The [extension reference](src/content/docs/v1/extend.md)
-explains the architecture and boundaries.
+<!-- example:start -->
+
+Open your organization and select **Projects** to create a first record. Next,
+follow [Build your first feature](src/content/docs/v1/first-feature.md) to add a
+persisted project status through the database, typed API, and React form.
+Projects is a small, replaceable example: `pnpm example:remove` deletes it in
+one step.
+
+<!-- example:end -->
 
 ## Features
 
@@ -156,8 +162,14 @@ Local replay totals use local D1. Backend health queries require the deployed An
 ## Getting started
 
 [Getting Started](src/content/docs/v1/welcome.md) is the complete local setup and
-first-record walkthrough. [Build your first feature](src/content/docs/v1/first-feature.md)
-continues with a concrete, end-to-end change.
+first-record walkthrough.
+
+<!-- example:start -->
+
+[Build your first feature](src/content/docs/v1/first-feature.md) continues with a
+concrete, end-to-end change.
+
+<!-- example:end -->
 
 Useful local commands:
 

@@ -20,7 +20,9 @@ import { isAdminRole } from "../../features/auth/policy";
 import { routes as organizationsRoutes } from "./routes/organizations";
 import { routes as organizationMemberRoutes } from "./routes/organization-members";
 import { routes as organizationInvitationRoutes } from "./routes/organization-invitations";
+// example:start
 import { routes as projectsRoutes } from "../../features/projects/http";
+// example:end
 
 const api = new OpenAPIHono<{ Bindings: Bindings }>();
 
@@ -31,7 +33,9 @@ const apiRoutes = api
 	.route("/", organizationsRoutes)
 	.route("/", organizationMemberRoutes)
 	.route("/", organizationInvitationRoutes)
+	// example:start
 	.route("/", projectsRoutes)
+	// example:end
 	.route("/", bootstrapRoutes)
 	.route("/", adminUserRoutes)
 	.route("/", turretRoutes)

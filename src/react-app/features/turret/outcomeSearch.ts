@@ -17,7 +17,8 @@ export const outcomeStatusLabels = {
 	in_progress: "In progress",
 } satisfies Record<z.infer<typeof turretOutcomeStatusSchema>, string>;
 
-const WORKFLOW_DEFAULT: TurretWorkflow = "project.create";
+// A core workflow, so the default survives removing the example.
+const WORKFLOW_DEFAULT: TurretWorkflow = "invitation.accept";
 
 export const outcomesSearchSchema = z.object({
 	preset: outcomePresetSchema.default("7d").catch("7d"),

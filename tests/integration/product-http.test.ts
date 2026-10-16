@@ -1,83 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Hono } from "hono";
-import { observeRequest } from "../../src/worker/observability/request";
-import type { Bindings } from "../../src/worker/index";
-import { productFixture } from "../helpers/product";
-import { testBindings } from "../helpers/worker";
-import { hashPassword } from "better-auth/crypto";
-import { createAuth } from "../../src/worker/auth";
-import { api } from "../../src/worker/api";
 import { organizationResponseSchema } from "../../src/contracts/organizations";
-import {
-	projectResponseSchema,
-	projectsResponseSchema,
-} from "../../src/features/projects/contracts";
 import { productErrorSchema } from "../../src/contracts/operation";
+import {
+	executionContext as context,
+	origin,
+	signedInApi,
+} from "../helpers/product-http";
 
-const origin = "http://localhost:4321";
-const context = { waitUntil() {}, passThroughOnException() {}, props: {} };
 test("HTTP authentication, validation, typed outcomes and resource routes work together", async (t) => {
-	const f = productFixture();
+	const { f, env, app, token, request, observedStatuses } =
+		await signedInApi();
 	t.after(() => f.sqlite.close());
-	const observedStatuses: number[] = [];
-	const env = testBindings({
-		TURRET_MODE: "off",
-		TURRET_METRICS: {
-			writeDataPoint(point) {
-				assert.ok(point?.doubles);
-				observedStatuses.push(point.doubles[1]);
-			},
-		},
-		CORE_DB: f.binding,
-		APP_URL: origin,
-		APP_ENV: "local",
-		BETTER_AUTH_SECRET: "integration-secret-at-least-thirty-two-characters",
-		PRODUCT_NAME: "Test",
-		EMAIL_TRANSPORT: "log",
-		AUTH_SIGNUP_MODE: "open",
-	});
-	const password = "Valid-test-password-123!";
-	f.sqlite
-		.prepare(
-			"insert into auth_account (id, account_id, provider_id, user_id, password, updated_at) values (?, ?, 'credential', ?, ?, ?)"
-		)
-		.run(
-			crypto.randomUUID(),
-			"owner",
-			"owner",
-			await hashPassword(password),
-			Date.now()
-		);
-	const signedIn = await createAuth(env).api.signInEmail({
-		body: { email: "owner@example.test", password },
-		headers: new Headers({ Origin: origin }),
-	});
-	const token = signedIn.token;
-	const app = new Hono<{ Bindings: Bindings }>();
-	app.use("*", observeRequest);
-	app.route("/api", api);
-	async function request(
-		path: string,
-		method = "GET",
-		body?: unknown,
-		bearer = token
-	) {
-		return app.request(
-			`${origin}/api${path}`,
-			{
-				method,
-				headers: {
-					"Content-Type": "application/json",
-					...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
-					Origin: origin,
-				},
-				...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-			},
-			env,
-			context
-		);
-	}
 	assert.equal(
 		(await request("/organizations", "GET", undefined, "")).status,
 		401
@@ -154,8 +88,6 @@ test("HTTP authentication, validation, typed outcomes and resource routes work t
 		[`${organizationPath}/invitations`, "POST"],
 		[`${organizationPath}/invitations/${crypto.randomUUID()}`, "DELETE"],
 		["/invitations/accept", "POST"],
-		[`${organizationPath}/projects`, "GET"],
-		[`${organizationPath}/projects`, "POST"],
 	]) {
 		assert.equal(
 			(await request(path, method, undefined, "")).status,
@@ -167,31 +99,16 @@ test("HTTP authentication, validation, typed outcomes and resource routes work t
 		(await request(`/organizations/${organization.id}/members`)).status,
 		200
 	);
-	const response = await request(
-		`/organizations/${organization.id}/projects`,
-		"POST",
-		{ name: "Launch", description: "" }
-	);
-	assert.equal(response.status, 201, await response.clone().text());
-	projectResponseSchema.parse(await response.json());
-	const listed = projectsResponseSchema.parse(
-		await (
-			await request(`/organizations/${organization.id}/projects`)
-		).json()
-	);
-	assert.deepEqual(listed.page, { offset: 0, total: 1 });
-	const tooLarge = await request(
-		`/organizations/${organization.id}/projects`,
-		"POST",
-		{ name: "A", description: "x".repeat(20_000) }
-	);
+	const tooLarge = await request("/organizations", "POST", {
+		name: "x".repeat(20_000),
+	});
 	assert.equal(tooLarge.status, 413);
 	assert.equal(
 		productErrorSchema.parse(await tooLarge.json()).error.code,
 		"request_too_large"
 	);
 	assert.equal(
-		(await request(`/organizations/${organization.id}/projects?offset=-1`))
+		(await request(`/organizations/${organization.id}/members?offset=-1`))
 			.status,
 		400
 	);

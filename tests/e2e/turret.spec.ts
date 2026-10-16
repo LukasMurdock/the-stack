@@ -6,6 +6,10 @@ import { jsonOrThrow } from "../../src/react-app/api";
 import { REPLAY_CHUNK_TARGET_BYTES } from "../../src/contracts/turret-ingest";
 import { turretReplayChunkSchema } from "../../src/contracts/turret";
 import { turretComplianceSchema } from "../../src/contracts/turret-policy";
+import {
+	turretWorkflowLabels,
+	turretWorkflowSchema,
+} from "../../src/contracts/turret-outcomes";
 
 test("authenticated replay uploads survive a real Worker and R2 round trip", async ({
 	request,
@@ -588,7 +592,7 @@ test("a feedback report promoted to an issue opens its replay and stays linked",
 	).toBeVisible();
 });
 
-test("outcomes list every instrumented workflow with the first selected", async ({
+test("outcomes list every instrumented workflow with the default selected", async ({
 	page,
 }) => {
 	await page.goto("/app/ts_admin/turret/outcomes");
@@ -597,12 +601,15 @@ test("outcomes list every instrumented workflow with the first selected", async 
 		.getByLabel("Password", { exact: true })
 		.fill("Browser-test-password-123!");
 	await page.getByRole("button", { name: "Sign in", exact: true }).click();
-	for (const workflow of ["Create a project", "Accept an invitation"])
+	// Read from the contract, so the list holds with or without the example.
+	for (const workflow of turretWorkflowSchema.options)
 		await expect(
-			page.getByRole("cell", { name: new RegExp(workflow) })
+			page.getByRole("cell", {
+				name: new RegExp(turretWorkflowLabels[workflow]),
+			})
 		).toBeVisible();
 	await expect(
-		page.getByText("Create a project attempts", { exact: true })
+		page.getByText("Accept an invitation attempts", { exact: true })
 	).toBeVisible();
 });
 

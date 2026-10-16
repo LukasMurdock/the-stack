@@ -6,40 +6,58 @@ pubDate: "2026-02-27"
 
 # Extend
 
-Start with [Build your first feature](/docs/v1/first-feature/) for a step-by-step
-change through the database, typed API, and React form. This page is the
-architecture reference for extending or replacing the example.
-
 Organizations, memberships, and invitations are core capabilities. Owners manage
-membership; editors and owners can create example projects; viewers can read
-them. Platform administrator access does not bypass organization permissions.
+membership, editors and owners can write organization data, and viewers can read
+it. Platform administrator access does not bypass organization permissions.
 
-Projects demonstrates two operations: create and list. It uses ordinary React
-forms, the existing typed Hono client, and TanStack Query. It supplies no editing
-workflow, history, archiving, command protocol, or form framework.
+<!-- example:start -->
 
-## Source map
+## The Projects example
 
-| Concern                            | Location                                           |
-| ---------------------------------- | -------------------------------------------------- |
-| Organization policy and operations | `src/features/organizations/`                      |
-| Example operations                 | `src/features/projects/operations.ts`              |
-| Input and response contracts       | `src/features/projects/contracts.ts`               |
-| Example table                      | `src/bindings/d1/core/schema/projects.ts`          |
-| Example HTTP routes                | `src/features/projects/http.ts`                    |
-| Example client queries             | `src/react-app/features/projects/queries.ts`       |
-| Example screen                     | `src/react-app/features/projects/ProjectsPage.tsx` |
-| Protected route lifecycle          | `src/react-app/routes/_authenticated.tsx`          |
+Start with [Build your first feature](/docs/v1/first-feature/) for a step-by-step
+change through the database, typed API, and React form. Projects demonstrates two
+operations: create and list. Editors and owners can create projects; viewers can
+read them. It uses ordinary React forms, the existing typed Hono client, and
+TanStack Query. It supplies no editing workflow, history, archiving, command
+protocol, or form framework.
+
+| Example concern              | Location                                                           |
+| ---------------------------- | ------------------------------------------------------------------ |
+| Operations                   | `src/features/projects/operations.ts`                              |
+| Input and response contracts | `src/features/projects/contracts.ts`                               |
+| Table                        | `src/bindings/d1/core/schema/projects.ts`                          |
+| Migration                    | `src/bindings/d1/core/drizzle/0003_example-projects.sql`           |
+| HTTP routes                  | `src/features/projects/http.ts`                                    |
+| Client queries               | `src/react-app/features/projects/queries.ts`                       |
+| Screen                       | `src/react-app/features/projects/ProjectsPage.tsx`                 |
+| Tests                        | `tests/integration/projects.test.ts`, `tests/e2e/projects.spec.ts` |
 
 The example's operations enforce membership, including a permission predicate
 inside the insert. The UI role check controls presentation. Copy the portions
 that fit your feature; the folder arrangement is not a feature registration system.
 
-To replace Projects, remove its route registration from `src/worker/api/index.ts`,
-its client screen and queries, and the Projects link from the organization layout.
-Replace its contracts, operations, and table with your own. Core readiness and
-organization entry links do not depend on Projects. Generate a migration when
-changing stored data; do not rewrite migrations already applied to an environment.
+Remove the example in one step with `pnpm example:remove` (`--dry-run` lists what
+it would change). It deletes the files above and this guide's walkthrough, and
+removes the lines between `example:start` and `example:end` comments in shared
+files: the API registration, schema export, organization link, Turret workflow,
+and docs. Core tests do not depend on the example, so `pnpm verify` stays green.
+Before any deployed database has the table, the example's migration is deleted
+too, so new databases never create it. Once one has it (from 0003, or from 0002
+before the example moved out of it), pass `--deployed`: the migration history
+stays, and a new migration drops the table.
+
+<!-- example:end -->
+
+## Source map
+
+| Concern                            | Location                                  |
+| ---------------------------------- | ----------------------------------------- |
+| Organization policy and operations | `src/features/organizations/`             |
+| Protected route lifecycle          | `src/react-app/routes/_authenticated.tsx` |
+
+Core readiness and organization entry links do not depend on any feature. Generate
+a migration when changing stored data; do not rewrite migrations already applied
+to an environment.
 
 ## Client ownership
 
@@ -88,10 +106,10 @@ resources are limited to 16 KiB. Offset pagination is deliberately simple; it is
 not a consistent snapshot while records are being added or removed.
 
 A paged list is declared once per layer. Its response contract is
-`pagedResponse({ projects: z.array(projectSchema) })` from
+`pagedResponse({ members: z.array(memberSchema) })` from
 `contracts/pagination.ts`, which adds `page: { offset, total }`. The operation
 selects `matched: matchedRows` and returns `readPage(query, offset)` from
-`features/shared/paging.ts`; the route responds with `{ projects: rows, page }`.
+`features/shared/paging.ts`; the route responds with `{ members: rows, page }`.
 `matchedRows` is a window count, so the total comes from the same query, filters,
 and permission predicates as the rows. Screens show counts from `page.total`,
 never from the rows they hold, and page with `react-app/components/Pagination`.
@@ -145,8 +163,8 @@ See the [deployment runbook](/docs/v1/deploy-runbook).
 `contracts/turret-policy.ts` owns recording defaults and bounds for KV normalization,
 replay initialization, and settings drafts. `contracts/operation.ts` owns product error
 codes and statuses; the HTTP adapter derives its documented responses from them.
-Organization names, project names, and invited users’ display names have independent
-input constraints, so changing one does not silently change the others.
+Each input schema owns its constraints, such as organization names and invited
+users’ display names, so changing one does not silently change the others.
 
 `contracts/turret-features.ts` owns feature flag validation and defaults. Configuration
 patches reuse their policy schemas’ bounds, reject undeclared fields, and preserve

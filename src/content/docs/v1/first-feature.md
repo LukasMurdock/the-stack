@@ -158,7 +158,7 @@ The list is available to viewers; the create form is available to owners and edi
 ## 6. Verify persistence and permissions
 
 Strengthen the existing test named `example writes require editor access and lists
-isolate tenants` in `tests/integration/product.test.ts`. Add `status: "active"` to
+isolate tenants` in `tests/integration/projects.test.ts`. Add `status: "active"` to
 its editor's create input. After the existing name and description assertions, add:
 
 ```ts

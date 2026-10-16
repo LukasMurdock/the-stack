@@ -4,12 +4,16 @@ import { turretTimestampMsSchema } from "./turret-time-range";
 // The product workflows Turret measures. Keep this list small: each entry is
 // a task users try to complete, instrumented where the task starts and ends.
 export const turretWorkflowSchema = z.enum([
+	// example:start
 	"project.create",
+	// example:end
 	"invitation.accept",
 ]);
 export type TurretWorkflow = z.infer<typeof turretWorkflowSchema>;
 export const turretWorkflowLabels = {
+	// example:start
 	"project.create": "Create a project",
+	// example:end
 	"invitation.accept": "Accept an invitation",
 } satisfies Record<TurretWorkflow, string>;
 

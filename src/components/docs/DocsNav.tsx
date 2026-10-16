@@ -43,6 +43,7 @@ export function DocsNav({ pathname }: DocsNavProps) {
 					</NavigationMenuLink>
 				</NavigationMenuItem>
 
+				{/* example:start */}
 				<NavigationMenuItem>
 					<NavigationMenuLink
 						href="/docs/v1/first-feature/"
@@ -52,6 +53,7 @@ export function DocsNav({ pathname }: DocsNavProps) {
 						First Feature
 					</NavigationMenuLink>
 				</NavigationMenuItem>
+				{/* example:end */}
 
 				<NavigationMenuItem>
 					<NavigationMenuLink
