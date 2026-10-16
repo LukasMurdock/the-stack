@@ -267,9 +267,9 @@ export function releaseSummary(summary: {
 		`Production: ${origin}`,
 		`Sign in:    ${origin}/app/login`,
 		`Admin:      ${adminEmail} (ADMIN_EMAIL in config/cloudflare.mjs).`,
-		"            First deploy: POST /api/internal/bootstrap-admin with header",
-		"            x-bootstrap-secret: <BOOTSTRAP_SECRET> (set with `void secret put`);",
-		"            it emails ADMIN_EMAIL a link to set the password. No password is stored.",
+		"            First deploy: BOOTSTRAP_SECRET=... pnpm admin:bootstrap prints its",
+		"            password once (no email needed; nothing is saved). Add more people",
+		"            from /app/ts_admin/users with Create user.",
 	].join("\n");
 }
 

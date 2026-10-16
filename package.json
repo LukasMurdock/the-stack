@@ -20,6 +20,7 @@
 		"secret": "node -e \"console.log(require('node:crypto').randomBytes(32).toString('base64url'))\"",
 		"ship": "node scripts/ship.ts",
 		"ci:wait": "node scripts/ci-wait.ts",
+		"admin:bootstrap": "node scripts/admin-bootstrap.ts",
 		"dev": "node scripts/dev-server.ts start",
 		"dev:stop": "node scripts/dev-server.ts stop",
 		"dev:wait": "node scripts/dev-server.ts wait",

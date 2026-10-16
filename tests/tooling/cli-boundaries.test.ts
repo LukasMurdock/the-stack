@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { createServer, type IncomingMessage } from "node:http";
+import type { AddressInfo } from "node:net";
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -19,6 +21,7 @@ import {
 	parseShipOptions,
 } from "../../scripts/ship.ts";
 import { parsePrepareE2EOptions } from "../../scripts/testing/prepare-e2e.ts";
+import { parseAdminBootstrapOptions } from "../../scripts/admin-bootstrap.ts";
 
 // #24: the default --timeout was read as 30 ms instead of 30 minutes, inside
 // the entry point that no test ran. These tests parse exactly what a user
@@ -192,6 +195,7 @@ test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", (
 		["ship.ts", ["-h"]],
 		["dev-server.ts", ["--help"]],
 		["testing/prepare-e2e.ts", ["--help"]],
+		["admin-bootstrap.ts", ["--help"]],
 	] as const) {
 		const help = runScript(name, args);
 		assert.equal(help.status, 0, `${name}: ${help.stderr}`);
@@ -225,6 +229,22 @@ test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", (
 			env: { STACK_E2E_PORT: "80" },
 		}),
 		/STACK_E2E_PORT/
+	);
+	assertUsageError(
+		runScript("admin-bootstrap.ts", ["--url", "https://app.company.com"], {
+			env: { BOOTSTRAP_SECRET: "" },
+		}),
+		/Set BOOTSTRAP_SECRET/
+	);
+	assertUsageError(
+		runScript("admin-bootstrap.ts", ["--url", "http://app.example.com"], {
+			env: { BOOTSTRAP_SECRET: "s" },
+		}),
+		/must use https/
+	);
+	assertUsageError(
+		runScript("admin-bootstrap.ts", ["--delivery", "sms"]),
+		/--delivery must be response or email/
 	);
 	assertUsageError(
 		runScript("create-admin-local.mjs", ["--emial", "a@b.c"]),
@@ -283,4 +303,167 @@ process.stdout.write(JSON.stringify({ total_count: 1, check_runs: [run] }));
 		result.stdout,
 		/pending\s+fast[\s\S]*pass\s+fast[\s\S]*CI passed\./
 	);
+});
+
+test("admin:bootstrap options: defaults, origins and malformed input", () => {
+	const env = { BOOTSTRAP_SECRET: "secret" };
+	assert.deepEqual(
+		parseAdminBootstrapOptions([], env, "https://app.company.com/app"),
+		{
+			kind: "run",
+			options: {
+				origin: "https://app.company.com",
+				delivery: "response",
+				secret: "secret",
+			},
+		}
+	);
+	for (const url of [
+		"http://localhost:4321",
+		"http://127.0.0.1:8787",
+		"https://x.company.com",
+	])
+		assert.equal(
+			parseAdminBootstrapOptions(
+				["--url", url, "--delivery", "email"],
+				env,
+				""
+			).kind,
+			"run",
+			url
+		);
+	for (const [argv, message] of [
+		[["--url", "ftp://x.company.com"], /must use https/],
+		[["--url", "http://10.0.0.1"], /must use https/],
+		[["--url", "nope"], /must be an origin/],
+		[["--delivery", "both"], /--delivery/],
+		[["extra"], /Unexpected argument/],
+	] as const)
+		assert.throws(
+			() =>
+				parseAdminBootstrapOptions(
+					argv,
+					env,
+					"https://app.company.com"
+				),
+			message
+		);
+	assert.throws(
+		() => parseAdminBootstrapOptions([], {}, "https://app.company.com"),
+		/Set BOOTSTRAP_SECRET/
+	);
+});
+
+test("admin:bootstrap with default arguments stops at the placeholder production origin", () => {
+	const result = runScript("admin-bootstrap.ts", [], {
+		env: { BOOTSTRAP_SECRET: "secret" },
+	});
+	assert.equal(result.status, 1, result.stderr);
+	assert.match(result.stderr, /Set deploymentCloudflare\.vars\.APP_URL/);
+	assert.doesNotMatch(result.stderr, /Usage:|\n\s+at /);
+});
+
+// The script runs as a subprocess against a local stand-in for the Worker
+// endpoint, so the test covers argv, env, HTTP and the exit code together.
+// spawnSync would block the stand-in's event loop, hence the async spawn.
+test("admin:bootstrap prints the password once, then reports an already bootstrapped deployment", async (t) => {
+	const received: { secret: string | undefined; body: string }[] = [];
+	const server = createServer((request: IncomingMessage, response) => {
+		let body = "";
+		request.on("data", (chunk: Buffer) => (body += chunk.toString()));
+		request.on("end", () => {
+			const secret = request.headers["x-bootstrap-secret"];
+			received.push({
+				secret: typeof secret === "string" ? secret : undefined,
+				body,
+			});
+			const first = received.length === 1;
+			response.writeHead(first ? 200 : 409, {
+				"content-type": "application/json",
+			});
+			response.end(
+				JSON.stringify(
+					first
+						? {
+								ok: true,
+								status: "bootstrapped",
+								credential: {
+									email: "owner@company.com",
+									password: "generated-password-0123456789",
+								},
+							}
+						: { ok: true, status: "already_bootstrapped" }
+				)
+			);
+		});
+	});
+	await new Promise<void>((resolve) =>
+		server.listen(0, "127.0.0.1", resolve)
+	);
+	t.after(() => server.close());
+	// SAFETY: listen() on a TCP host always yields an AddressInfo.
+	const { port } = server.address() as AddressInfo;
+	function run() {
+		return new Promise<{
+			status: number | null;
+			stdout: string;
+			stderr: string;
+		}>((resolve, reject) => {
+			const child = spawn(
+				process.execPath,
+				[
+					script("admin-bootstrap.ts"),
+					"--url",
+					`http://127.0.0.1:${port}`,
+				],
+				{
+					cwd: root,
+					env: { ...process.env, BOOTSTRAP_SECRET: "the-secret" },
+				}
+			);
+			let stdout = "";
+			let stderr = "";
+			child.stdout.on(
+				"data",
+				(chunk: Buffer) => (stdout += chunk.toString())
+			);
+			child.stderr.on(
+				"data",
+				(chunk: Buffer) => (stderr += chunk.toString())
+			);
+			child.on("error", reject);
+			child.on("close", (status) => resolve({ status, stdout, stderr }));
+		});
+	}
+	const first = await run();
+	assert.equal(first.status, 0, first.stderr);
+	assert.match(first.stdout, /Admin: +owner@company\.com/);
+	assert.match(first.stdout, /Password: generated-password-0123456789/);
+	assert.match(
+		first.stdout,
+		/Sign in: +http:\/\/127\.0\.0\.1:\d+\/app\/login/
+	);
+	assert.deepEqual(received[0], {
+		secret: "the-secret",
+		body: '{"delivery":"response"}',
+	});
+	const second = await run();
+	assert.equal(second.status, 1);
+	assert.match(second.stderr, /already bootstrapped/);
+	assert.doesNotMatch(second.stdout, /Password/);
+});
+
+test("doctor warns that the template's production email cannot send and says what that disables", (t) => {
+	const directory = temporaryDirectory(t, "stack-doctor-");
+	const result = runScript("dev-doctor.mjs", [], { cwd: directory });
+	assert.match(
+		result.stdout,
+		/WARN Production email is not configured: EMAIL_FROM uses the placeholder domain your-app\.example\./
+	);
+	assert.match(
+		result.stdout,
+		/invitations, password reset, email verification/
+	);
+	assert.match(result.stdout, /pnpm admin:bootstrap/);
+	assert.match(result.stdout, /OK {3}Local email is log-only/);
 });

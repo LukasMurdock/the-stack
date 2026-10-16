@@ -111,11 +111,40 @@ explicit per database until Void offers a public multi-database workflow.
 
 After deploying, check `/api/health`, `/api/readiness`, and `/api/doc`, test
 sign-in and organization permissions, and complete the [email](email.md) and
-[observability](observability-operations.md) acceptance checks. Bootstrap the first
-administrator with `POST /api/internal/bootstrap-admin` and the
-`x-bootstrap-secret` header (your `BOOTSTRAP_SECRET`). It creates `ADMIN_EMAIL`'s
-account and emails a password-reset link; no production password is stored.
-Then sign in at `/app/login`.
+[observability](observability-operations.md) acceptance checks, then create the
+first administrator.
+
+## First administrator
+
+```bash
+read -rs BOOTSTRAP_SECRET && export BOOTSTRAP_SECRET   # the value you stored
+pnpm admin:bootstrap                                   # [--url <origin>]
+pnpm exec void secret delete BOOTSTRAP_SECRET          # once you have signed in
+```
+
+It calls `POST /api/internal/bootstrap-admin` with the `x-bootstrap-secret`
+header and prints `ADMIN_EMAIL`'s generated password once. No email is needed
+and nothing is written to disk; the Worker stores only Better Auth's hash. Then
+sign in at `/app/login` and add people from Admin → Users → Create user.
+
+With working email, `pnpm admin:bootstrap --delivery email` (or a request
+without a body) emails a reset link instead; it answers 503 rather than
+pretending to send when email is not configured.
+
+How it is kept safe:
+
+- Only the holder of `BOOTSTRAP_SECRET` can call it (constant-time compare), and
+  only over HTTPS; the command refuses plain HTTP except to localhost.
+- It works once per `ADMIN_EMAIL`: a KV flag makes later calls answer 409, so a
+  leaked secret cannot mint more passwords. Delete the secret after first
+  sign-in anyway; with no secret set the endpoint answers 401.
+- If the address already has an account (someone registered it first), the
+  password is replaced and every session ends, so that registrant is locked out.
+- Responses are `Cache-Control: no-store`, and the password is never logged.
+
+Recovery: if the admin password is lost and email does not work yet, someone with
+Cloudflare access deletes the `bootstrap:admin:<admin email>` key from the
+`CORE_KV` namespace and reruns `pnpm admin:bootstrap`.
 
 Local development and browser tests use isolated local resources with remote
 bindings disabled. `pnpm preview` runs locally. Cloud previews need their own

@@ -39,6 +39,23 @@ The checked-in local configuration uses `EMAIL_TRANSPORT=log`. The app emits `em
 
 To exercise the native binding locally, set `EMAIL_TRANSPORT=cloudflare` in `.env`. The included local `EMAIL` binding simulates delivery. The Astro adapter disables remote bindings, so this does not send real Cloudflare email. Use the deployed staging Worker for real delivery checks. Cloudflare also supports explicit remote development bindings, but enabling them requires deliberately changing this starter's remote-binding configuration. [Local simulation](https://developers.cloudflare.com/email-service/local-development/sending/)
 
+## Running without email
+
+An app can go live before its sender domain works. `GET /api/readiness`
+reports `email.delivery` (`provider`, `log_only`, or `unavailable` with a
+`reason` and the `disabled` features) without failing readiness, and
+`pnpm run doctor` warns when `deploymentCloudflare.vars` cannot send (for
+example, the placeholder `your-app.example` sender). Readiness sees
+configuration only: a Cloudflare binding still needs the domain onboarded
+(`pnpm exec void email status --platform cloudflare`).
+
+Until email works, invitations, password reset, and email verification cannot
+be delivered. Bootstrap the first administrator with `pnpm admin:bootstrap`
+(see the [deployment guide](DEPLOYMENT_GUIDE.md#first-administrator)), then add
+people from **Admin → Users → Create user**: the server generates a starting
+password shown once to the administrator, and "Mark email as verified" lets the
+person accept invitations without a verification email.
+
 ## Optional Resend configuration
 
 Set `EMAIL_TRANSPORT=resend` in the selected environment and provide `RESEND_API_KEY`. Configure the sender domain with Resend and use its authorized sender mailbox in `EMAIL_FROM`.

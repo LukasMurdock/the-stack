@@ -97,8 +97,28 @@ function recordEmailSendFailure(args: {
 	logger.emit();
 }
 
+// The audit record of an administrator creating an account. Explicit fields
+// only: never the starting password, and ids rather than the email address.
+function recordAdminUserCreatedEvent(args: {
+	actorId: string;
+	userId: string;
+	role: "user" | "admin";
+	emailVerification: "verified" | "unverified";
+}): void {
+	simpleLog.info({
+		action: "admin.user_created",
+		admin: { actorId: args.actorId },
+		user: {
+			id: args.userId,
+			role: args.role,
+			emailVerification: args.emailVerification,
+		},
+	});
+}
+
 export {
 	createApiRequestLogger,
+	recordAdminUserCreatedEvent,
 	recordEmailLogOnlyEvent,
 	recordEmailSendFailure,
 };
