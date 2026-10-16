@@ -22,6 +22,16 @@ import {
 } from "../../scripts/ship.ts";
 import { parsePrepareE2EOptions } from "../../scripts/testing/prepare-e2e.ts";
 import { parseAdminBootstrapOptions } from "../../scripts/admin-bootstrap.ts";
+import {
+	parseShotOptions,
+	SHOT_OUT_DIR_DEFAULT,
+	SHOT_PATHS_MAX,
+} from "../../scripts/shot.ts";
+import { API_REQUEST_BYTES_MAX, parseApiOptions } from "../../scripts/api.ts";
+import {
+	parseDemoRecordOptions,
+	parseDemoVideoEnv,
+} from "../../scripts/demo-record.ts";
 
 // #24: the default --timeout was read as 30 ms instead of 30 minutes, inside
 // the entry point that no test ran. These tests parse exactly what a user
@@ -189,6 +199,179 @@ test("prepare-e2e options come from STACK_E2E_PORT and STACK_E2E_REBUILD", () =>
 		assert.throws(() => parsePrepareE2EOptions(argv, env), message);
 });
 
+test("shot options: app-relative paths, viewports, identities and bounds", () => {
+	assert.deepEqual(parseShotOptions(["organizations"]), {
+		kind: "run",
+		options: {
+			targets: [
+				{ path: "/app/organizations", fileStem: "app-organizations" },
+			],
+			identity: { kind: "persona", persona: "admin" },
+			viewports: [
+				{ name: "desktop", width: 1440, height: 900, mobile: false },
+			],
+			outDir: SHOT_OUT_DIR_DEFAULT,
+			fullPage: false,
+			server: "dev",
+		},
+	});
+	const parsed = parseShotOptions([
+		"/",
+		"/docs",
+		"/app/organizations",
+		"organizations",
+		"a-b",
+		"a/b",
+		"--as",
+		"Viewer",
+		"--viewport",
+		"phone",
+		"--viewport=200x4096",
+		"--full-page",
+		"--e2e",
+		"--out",
+		"before",
+	]);
+	assert.equal(parsed.kind, "run");
+	if (parsed.kind === "run") {
+		assert.deepEqual(
+			parsed.options.targets.map(
+				(target) => `${target.path} ${target.fileStem}`
+			),
+			[
+				"/ home",
+				"/docs docs",
+				"/app/organizations app-organizations",
+				"/app/a-b app-a-b",
+				"/app/a/b app-a-b-2",
+			]
+		);
+		assert.deepEqual(parsed.options.identity, {
+			kind: "persona",
+			persona: "viewer",
+		});
+		assert.deepEqual(
+			parsed.options.viewports.map((viewport) => viewport.name),
+			["phone", "200x4096"]
+		);
+		assert.equal(parsed.options.server, "e2e");
+		assert.equal(parsed.options.fullPage, true);
+		assert.equal(parsed.options.outDir, "before");
+	}
+	const tooMany = Array.from(
+		{ length: SHOT_PATHS_MAX + 1 },
+		(_, i) => `p${i}`
+	);
+	assert.equal(parseShotOptions(tooMany.slice(1)).kind, "run");
+	for (const [argv, message] of [
+		[[], /at least one path/],
+		[tooMany, /At most 20 paths/],
+		[["x", "--viewport", "tablet"], /phone, desktop or <W>x<H>/],
+		[["x", "--viewport", "199x800"], /width must be at least 200/],
+		[["x", "--viewport", "800x4097"], /height must be at most 4096/],
+		[
+			[
+				"x",
+				"--viewport",
+				"phone",
+				"--viewport",
+				"desktop",
+				"--viewport",
+				"1x1",
+				"--viewport",
+				"2x2",
+			],
+			/At most 3/,
+		],
+		[["x", "--as", "root"], /--as must be/],
+		[["https://example.com/app"], /not a URL/],
+		[["//example.com/app"], /not a URL/],
+		[["has space"], /whitespace/],
+		[[""], /cannot be empty/],
+		[["x", "--out", ""], /--out cannot be empty/],
+		[["x", "--fullpage"], /Unknown option '--fullpage'/],
+	] as const)
+		assert.throws(() => parseShotOptions(argv), message);
+});
+
+test("api options: methods, app-relative paths, JSON bodies and bounds", () => {
+	assert.deepEqual(parseApiOptions(["get", "organizations"]), {
+		kind: "run",
+		options: {
+			method: "GET",
+			path: "/api/organizations",
+			body: null,
+			identity: { kind: "persona", persona: "admin" },
+			server: "dev",
+		},
+	});
+	const post = parseApiOptions([
+		"POST",
+		"/api/organizations?x=1",
+		'{"name":"Studio"}',
+		"--as",
+		"owner@example.test",
+		"--e2e",
+	]);
+	assert.deepEqual(post, {
+		kind: "run",
+		options: {
+			method: "POST",
+			path: "/api/organizations?x=1",
+			body: '{"name":"Studio"}',
+			identity: { kind: "email", email: "owner@example.test" },
+			server: "e2e",
+		},
+	});
+	const maxBody = JSON.stringify("x".repeat(API_REQUEST_BYTES_MAX - 2));
+	assert.equal(parseApiOptions(["POST", "x", maxBody]).kind, "run");
+	for (const [argv, message] of [
+		[[], /Give a method and a path/],
+		[["GET"], /Give a method and a path/],
+		[["HEAD", "x"], /<METHOD> must be one of/],
+		[["POST", "x", "{"], /not valid JSON/],
+		[["POST", "x", `${maxBody} `], /at most 65536 bytes/],
+		[["POST", "x", "{}", "extra"], /Unexpected argument: extra/],
+		[["GET", "x", "--as", "nobody"], /--as must be/],
+	] as const)
+		assert.throws(() => parseApiOptions(argv), message);
+});
+
+test("demo:record options: spec names, single tests and the output file", () => {
+	assert.deepEqual(parseDemoRecordOptions(["session"], root), {
+		kind: "run",
+		options: {
+			spec: path.join("tests", "e2e", "session.spec.ts"),
+			out: path.join(".wrangler", "recordings", "session.webm"),
+		},
+	});
+	assert.deepEqual(
+		parseDemoRecordOptions(
+			["tests/e2e/smoke.spec.ts:12", "--out", "demo/smoke.webm"],
+			root
+		),
+		{
+			kind: "run",
+			options: {
+				spec: `${path.join("tests", "e2e", "smoke.spec.ts")}:12`,
+				out: "demo/smoke.webm",
+			},
+		}
+	);
+	assert.equal(parseDemoVideoEnv(undefined), false);
+	assert.equal(parseDemoVideoEnv("1"), true);
+	assert.throws(() => parseDemoVideoEnv("yes"), /STACK_E2E_VIDEO/);
+	for (const [argv, message] of [
+		[[], /Give a spec/],
+		[["nope"], /No spec "nope" in tests\/e2e\. Specs: .*session/],
+		[["tests/e2e/organizations.ts"], /No spec/],
+		[["../the-stack/tests/e2e/session.spec.ts"], /No spec/],
+		[["session", "smoke"], /one spec at a time/],
+		[["session", "--out", "demo.mp4"], /must end in \.webm/],
+	] as const)
+		assert.throws(() => parseDemoRecordOptions(argv, root), message);
+});
+
 test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", () => {
 	for (const [name, args] of [
 		["ci-wait.ts", ["--help"]],
@@ -196,6 +379,9 @@ test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", (
 		["dev-server.ts", ["--help"]],
 		["testing/prepare-e2e.ts", ["--help"]],
 		["admin-bootstrap.ts", ["--help"]],
+		["shot.ts", ["--help"]],
+		["api.ts", ["-h"]],
+		["demo-record.ts", ["--help"]],
 	] as const) {
 		const help = runScript(name, args);
 		assert.equal(help.status, 0, `${name}: ${help.stderr}`);
@@ -250,6 +436,15 @@ test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", (
 		runScript("create-admin-local.mjs", ["--emial", "a@b.c"]),
 		/--emial/
 	);
+	assertUsageError(runScript("shot.ts", []), /at least one path/);
+	assertUsageError(
+		runScript("shot.ts", ["x", "--viewport", "huge"]),
+		/--viewport/
+	);
+	assertUsageError(runScript("api.ts", ["GET"]), /method and a path/);
+	assertUsageError(runScript("api.ts", ["POST", "x", "{"]), /JSON/);
+	assertUsageError(runScript("demo-record.ts", []), /Give a spec/);
+	assertUsageError(runScript("demo-record.ts", ["nope"]), /No spec/);
 });
 
 test("ship with default arguments parses and stops at the placeholder production origin", () => {

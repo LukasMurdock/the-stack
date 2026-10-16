@@ -31,15 +31,18 @@ import {
 	stampMatches,
 	withCheckoutLock,
 } from "./e2e.ts";
+import {
+	FIXTURE_PASSWORD,
+	FIXTURE_PERSONAS,
+	fixtureEmail,
+	fixtureRole,
+} from "./personas.ts";
 
 export const PREPARE_E2E_USAGE = `Usage: node scripts/testing/prepare-e2e.ts
 
 Takes no arguments. Environment:
   STACK_E2E_PORT     Port the run belongs to (1024-65535, default 4322).
   STACK_E2E_REBUILD  "1" recreates the fixture state and the build.`;
-
-const FIXTURE_USERS = ["owner", "viewer", "admin"] as const;
-const FIXTURE_PASSWORD = "Browser-test-password-123!";
 
 export type PrepareE2EOptions = {
 	readonly port: number;
@@ -134,15 +137,10 @@ function seedUsers(file: string, passwordHash: string): boolean {
 			.prepare("select name from sqlite_master where name = 'auth_user'")
 			.get();
 		if (authTable === undefined) return false;
-		for (const id of FIXTURE_USERS) {
+		for (const id of FIXTURE_PERSONAS) {
 			db.prepare(
 				"insert into auth_user (id, name, email, email_verified, role) values (?, ?, ?, 1, ?)"
-			).run(
-				id,
-				id,
-				`${id}@example.test`,
-				id === "admin" ? "admin" : "user"
-			);
+			).run(id, id, fixtureEmail(id), fixtureRole(id));
 			db.prepare(
 				"insert into auth_account (id, account_id, provider_id, user_id, password, updated_at) values (?, ?, 'credential', ?, ?, ?)"
 			).run(`${id}-account`, id, id, passwordHash, Date.now());

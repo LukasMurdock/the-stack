@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { isAlive } from "./scripts/lib/local-server.ts";
 import { claimE2EPort, releaseE2EPort } from "./scripts/testing/e2e.ts";
+import { DEMO_VIDEO_SIZE, parseDemoVideoEnv } from "./scripts/demo-record.ts";
 
 // The runner claims STACK_E2E_PORT, or the first free port from 4322, and fails
 // fast when an explicit port is taken. Workers and the web server inherit it.
@@ -12,6 +13,8 @@ if (owner !== process.pid && !(owner && isAlive(owner))) {
 	process.once("exit", () => releaseE2EPort(claimed));
 }
 const port = Number(process.env.STACK_E2E_PORT);
+// `pnpm demo:record` records every test it runs.
+const recording = parseDemoVideoEnv(process.env.STACK_E2E_VIDEO);
 
 export default defineConfig({
 	testDir: "./tests/e2e",
@@ -21,7 +24,11 @@ export default defineConfig({
 	workers: 1,
 	retries: process.env.CI ? 1 : 0,
 	reporter: "list",
-	use: { baseURL: `http://localhost:${port}`, trace: "retain-on-failure" },
+	use: {
+		baseURL: `http://localhost:${port}`,
+		trace: "retain-on-failure",
+		video: recording ? { mode: "on", size: DEMO_VIDEO_SIZE } : "off",
+	},
 	projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 	webServer: {
 		// prepare-e2e reuses this port's build when its inputs are unchanged.
