@@ -104,5 +104,10 @@ jobs:
             - name: Full checks
               run: pnpm verify
 
+            - name: Deploy artifact
+              # Builds what `void deploy --platform cloudflare` publishes,
+              # offline and without credentials, and checks it.
+              run: pnpm check:deploy
+
             - name: Template tooling checks
               run: pnpm test:tooling

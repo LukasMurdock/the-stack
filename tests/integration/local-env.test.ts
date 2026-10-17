@@ -9,7 +9,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import path, { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 
@@ -77,4 +77,50 @@ test("local configuration migrates the legacy secrets file without changing cred
 	assert.equal(result.status, 0, result.stderr);
 	assert.equal(readFileSync(filename, "utf8"), source);
 	assert.equal(existsSync(join(directory, ".dev.vars")), false);
+});
+
+// Wrangler and the Cloudflare Vite plugin read `.env` from the directory of
+// the Worker config they are given, so `pnpm dev` only sees local secrets if
+// the generated config sits beside `.env`.
+test("the generated local Worker config loads secrets from the project's .env", async (t) => {
+	const directory = mkdtempSync(join(tmpdir(), "stack-local-config-"));
+	t.after(() => rmSync(directory, { recursive: true, force: true }));
+	writeFileSync(
+		join(directory, ".env"),
+		'RESEND_API_KEY="re_local_only"\nEMAIL_TRANSPORT="resend"\n'
+	);
+	const generator = fileURLToPath(
+		new URL("../../scripts/local-cloudflare.mjs", import.meta.url)
+	);
+	const result = spawnSync(process.execPath, [generator], {
+		cwd: directory,
+		encoding: "utf8",
+	});
+	assert.equal(result.status, 0, result.stderr);
+	const { localConfigPath } =
+		await import("../../scripts/local-cloudflare.mjs");
+	// The same project-relative path, inside the temporary project.
+	const configPath = join(
+		directory,
+		path.relative(process.cwd(), localConfigPath)
+	);
+	assert.ok(existsSync(configPath));
+	const { unstable_getVarsForDev } = await import("wrangler");
+	const config = JSON.parse(readFileSync(configPath, "utf8"));
+	const vars = unstable_getVarsForDev(
+		configPath,
+		undefined,
+		config.vars,
+		undefined,
+		true
+	);
+	assert.deepEqual(vars.RESEND_API_KEY, {
+		type: "secret_text",
+		value: "re_local_only",
+	});
+	// .env overrides the committed local default (EMAIL_TRANSPORT=log).
+	assert.deepEqual(vars.EMAIL_TRANSPORT, {
+		type: "secret_text",
+		value: "resend",
+	});
 });

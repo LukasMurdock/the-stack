@@ -245,3 +245,38 @@ console.log(JSON.stringify(Object.fromEntries(Object.entries(sdk).map(([k, v]) =
 		persistCloudflareConfig: "function",
 	});
 });
+
+// pnpm check:deploy repeats `void deploy`'s artifact steps with these.
+test("the installed Void exposes every deploy-artifact internal", () => {
+	const result = spawnSync(
+		process.execPath,
+		[
+			"--input-type=module",
+			"-e",
+			`import { loadVoidDeployInternals } from "./scripts/lib/void-cloudflare.ts";
+const sdk = await loadVoidDeployInternals();
+console.log(JSON.stringify(Object.fromEntries(Object.entries(sdk).map(([k, v]) => [k, typeof v]))));`,
+		],
+		{ encoding: "utf8" }
+	);
+	assert.equal(result.status, 0, result.stderr);
+	const loaded: unknown = JSON.parse(result.stdout);
+	assert.deepEqual(loaded, {
+		version: "string",
+		readConfig: "function",
+		detectFramework: "function",
+		analyzeApplicationSync: "function",
+		collectRevalidate: "function",
+		hasRevalidate: "function",
+		selectNativeVersionMetadataBinding: "function",
+		generateDeployWrapperIfNeeded: "function",
+		prepareCfFrameworkBuildOutput: "function",
+		scrubWranglerAuthCredentials: "function",
+		materializeCloudflareConfig: "function",
+		parseRootWranglerConfig: "function",
+		writeCloudflareFrameworkDeployConfig: "function",
+		readBuildOutput: "function",
+		getWorkerBundleDir: "function",
+		frameworkPresets: "object",
+	});
+});

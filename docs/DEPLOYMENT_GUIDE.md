@@ -72,7 +72,8 @@ pnpm ship             # [--require-reviews <n>]
 ```
 
 `pnpm ship` needs only git and an `origin` remote. It refuses unless the
-working tree is clean, HEAD has a passing proof of its exact tree (e2e run),
+working tree is clean, HEAD has a passing proof of its exact tree (deploy
+artifact built and e2e run),
 and origin's `main` fast-forwards to HEAD; each refusal says what to do next.
 It then pushes HEAD to `main` and `refs/notes/proof` in one `git push
 --atomic` (first merging notes others pushed, never forcing), runs
@@ -103,11 +104,33 @@ Reruns are safe in both modes: a commit already on `main` with its note, or a
 merged PR, is not pushed or merged again, and a commit production already
 serves skips the deploy.
 
+## Checking the deploy artifact
+
+`pnpm check:deploy` builds what `void deploy --platform cloudflare` publishes
+without credentials or network: the deploy build, Void's cron and readiness
+wrapper, and the re-bundle Void hands to Cloudflare, through Void's own
+functions. It fails if the main module is missing, a relative import does not
+resolve inside the bundle, or the bindings or cron schedules differ from the
+generated config. `pnpm check` (run by `pnpm run deploy`) and `pnpm proof` run
+it. It assumes a first deploy and does not cover the env schema's required
+secrets, Void's email setup, or anything only Cloudflare checks at upload.
+
+Void deploys Astro with `assets.run_worker_first: true` and does not upload
+Astro's `_headers`, so every request, assets included, reaches the Worker. The
+Worker serves `/_astro/*` from `ASSETS` itself with
+`Cache-Control: public, max-age=31536000, immutable`; other responses keep
+their own headers.
+
 ## Resource state and retries
 
 Commit `void.lock.json` after provisioning. It contains resolved resource IDs,
-so another machine or CI reuses the same resources. `.void-wrangler.jsonc`,
-`.wrangler/local/wrangler.json`, and `dist/server/wrangler.json` are generated.
+so another machine or CI reuses the same resources. Void 1.1.11 also records
+the last build's output there (`main: dist/server/entry.mjs`,
+`assets.directory: dist/client`), which the next build would read back as its
+source; `pnpm run deploy` restores the authored values before building and
+after publishing, keeping the IDs, and `pnpm check:deploy` fails on a lock
+that still has them. `.void-wrangler.jsonc`,
+`.wrangler-local.json`, and `dist/server/wrangler.json` are generated.
 Keep credentials and local `.void` state out of Git.
 
 A failure can leave successfully provisioned resources in your account. Rerunning

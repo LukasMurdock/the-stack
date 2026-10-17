@@ -49,6 +49,10 @@ test each CLI as a subprocess (`tests/tooling/cli-boundaries.test.ts`).
 - Paged lists return `pagedResponse` with a `page.total` from `readPage`; never
   count a page's rows. Break `created_at` ties with `insertionOrder(table)`, not
   random ids. Search user text with `literalContains`; D1 rejects long `LIKE`s.
+- Deploy artifact: `pnpm check:deploy` builds the Worker
+  `void deploy --platform cloudflare` would publish, offline and without
+  credentials, and checks its imports, bindings and crons. `pnpm check` and
+  `pnpm proof` run it; run it after touching Void, crons/, bindings or the build.
 - Deploy: configure the app name, origin, sender, and secrets, then
   `pnpm run deploy`. Void provisions resources through the two-database adapter,
   migrations run independently, and Void publishes the app. See `docs/DEPLOYMENT_GUIDE.md`.
@@ -76,11 +80,12 @@ pushing:
 1. Iterate with the touched test file and `pnpm verify:fast`.
 2. Commit. `pnpm proof` refuses uncommitted or untracked changes.
 3. `pnpm proof` checks HEAD out into a temporary directory, runs
-   `pnpm install --frozen-lockfile`, `pnpm verify` and `pnpm test:e2e` there,
-   and stores a JSON record as a git note (`refs/notes/proof`, replaced by a
-   newer proof of the same commit). Logs are in `.proof/<sha>/`.
-   `pnpm proof --check [rev]` passes only for a passing proof of that exact
-   tree with e2e run; `--show` prints it.
+   `pnpm install --frozen-lockfile`, `pnpm verify`, `pnpm check:deploy` and
+   `pnpm test:e2e` there, and stores a JSON record as a git note
+   (`refs/notes/proof`, replaced by a newer proof of the same commit). Logs are
+   in `.proof/<sha>/`. `pnpm proof --check [rev]` passes only for a passing
+   proof of that exact tree with the deploy step and e2e run (proofs recorded
+   before the deploy step existed no longer pass); `--show` prints it.
 4. `pnpm ship` pushes the commit and its note together and deploys. If main
    moved, rebase onto `origin/main` and prove again. CI on main fails when
    HEAD has no passing proof.
@@ -140,7 +145,7 @@ the files they write:
 
 `void.config.ts` is the Void entry point. Explicit Cloudflare bindings and local
 variables live in `config/cloudflare.mjs`. Do not edit generated
-`.void-wrangler.jsonc`, `.wrangler/local/wrangler.json`, or `dist/server/wrangler.json`.
+`.void-wrangler.jsonc`, `.wrangler-local.json`, or `dist/server/wrangler.json`.
 Commit `void.lock.json` when Void records provisioned IDs/history.
 
 Core and Turret must keep separate D1 databases and migration histories to retain
@@ -152,6 +157,13 @@ in `scripts/lib/void-cloudflare.ts` when updating Void: compare the internals it
 loads by name with the validated version, run `pnpm test:tooling` (partial-failure
 recovery and reuse with a mocked cloud transport), then add the version to
 `VALIDATED_VOID_VERSIONS`.
+`patches/void@1.1.11.patch` (pnpm `patchedDependencies`) makes Void's cron
+wrapper copy its split chunks; without it `void deploy` cannot bundle the
+Worker. Remove it when Void ships the fix and `pnpm check:deploy` passes
+without it. Void records the last build's `main` and `assets` in
+`void.lock.json`; `pnpm run deploy` restores the authored values
+(`scripts/lib/void-lock.ts`) before building and after publishing, and
+`pnpm check:deploy` fails on a lock that still has them.
 Preserve `src/worker.ts` as the API/Astro dispatcher. Void publication wraps
 framework Workers; `crons/turret-retention.ts` delegates its scheduled event to
 the existing Turret cleanup handler.

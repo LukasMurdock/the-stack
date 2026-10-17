@@ -26,6 +26,7 @@ import {
 	PROOF_NOTE_BYTES_MAX,
 	PROOF_REVIEW_FILE_BYTES_MAX,
 	PROOF_REVIEWS_MAX,
+	type CurrentProofRecord,
 	type ProofRecord,
 	type ProofReview,
 	type ProofStep,
@@ -47,10 +48,12 @@ function step(name: ProofStep["name"], status: ProofStep["status"]): ProofStep {
 	};
 }
 
-function record(overrides: Partial<ProofRecord> = {}): ProofRecord {
+function record(
+	overrides: Partial<CurrentProofRecord> = {}
+): CurrentProofRecord {
 	return {
-		schemaVersion: 1,
-		tool: { name: "proof", version: "1.0.0" },
+		schemaVersion: 2,
+		tool: { name: "proof", version: "2.0.0" },
 		commit,
 		tree,
 		result: "passed",
@@ -66,10 +69,26 @@ function record(overrides: Partial<ProofRecord> = {}): ProofRecord {
 		steps: [
 			step("install", "passed"),
 			step("verify", "passed"),
+			step("deploy", "passed"),
 			step("e2e", "passed"),
 		],
 		reviews: [],
 		...overrides,
+	};
+}
+
+// A record `pnpm proof` wrote before the deploy step existed.
+function v1Record(): ProofRecord {
+	const { steps: _steps, ...fields } = record();
+	return {
+		...fields,
+		schemaVersion: 1,
+		tool: { name: "proof", version: "1.0.0" },
+		steps: [
+			step("install", "passed"),
+			step("verify", "passed"),
+			step("e2e", "passed"),
+		],
 	};
 }
 
@@ -104,20 +123,25 @@ test("proof records: the result is derived from the steps and validated on read"
 		steps: [
 			step("install", "passed"),
 			step("verify", "failed"),
+			step("deploy", "not_run"),
 			step("e2e", "not_run"),
 		],
 	});
 	for (const [text, message] of [
 		["not json", /not JSON/],
 		[JSON.stringify(failedVerify), /result does not match/],
-		[JSON.stringify({ ...record(), schemaVersion: 2 }), /schemaVersion/],
+		[JSON.stringify({ ...record(), schemaVersion: 3 }), /schemaVersion/],
+		// A current record must have the deploy step, a v1 record must not.
+		[JSON.stringify({ ...v1Record(), schemaVersion: 2 }), /steps/],
+		[JSON.stringify({ ...record(), schemaVersion: 1 }), /steps/],
 		[JSON.stringify({ ...record(), tree: "HEAD" }), /tree/],
 		[
 			JSON.stringify(
 				record({
 					steps: [
-						step("verify", "passed"),
 						step("install", "passed"),
+						step("deploy", "passed"),
+						step("verify", "passed"),
 						step("e2e", "passed"),
 					],
 				})
@@ -129,7 +153,8 @@ test("proof records: the result is derived from the steps and validated on read"
 				record({
 					steps: [
 						step("install", "passed"),
-						step("verify", "skipped"),
+						step("verify", "passed"),
+						step("deploy", "skipped"),
 						step("e2e", "passed"),
 					],
 				})
@@ -139,6 +164,8 @@ test("proof records: the result is derived from the steps and validated on read"
 		[" ".repeat(PROOF_NOTE_BYTES_MAX + 1), /exceeds/],
 	] as const)
 		assert.throws(() => parseProofRecord(text), message);
+	// Version 1 records still read, so --show works on older commits.
+	assert.deepEqual(parseProofRecord(JSON.stringify(v1Record())), v1Record());
 });
 
 test("proof check: binds to commit and tree, rejects failures, skipped e2e and missing reviews", () => {
@@ -167,15 +194,23 @@ test("proof check: binds to commit and tree, rejects failures, skipped e2e and m
 		result: "failed",
 		steps: [
 			step("install", "passed"),
-			step("verify", "timed_out"),
+			step("verify", "passed"),
+			step("deploy", "timed_out"),
 			step("e2e", "not_run"),
 		],
 	});
-	assert.match(reasons(failed), /failed \(verify timed_out\)/);
+	assert.match(reasons(failed), /failed \(deploy timed_out\)/);
+	// A passing v1 proof never built the deploy artifact.
+	assert.match(reasons(v1Record()), /predates the deploy step/);
+	assert.match(
+		reasons(v1Record(), { allowSkippedE2e: true, requireReviewsCount: 0 }),
+		/predates the deploy step/
+	);
 	const skipped = record({
 		steps: [
 			step("install", "passed"),
 			step("verify", "passed"),
+			step("deploy", "passed"),
 			step("e2e", "skipped"),
 		],
 	});
@@ -217,7 +252,7 @@ test("proof reviews: validated, bounded, and stamped when `at` is missing", () =
 		[" ".repeat(PROOF_REVIEW_FILE_BYTES_MAX + 1), /exceeds/],
 	] as const)
 		assert.throws(() => parseProofReview(text, nowIso), message);
-	let full = record();
+	let full: ProofRecord = record();
 	for (let index = 0; index < PROOF_REVIEWS_MAX; index++)
 		full = addReview(full, review);
 	assert.throws(() => addReview(full, review), /maximum/);
@@ -312,6 +347,9 @@ function gitIn(sandbox: Sandbox, args: readonly string[], input?: string) {
 	}).trim();
 }
 
+const e2eStatus = (proved: ProofRecord) =>
+	proved.steps.find((entry) => entry.name === "e2e")?.status;
+
 function shownRecord(sandbox: Sandbox): ProofRecord {
 	const result = proof(sandbox, ["--show"]);
 	assert.equal(result.status, 0, result.stderr);
@@ -343,7 +381,7 @@ test("pnpm proof at its boundary: refuses dirty trees, records, checks and clean
 	);
 	assert.deepEqual(
 		passedRecord.steps.map((entry) => entry.status),
-		["passed", "passed", "passed"]
+		["passed", "passed", "passed", "passed"]
 	);
 	assert.equal(passedRecord.environment.pnpm, "10.0.0-fake");
 	assert.match(passedRecord.steps[1].logTail, /fake pnpm verify/);
@@ -353,7 +391,7 @@ test("pnpm proof at its boundary: refuses dirty trees, records, checks and clean
 	const calls = readFileSync(sandbox.pnpmLog, "utf8").trim().split("\n");
 	assert.deepEqual(
 		calls.map((line) => line.split(" ").slice(1).join(" ")),
-		["install --frozen-lockfile", "verify", "test:e2e"]
+		["install --frozen-lockfile", "verify", "check:deploy", "test:e2e"]
 	);
 	const scratch = realpathSync(sandbox.scratch);
 	for (const line of calls)
@@ -363,7 +401,7 @@ test("pnpm proof at its boundary: refuses dirty trees, records, checks and clean
 	const skipped = proof(sandbox, ["--skip-e2e"]);
 	assert.equal(skipped.status, 0, skipped.stderr);
 	// Overwritten, not appended: the note is still one record.
-	assert.equal(shownRecord(sandbox).steps[2].status, "skipped");
+	assert.equal(e2eStatus(shownRecord(sandbox)), "skipped");
 	const rejected = proof(sandbox, ["--check"]);
 	assert.equal(rejected.status, 1);
 	assert.match(rejected.stderr, /skipped e2e/);
@@ -388,7 +426,7 @@ test("pnpm proof at its boundary: refuses dirty trees, records, checks and clean
 	assert.equal(proof(sandbox, reviewArgs).status, 1);
 	assert.equal(proof(sandbox, ["--add-review", reviewFile]).status, 0);
 	assert.equal(proof(sandbox, reviewArgs).status, 0);
-	assert.equal(shownRecord(sandbox).steps[2].status, "skipped");
+	assert.equal(e2eStatus(shownRecord(sandbox)), "skipped");
 
 	const failed = proof(sandbox, [], { FAKE_PNPM_FAIL: "verify" });
 	assert.equal(failed.status, 1);
@@ -401,9 +439,44 @@ test("pnpm proof at its boundary: refuses dirty trees, records, checks and clean
 			["passed", 0],
 			["failed", 3],
 			["not_run", null],
+			["not_run", null],
 		]
 	);
 	assert.equal(proof(sandbox, ["--check"]).status, 1);
+
+	// A commit that cannot build its deploy artifact has no passing proof,
+	// and e2e does not run after it.
+	const undeployable = proof(sandbox, [], {
+		FAKE_PNPM_FAIL: "check:deploy",
+	});
+	assert.equal(undeployable.status, 1);
+	assert.deepEqual(
+		shownRecord(sandbox).steps.map((entry) => [entry.name, entry.status]),
+		[
+			["install", "passed"],
+			["verify", "passed"],
+			["deploy", "failed"],
+			["e2e", "not_run"],
+		]
+	);
+	const undeployableCheck = proof(sandbox, ["--check"]);
+	assert.equal(undeployableCheck.status, 1);
+	assert.match(undeployableCheck.stderr, /deploy failed/);
+
+	// A schema 1 note, as older commits carry, shows but does not pass.
+	gitIn(
+		sandbox,
+		["notes", "--ref=refs/notes/proof", "add", "--force", "--file=-", head],
+		JSON.stringify({
+			...v1Record(),
+			commit: head,
+			tree: gitIn(sandbox, ["rev-parse", "HEAD^{tree}"]),
+		})
+	);
+	assert.equal(shownRecord(sandbox).schemaVersion, 1);
+	const v1Check = proof(sandbox, ["--check"]);
+	assert.equal(v1Check.status, 1);
+	assert.match(v1Check.stderr, /predates the deploy step/);
 
 	assert.equal(proof(sandbox, []).status, 0);
 	const tampered = { ...shownRecord(sandbox), tree: "0".repeat(40) };

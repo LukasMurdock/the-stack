@@ -87,7 +87,14 @@ function writeWorkerConfig(port: number, paths: E2EPaths): string {
 		// Wrangler registers local Workers by name in a machine-wide registry.
 		name: `the-stack-e2e-${port}`,
 		main: path.resolve("src/worker.ts"),
-		assets: { ...base.assets, directory: paths.outDir },
+		// Void deploys Astro with these, so every request reaches the Worker
+		// first; browser runs route requests the way production does.
+		assets: {
+			...base.assets,
+			directory: paths.outDir,
+			run_worker_first: true,
+			not_found_handling: "none",
+		},
 		vars: {
 			PRODUCT_NAME: "The Stack",
 			APP_ENV: "test",
@@ -208,6 +215,9 @@ function prepareBuild(
 	// Void stashes Astro's preview pointer after each build; keep this run's
 	// copy so another build in the checkout cannot redirect this preview.
 	copyFileSync(".void/preview-deploy-config.json", paths.deployConfig);
+	// Void's asset upload skips _headers, so production never applies Astro's
+	// rules; serve the same files here (src/worker/http/hashed-assets.ts).
+	rmSync(path.join(paths.outDir, "client", "_headers"), { force: true });
 	writeFileSync(
 		paths.buildStamp,
 		JSON.stringify({ fingerprint: stamp.fingerprint })

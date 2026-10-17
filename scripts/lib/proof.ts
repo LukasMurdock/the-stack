@@ -1,5 +1,5 @@
 // The proof record: evidence that one commit's exact tree passed install,
-// `pnpm verify` and `pnpm test:e2e` in a clean copy. `pnpm proof` writes it as
+// `pnpm verify`, `pnpm check:deploy` and `pnpm test:e2e` in a clean copy. `pnpm proof` writes it as
 // a git note under refs/notes/proof; `pnpm proof --check` and `pnpm ship` read
 // it back here. A note is external input, so it is parsed with zod and bound
 // to the commit and tree it claims to describe. Expected failures (bad input,
@@ -10,16 +10,18 @@ import { execFileSync } from "node:child_process";
 import { z } from "zod";
 import { CommandError, errorCode } from "./cli.ts";
 
-export const PROOF_SCHEMA_VERSION = 1;
+// 2 added the deploy step. Version 1 records still parse and show, but no
+// longer pass --check: they never built the deploy artifact.
+export const PROOF_SCHEMA_VERSION = 2;
 // Bumped when what a proof runs or records changes.
-export const PROOF_TOOL_VERSION = "1.0.0";
+export const PROOF_TOOL_VERSION = "2.0.0";
 export const PROOF_NOTES_REF = "refs/notes/proof";
 // Keeps a record readable in `git notes show` and cheap to fetch.
 export const PROOF_LOG_TAIL_BYTES_MAX = 4_096;
 export const PROOF_REVIEWS_MAX = 32;
 export const PROOF_REVIEW_SUMMARY_LENGTH_MAX = 2_000;
 export const PROOF_REVIEW_FILE_BYTES_MAX = 16_384;
-// Three log tails plus the full review allowance, with room to spare.
+// Four log tails plus the full review allowance, with room to spare.
 export const PROOF_NOTE_BYTES_MAX = 262_144;
 // git answers in milliseconds; a hung filesystem must not block forever.
 export const PROOF_GIT_TIMEOUT_MS = 30_000;
@@ -39,8 +41,10 @@ const sha = z.string().regex(SHA_PATTERN);
 const timestamp = z.iso.datetime();
 const durationMs = z.number().int().nonnegative();
 
-export const PROOF_STEP_NAMES = ["install", "verify", "e2e"] as const;
+export const PROOF_STEP_NAMES = ["install", "verify", "deploy", "e2e"] as const;
 export type ProofStepName = (typeof PROOF_STEP_NAMES)[number];
+// Schema version 1 recorded these.
+export const PROOF_V1_STEP_NAMES = ["install", "verify", "e2e"] as const;
 
 // not_run: an earlier step failed, so this one never started.
 const stepStatus = z.enum([
@@ -83,42 +87,61 @@ export const proofReviewInputSchema = proofReviewSchema
 	.extend({ at: timestamp.optional() })
 	.strict();
 
-// Exactly install, verify, e2e, in that order.
+function inOrder(names: readonly ProofStepName[]) {
+	return (steps: readonly ProofStep[]) =>
+		steps.every((step, index) => step.name === names[index]);
+}
+
+// Exactly install, verify, deploy, e2e, in that order.
 const stepsSchema = z
-	.tuple([stepSchema, stepSchema, stepSchema])
+	.tuple([stepSchema, stepSchema, stepSchema, stepSchema])
 	.readonly()
-	.refine(
-		(steps) =>
-			steps.every((step, index) => step.name === PROOF_STEP_NAMES[index]),
-		{
-			message: `steps must be ${PROOF_STEP_NAMES.join(", ")} in order`,
-		}
-	);
+	.refine(inOrder(PROOF_STEP_NAMES), {
+		message: `steps must be ${PROOF_STEP_NAMES.join(", ")} in order`,
+	});
 export type ProofSteps = z.infer<typeof stepsSchema>;
 
+const v1StepsSchema = z
+	.tuple([stepSchema, stepSchema, stepSchema])
+	.readonly()
+	.refine(inOrder(PROOF_V1_STEP_NAMES), {
+		message: `schema 1 steps must be ${PROOF_V1_STEP_NAMES.join(", ")} in order`,
+	});
+
+const recordFields = {
+	tool: z
+		.object({ name: z.literal("proof"), version: z.string().max(50) })
+		.readonly(),
+	commit: sha,
+	tree: sha,
+	result: z.enum(["passed", "failed"]),
+	startedAt: timestamp,
+	finishedAt: timestamp,
+	durationMs,
+	environment: z
+		.object({
+			node: z.string().max(50),
+			pnpm: z.string().max(50),
+			platform: z.string().max(50),
+			arch: z.string().max(50),
+		})
+		.readonly(),
+	reviews: z.array(proofReviewSchema).max(PROOF_REVIEWS_MAX).readonly(),
+};
+
 export const proofRecordSchema = z
-	.object({
-		schemaVersion: z.literal(PROOF_SCHEMA_VERSION),
-		tool: z
-			.object({ name: z.literal("proof"), version: z.string().max(50) })
-			.readonly(),
-		commit: sha,
-		tree: sha,
-		result: z.enum(["passed", "failed"]),
-		startedAt: timestamp,
-		finishedAt: timestamp,
-		durationMs,
-		environment: z
-			.object({
-				node: z.string().max(50),
-				pnpm: z.string().max(50),
-				platform: z.string().max(50),
-				arch: z.string().max(50),
-			})
-			.readonly(),
-		steps: stepsSchema,
-		reviews: z.array(proofReviewSchema).max(PROOF_REVIEWS_MAX).readonly(),
-	})
+	.discriminatedUnion("schemaVersion", [
+		z.object({
+			schemaVersion: z.literal(PROOF_SCHEMA_VERSION),
+			...recordFields,
+			steps: stepsSchema,
+		}),
+		z.object({
+			schemaVersion: z.literal(1),
+			...recordFields,
+			steps: v1StepsSchema,
+		}),
+	])
 	.readonly()
 	.refine((record) => record.result === deriveResult(record.steps), {
 		message: "result does not match the step statuses",
@@ -126,14 +149,20 @@ export const proofRecordSchema = z
 	})
 	.refine(
 		(record) =>
-			record.steps[0].status !== "skipped" &&
-			record.steps[1].status !== "skipped",
+			record.steps.every(
+				(step) => step.name === "e2e" || step.status !== "skipped"
+			),
 		{
 			message: "only the e2e step may be skipped",
 			path: ["steps"],
 		}
 	);
 export type ProofRecord = z.infer<typeof proofRecordSchema>;
+// What `pnpm proof` writes today.
+export type CurrentProofRecord = Extract<
+	ProofRecord,
+	{ readonly schemaVersion: typeof PROOF_SCHEMA_VERSION }
+>;
 
 // Passed only when every step that was meant to run passed.
 export function deriveResult(steps: readonly ProofStep[]): "passed" | "failed" {
@@ -231,7 +260,12 @@ export function evaluateProof(
 			`The proof failed (${failed.map((step) => `${step.name} ${step.status}`).join(", ")}).`
 		);
 	}
-	if (record.steps[2].status === "skipped" && !options.allowSkippedE2e)
+	if (record.schemaVersion === 1)
+		reasons.push(
+			"The proof predates the deploy step (proof schema 1), so it never built the deploy artifact; rerun pnpm proof."
+		);
+	const e2e = record.steps.find((step) => step.name === "e2e");
+	if (e2e?.status === "skipped" && !options.allowSkippedE2e)
 		reasons.push(
 			"The proof skipped e2e; rerun without --skip-e2e or pass --allow-skipped-e2e."
 		);

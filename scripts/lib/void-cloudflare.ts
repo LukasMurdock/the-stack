@@ -14,11 +14,15 @@ import {
 	readFileSync,
 	readSync,
 } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { findPackageJSON } from "node:module";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { z } from "zod";
 
 // Upgrading Void means comparing the internals below between versions (see
-// AGENTS.md) and running `pnpm test:tooling`, then adding the version here.
+// AGENTS.md), running `pnpm test:tooling` and `pnpm check:deploy`, then adding
+// the version here. Validation includes patches/void@<version>.patch: 1.1.11
+// is validated only with its patch applied (`pnpm check:deploy` fails without
+// it); drop the patch once a release ships the fix and still passes.
 export const VALIDATED_VOID_VERSIONS: readonly string[] = ["1.1.11"];
 
 // Void 1.1.11 ships 208 chunks; its longest export statement is 1,763 bytes.
@@ -177,20 +181,29 @@ export type VoidProvisioning = {
 	readonly persistCloudflareConfig: (root: string) => void;
 };
 
+async function importValue(
+	distUrl: URL,
+	index: ExportIndex,
+	name: string
+): Promise<{ readonly value: unknown; readonly source: string }> {
+	const { fileName, exportKey } = resolveExport(index, name);
+	const namespace: Record<string, unknown> = await import(
+		new URL(fileName, distUrl).href
+	);
+	return {
+		value: namespace[exportKey],
+		source: `${fileName} exports ${name} as ${exportKey}`,
+	};
+}
+
 async function importInternal(
 	distUrl: URL,
 	index: ExportIndex,
 	name: string
 ): Promise<unknown> {
-	const { fileName, exportKey } = resolveExport(index, name);
-	const namespace: Record<string, unknown> = await import(
-		new URL(fileName, distUrl).href
-	);
-	const value = namespace[exportKey];
+	const { value, source } = await importValue(distUrl, index, name);
 	if (typeof value !== "function")
-		throw new Error(
-			`${fileName} exports ${name} as ${exportKey}, but it is not a function.`
-		);
+		throw new Error(`${source}, but it is not a function.`);
 	return value;
 }
 
@@ -227,23 +240,220 @@ async function loadInternals(
 	};
 }
 
-// `entryUrl` is the package's main module (dist/index.mjs); tests pass a fake.
-export async function loadVoidProvisioning(
-	entryUrl: string = import.meta.resolve("void")
-): Promise<VoidProvisioning> {
+// The installed version, refused unless it is in VALIDATED_VOID_VERSIONS.
+function readValidatedVersion(entryUrl: string): string {
 	const { version } = packageJsonSchema.parse(
 		JSON.parse(readFileSync(new URL("../package.json", entryUrl), "utf8"))
 	);
 	if (!VALIDATED_VOID_VERSIONS.includes(version))
 		throw new Error(
-			`Void ${version} has not been validated with scripts/lib/void-cloudflare.ts (validated: ${VALIDATED_VOID_VERSIONS.join(", ")}). Compare provisionCloudflareResources, materializeCloudflareConfig and persistCloudflareConfig with the validated version, run pnpm test:tooling, then add ${version} to VALIDATED_VOID_VERSIONS.`
+			`Void ${version} has not been validated with scripts/lib/void-cloudflare.ts (validated: ${VALIDATED_VOID_VERSIONS.join(", ")}). Compare the internals it loads by name with the validated version, run pnpm test:tooling and pnpm check:deploy, then add ${version} to VALIDATED_VOID_VERSIONS.`
 		);
+	return version;
+}
+
+async function withVersionContext<T>(
+	version: string,
+	load: () => Promise<T>
+): Promise<T> {
 	try {
-		return { version, ...(await loadInternals(new URL("./", entryUrl))) };
+		return await load();
 	} catch (error: unknown) {
 		throw new Error(
 			`Void ${version}: ${error instanceof Error ? error.message : String(error)} Validate scripts/lib/void-cloudflare.ts against this version.`,
 			{ cause: error }
 		);
 	}
+}
+
+// `entryUrl` is the package's main module (dist/index.mjs); tests pass a fake.
+export async function loadVoidProvisioning(
+	entryUrl: string = import.meta.resolve("void")
+): Promise<VoidProvisioning> {
+	const version = readValidatedVersion(entryUrl);
+	const internals = await withVersionContext(version, () =>
+		loadInternals(new URL("./", entryUrl))
+	);
+	return { version, ...internals };
+}
+
+// --- Deploy artifact --------------------------------------------------------
+// `void deploy --platform cloudflare` prepares an Astro Worker in
+// prepareCloudflareFrameworkArtifact, which Void does not export, from the
+// internals below; scripts/testing/deploy-artifact.ts repeats its steps. The
+// public packages are Void's own dependencies, resolved from its directory.
+
+export const VOID_DEPLOY_INTERNALS = [
+	"readConfig",
+	"detectFramework",
+	"FRAMEWORK_PRESETS",
+	"analyzeApplicationSync",
+	"collectRevalidate",
+	"hasRevalidate",
+	"selectNativeVersionMetadataBinding",
+	"generateDeployWrapperIfNeeded",
+	"prepareCfFrameworkBuildOutput",
+	"scrubWranglerAuthCredentials",
+	"materializeCloudflareConfig",
+] as const;
+
+export const VOID_DEPLOY_PACKAGES = {
+	"@void/deploy-cloudflare": [
+		"parseRootWranglerConfig",
+		"writeCloudflareFrameworkDeployConfig",
+	],
+	"@cloudflare/build-output-utils": ["readBuildOutput", "getWorkerBundleDir"],
+} as const;
+
+type Loaded = ReadonlyMap<string, unknown>;
+
+// Values are parsed by the caller: these types only say how to call each
+// internal, as its validated version takes it, and return unknown.
+export type VoidDeployInternals = {
+	readonly version: string;
+	readonly readConfig: (root: string) => unknown;
+	readonly detectFramework: (root: string) => unknown;
+	readonly frameworkPresets: unknown;
+	readonly analyzeApplicationSync: (
+		root: string,
+		options: { readonly config: unknown; readonly environment: "prod" }
+	) => unknown;
+	readonly collectRevalidate: (config: unknown, routes: null) => unknown;
+	readonly hasRevalidate: (revalidate: unknown) => unknown;
+	readonly selectNativeVersionMetadataBinding: (
+		rootConfig: unknown,
+		options: {
+			readonly nativeBuild: true;
+			readonly preserveBindings: false;
+		}
+	) => unknown;
+	readonly generateDeployWrapperIfNeeded: (
+		root: string,
+		workerDir: string,
+		workerMain: string,
+		features: Readonly<Record<string, unknown>>
+	) => Promise<unknown>;
+	readonly prepareCfFrameworkBuildOutput: (options: {
+		readonly projectRoot: string;
+		readonly configPath: string;
+		readonly accountId: string | undefined;
+	}) => Promise<unknown>;
+	// Deletes every Cloudflare credential from env, in place.
+	readonly scrubWranglerAuthCredentials: (env: NodeJS.ProcessEnv) => unknown;
+	readonly materializeCloudflareConfig: (root: string) => string;
+	readonly parseRootWranglerConfig: (configPath: string) => unknown;
+	readonly writeCloudflareFrameworkDeployConfig: (
+		options: Readonly<Record<string, unknown>>
+	) => unknown;
+	readonly readBuildOutput: (directory: string) => Promise<unknown>;
+	readonly getWorkerBundleDir: (directory: string) => string;
+};
+
+function loaded<T>(values: Loaded, name: string): T {
+	const value = values.get(name);
+	if (typeof value !== "function")
+		throw new Error(`${name} was not loaded as a function.`);
+	// SAFETY: a function, checked above and when imported; T is how the
+	// version in VALIDATED_VOID_VERSIONS takes it, compared by hand.
+	return value as T;
+}
+
+function deployInternals(
+	values: Loaded
+): Omit<VoidDeployInternals, "version" | "frameworkPresets"> {
+	return {
+		readConfig: loaded(values, "readConfig"),
+		detectFramework: loaded(values, "detectFramework"),
+		analyzeApplicationSync: loaded(values, "analyzeApplicationSync"),
+		collectRevalidate: loaded(values, "collectRevalidate"),
+		hasRevalidate: loaded(values, "hasRevalidate"),
+		selectNativeVersionMetadataBinding: loaded(
+			values,
+			"selectNativeVersionMetadataBinding"
+		),
+		generateDeployWrapperIfNeeded: loaded(
+			values,
+			"generateDeployWrapperIfNeeded"
+		),
+		prepareCfFrameworkBuildOutput: loaded(
+			values,
+			"prepareCfFrameworkBuildOutput"
+		),
+		scrubWranglerAuthCredentials: loaded(
+			values,
+			"scrubWranglerAuthCredentials"
+		),
+		materializeCloudflareConfig: loaded(
+			values,
+			"materializeCloudflareConfig"
+		),
+		parseRootWranglerConfig: loaded(values, "parseRootWranglerConfig"),
+		writeCloudflareFrameworkDeployConfig: loaded(
+			values,
+			"writeCloudflareFrameworkDeployConfig"
+		),
+		readBuildOutput: loaded(values, "readBuildOutput"),
+		getWorkerBundleDir: loaded(values, "getWorkerBundleDir"),
+	};
+}
+
+const packageEntrySchema = z.object({
+	exports: z.object({ ".": z.object({ import: z.string() }) }),
+});
+
+// Void's dependencies export only an `import` condition, so `require.resolve`
+// cannot find them; findPackageJSON walks node_modules from Void's directory.
+async function importVoidDependency(
+	entryUrl: string,
+	name: string
+): Promise<Record<string, unknown>> {
+	const packageJsonPath = findPackageJSON(name, entryUrl);
+	if (packageJsonPath === undefined)
+		throw new Error(`Void's dependency ${name} is not installed.`);
+	const { exports } = packageEntrySchema.parse(
+		JSON.parse(readFileSync(packageJsonPath, "utf8"))
+	);
+	const moduleUrl = new URL(
+		exports["."].import,
+		pathToFileURL(packageJsonPath)
+	);
+	return import(moduleUrl.href);
+}
+
+async function loadDeployInternals(
+	entryUrl: string
+): Promise<Omit<VoidDeployInternals, "version">> {
+	const distUrl = new URL("./", entryUrl);
+	const index = indexChunkExports(readChunks(distUrl));
+	const values = new Map<string, unknown>();
+	for (const name of VOID_DEPLOY_INTERNALS) {
+		const { value, source } = await importValue(distUrl, index, name);
+		if (name !== "FRAMEWORK_PRESETS" && typeof value !== "function")
+			throw new Error(`${source}, but it is not a function.`);
+		values.set(name, value);
+	}
+	for (const [packageName, names] of Object.entries(VOID_DEPLOY_PACKAGES)) {
+		const namespace = await importVoidDependency(entryUrl, packageName);
+		for (const name of names) {
+			if (typeof namespace[name] !== "function")
+				throw new Error(
+					`${packageName} does not export a function ${name}.`
+				);
+			values.set(name, namespace[name]);
+		}
+	}
+	return {
+		...deployInternals(values),
+		frameworkPresets: values.get("FRAMEWORK_PRESETS"),
+	};
+}
+
+export async function loadVoidDeployInternals(
+	entryUrl: string = import.meta.resolve("void")
+): Promise<VoidDeployInternals> {
+	const version = readValidatedVersion(entryUrl);
+	const internals = await withVersionContext(version, () =>
+		loadDeployInternals(entryUrl)
+	);
+	return { version, ...internals };
 }

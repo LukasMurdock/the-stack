@@ -8,6 +8,7 @@ import type { ReleaseIo } from "../../scripts/ci-wait.ts";
 import {
 	parseProofRecord,
 	PROOF_NOTES_REF,
+	type CurrentProofRecord,
 	type ProofRecord,
 	type ProofStep,
 	resolveTarget,
@@ -78,13 +79,13 @@ function step(name: ProofStep["name"], status: ProofStep["status"]): ProofStep {
 function prove(
 	repo: string,
 	rev: string,
-	overrides: Partial<ProofRecord> = {}
+	overrides: Partial<CurrentProofRecord> = {}
 ): void {
 	const target = resolveTarget(rev, repo);
 	writeProof(
 		{
-			schemaVersion: 1,
-			tool: { name: "proof", version: "1.0.0" },
+			schemaVersion: 2,
+			tool: { name: "proof", version: "2.0.0" },
 			commit: target.commit,
 			tree: target.tree,
 			result: "passed",
@@ -100,6 +101,7 @@ function prove(
 			steps: [
 				step("install", "passed"),
 				step("verify", "passed"),
+				step("deploy", "passed"),
 				step("e2e", "passed"),
 			],
 			reviews: [],
@@ -272,6 +274,7 @@ test("trunk ship refuses a missing proof, a failed proof and a proof of another 
 					steps: [
 						step("install", "passed"),
 						step("verify", "failed"),
+						step("deploy", "not_run"),
 						step("e2e", "not_run"),
 					],
 				}),

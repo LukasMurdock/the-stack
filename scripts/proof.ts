@@ -1,7 +1,12 @@
 // `pnpm proof` verifies the committed HEAD, not the working tree: it refuses a
 // dirty tree, checks HEAD out into a temporary detached worktree, runs
-// `pnpm install --frozen-lockfile`, `pnpm verify` and `pnpm test:e2e` there,
-// and records the outcome as a git note on the commit (refs/notes/proof).
+// `pnpm install --frozen-lockfile`, `pnpm verify`, `pnpm check:deploy` and
+// `pnpm test:e2e` there, and records the outcome as a git note on the commit
+// (refs/notes/proof).
+//
+// The deploy step builds the Worker `void deploy` would publish, offline. It
+// runs before e2e: one build, so a commit that cannot deploy fails minutes
+// sooner, and its dist/ output is separate from e2e's per-port build.
 // `--check`, `--show` and `--add-review` read and extend that note.
 //
 // A detached `git worktree` rather than `git archive`: the copy is a real
@@ -46,6 +51,7 @@ import {
 	PROOF_SCHEMA_VERSION,
 	PROOF_TOOL_VERSION,
 	parseProofReview,
+	type CurrentProofRecord,
 	type ProofRecord,
 	type ProofStep,
 	type ProofStepName,
@@ -63,6 +69,8 @@ import {
 export const PROOF_INSTALL_TIMEOUT_MS = 15 * 60_000;
 // Lint, build, type checks and every non-browser suite.
 export const PROOF_VERIFY_TIMEOUT_MS = 45 * 60_000;
+// A cold deploy build plus Void's re-bundle.
+export const PROOF_DEPLOY_TIMEOUT_MS = 30 * 60_000;
 // A cold production build plus the browser suite.
 export const PROOF_E2E_TIMEOUT_MS = 45 * 60_000;
 export const PROOF_LOG_DIRECTORY = ".proof";
@@ -73,7 +81,8 @@ export const PROOF_USAGE = `Usage: pnpm proof [--skip-e2e] [--keep]
        pnpm proof --add-review <file.json> [rev]
 
 Without a mode, verifies the committed HEAD in a clean temporary checkout
-(install, pnpm verify, pnpm test:e2e) and records the result as a git note
+(install, pnpm verify, pnpm check:deploy, pnpm test:e2e) and records the
+result as a git note
 under ${PROOF_NOTES_REF}. Refuses to run with uncommitted or untracked changes.
 Logs go to ${PROOF_LOG_DIRECTORY}/<sha>/. pnpm ship pushes the note with the
 commit (alone: git push origin ${PROOF_NOTES_REF}).
@@ -81,7 +90,8 @@ commit (alone: git push origin ${PROOF_NOTES_REF}).
   --skip-e2e               Record e2e as skipped (--check rejects it by default).
   --keep                   Keep the temporary checkout and print its path.
   --check [rev]            Exit 0 only if rev (default HEAD) has a passing proof
-                           of its exact tree with e2e run.
+                           of its exact tree, with the deploy step (proof
+                           schema 2) and e2e run.
   --allow-skipped-e2e      With --check, accept a proof that skipped e2e.
   --require-reviews <n>    With --check, require n approving reviews (max ${PROOF_REVIEWS_MAX}).
   --show [rev]             Print rev's proof record.
@@ -234,7 +244,7 @@ type StepPlan = {
 	readonly timeoutMs: number;
 };
 
-const STEP_PLANS: readonly [StepPlan, StepPlan, StepPlan] = [
+const STEP_PLANS: readonly [StepPlan, StepPlan, StepPlan, StepPlan] = [
 	{
 		name: "install",
 		command: ["pnpm", "install", "--frozen-lockfile"],
@@ -244,6 +254,11 @@ const STEP_PLANS: readonly [StepPlan, StepPlan, StepPlan] = [
 		name: "verify",
 		command: ["pnpm", "verify"],
 		timeoutMs: PROOF_VERIFY_TIMEOUT_MS,
+	},
+	{
+		name: "deploy",
+		command: ["pnpm", "check:deploy"],
+		timeoutMs: PROOF_DEPLOY_TIMEOUT_MS,
 	},
 	{
 		name: "e2e",
@@ -391,14 +406,15 @@ async function runSteps(
 	context: StepContext,
 	skipE2e: boolean
 ): Promise<ProofSteps> {
-	const [installPlan, verifyPlan, e2ePlan] = STEP_PLANS;
+	const [installPlan, verifyPlan, deployPlan, e2ePlan] = STEP_PLANS;
 	const install = await runAfter(null, installPlan, context);
 	const verify = await runAfter(install, verifyPlan, context);
+	const deploy = await runAfter(verify, deployPlan, context);
 	const e2e =
-		skipE2e && verify.status === "passed"
+		skipE2e && deploy.status === "passed"
 			? unranStep(e2ePlan, "skipped")
-			: await runAfter(verify, e2ePlan, context);
-	return [install, verify, e2e];
+			: await runAfter(deploy, e2ePlan, context);
+	return [install, verify, deploy, e2e];
 }
 
 function createCopy(root: string, commit: string): string {
@@ -520,7 +536,7 @@ async function runProof(skipE2e: boolean, keep: boolean): Promise<void> {
 		process.stderr.write("Interrupted; no proof recorded.\n");
 		process.exit();
 	}
-	const record: ProofRecord = {
+	const record: CurrentProofRecord = {
 		schemaVersion: PROOF_SCHEMA_VERSION,
 		tool: { name: "proof", version: PROOF_TOOL_VERSION },
 		commit: run.target.commit,

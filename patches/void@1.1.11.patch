@@ -1,0 +1,13 @@
+diff --git a/dist/wrapper-BOigE1xJ.mjs b/dist/wrapper-BOigE1xJ.mjs
+index 76c7629719c928868d226675ce9e94ebbe907677..33dbbc3bad248620b891cfcd31859a54911bc647 100644
+--- a/dist/wrapper-BOigE1xJ.mjs
++++ b/dist/wrapper-BOigE1xJ.mjs
+@@ -145,7 +145,7 @@ async function generateWrapper(workerDir, workerMain, root, features) {
+ 			}
+ 		});
+ 		handlerFilename = readdirSync(outDir).filter((f) => f.startsWith("__void_handlers"))[0] ?? "__void_handlers.mjs";
+-		copyFileSync(join(outDir, handlerFilename), join(workerDir, handlerFilename));
++		for (const emitted of readdirSync(outDir)) copyFileSync(join(outDir, emitted), join(workerDir, emitted));
+ 	}
+ 	let migrations;
+ 	let migrationPlanBundle;

@@ -2,7 +2,11 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { localCloudflare } from "../config/cloudflare.mjs";
 
-export const localConfigPath = path.resolve(".wrangler/local/wrangler.json");
+// Wrangler and the Cloudflare Vite plugin read local secrets (`.env`) from the
+// config file's directory, so the generated file sits beside `.env` in the
+// project root. Its name must not start with `wrangler`: Void treats a root
+// wrangler.json(c) as a config to migrate.
+export const localConfigPath = path.resolve(".wrangler-local.json");
 
 export function writeLocalCloudflareConfig() {
 	const config = structuredClone(localCloudflare);

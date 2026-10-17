@@ -194,7 +194,7 @@ Drizzle, and Turret retain their product architecture.
 
 `void.config.ts` imports example deployment bindings from `config/cloudflare.mjs`.
 Local defaults live in `localCloudflare` in the same module. Void generates
-`.void-wrangler.jsonc`; local tooling generates `.wrangler/local/wrangler.json`.
+`.void-wrangler.jsonc`; local tooling generates `.wrangler-local.json`.
 
 This is a starter with no existing deployment. After creating your app, configure
 its name, origin, sender, and secrets using
