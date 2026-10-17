@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import ts from "typescript";
 import { z } from "zod";
 import { ensureFlagshipApp, runWrangler } from "./lib/flagship.ts";
-import { loadVoidProvisioning } from "./lib/void-cloudflare.mjs";
+import { loadVoidProvisioning } from "./lib/void-cloudflare.ts";
 
 const cloudflareConfigSchema = z.looseObject({
 	name: z.string(),
@@ -124,7 +124,7 @@ export function provisioningPlans(config) {
 	return plans;
 }
 
-// Void 0.28 has no Flagship provisioning and refuses to deploy a flagship
+// Void 1.1 has no Flagship provisioning and refuses to deploy a flagship
 // binding without an app ID, so the adapter finds or creates the app named
 // after the Worker, writes its app_id into the materialized config, and has
 // Void record it in void.lock.json. Later deploys reuse the recorded ID.

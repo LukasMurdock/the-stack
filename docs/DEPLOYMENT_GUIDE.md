@@ -118,7 +118,7 @@ and Turret must have distinct names and IDs, preserving their separate D1 limits
 ## Feature flags (Flagship)
 
 The `FLAGS` binding needs a [Flagship](https://developers.cloudflare.com/flagship/)
-app; Void 0.28 cannot create one and refuses to publish the binding without
+app; Void 1.1 cannot create one and refuses to publish the binding without
 its ID. `pnpm run deploy` therefore looks for an app named after the Worker
 (`appName`) with `wrangler flagship apps list`, creates it with
 `wrangler flagship apps create` if there is none, and records its `app_id` in
@@ -144,7 +144,7 @@ rollouts and the kill switch.
 
 ## Why there is a small adapter
 
-Void 0.28's public inference models one primary D1 database. The Stack uses two.
+Void 1.1's public inference models one primary D1 database. The Stack uses two.
 `scripts/provision-resources.mjs` calls the **installed Void provisioning engine**
 once for each declared database; that engine owns account checks, discovery,
 creation, locking, retries, and writing `void.lock.json`. The Stack does not
@@ -153,9 +153,10 @@ implement a second set of Cloudflare provisioning requests.
 The same adapter fills the gap for Flagship apps (above), through Wrangler's
 documented `flagship apps` commands, and has Void record the ID.
 
-The SDK's internal entry points are isolated in `scripts/lib/void-cloudflare.mjs`
-and checked against the exact pinned Void version. Updating Void requires
-validating this adapter and its transport-level tests. Database migrations remain
+The SDK's internal entry points are isolated in `scripts/lib/void-cloudflare.ts`,
+which finds them by name in Void's bundle and accepts only the Void versions listed
+in `VALIDATED_VOID_VERSIONS`. Updating Void requires validating this adapter and
+its transport-level tests, then adding the version to that list. Database migrations remain
 explicit per database until Void offers a public multi-database workflow.
 
 ## Validate your new app

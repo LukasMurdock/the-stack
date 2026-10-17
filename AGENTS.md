@@ -148,8 +148,10 @@ independent D1 limits. Do not consolidate them. The deploy wrapper uses the
 installed Void provisioning engine for both databases, both KV namespaces, and
 the replay bucket. Do not add manual resource-create instructions or require IDs.
 The engine records IDs in `void.lock.json`; validate the version-pinned adapter
-in `scripts/lib/void-cloudflare.mjs` when updating Void. `pnpm test:tooling`
-checks partial-failure recovery and reuse with a mocked cloud transport.
+in `scripts/lib/void-cloudflare.ts` when updating Void: compare the internals it
+loads by name with the validated version, run `pnpm test:tooling` (partial-failure
+recovery and reuse with a mocked cloud transport), then add the version to
+`VALIDATED_VOID_VERSIONS`.
 Preserve `src/worker.ts` as the API/Astro dispatcher. Void publication wraps
 framework Workers; `crons/turret-retention.ts` delegates its scheduled event to
 the existing Turret cleanup handler.
