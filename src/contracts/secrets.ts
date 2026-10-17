@@ -14,9 +14,10 @@ export type SecretSpec = {
 	readonly description: string;
 };
 
-// Secrets Store holds values of up to 1,024 bytes; anything longer is not a
-// value this app stored.
-export const SECRET_VALUE_BYTES_MAX = 1_024;
+// Secrets Store holds values of up to 64 KiB (Wrangler's
+// MAX_SECRET_VALUE_BYTES; the API rejects longer ones). Anything longer is not
+// a value this app stored. A service-account JSON key (a few KB) fits.
+export const SECRET_VALUE_BYTES_MAX = 65_536;
 
 export const workerSecrets = {
 	BETTER_AUTH_SECRET: {
