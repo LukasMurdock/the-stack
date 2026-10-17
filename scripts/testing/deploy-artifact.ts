@@ -517,8 +517,9 @@ async function buildArtifact(
 			accountId: config.account_id,
 		});
 	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
 		throw new CommandError(
-			`Void could not re-bundle the Worker for Cloudflare (prepareCfFrameworkBuildOutput):\n${error instanceof Error ? error.message : String(error)}`,
+			`Void could not re-bundle the Worker for Cloudflare (prepareCfFrameworkBuildOutput):\n${message}${cronBundleHint(message)}`,
 			{ cause: error }
 		);
 	}
@@ -591,3 +592,13 @@ if (isEntryPoint(import.meta.url))
 		parse: () => parseDeployArtifactOptions(process.argv.slice(2)),
 		run: checkDeployArtifact,
 	});
+
+// Void bundles crons/ separately and copies only that bundle's entry file, so
+// a chunk the entry imports is missing from the published Worker.
+export function cronBundleHint(message: string): string {
+	if (!message.includes("__void_handlers")) return "";
+	return (
+		"\nA crons/ module's import graph split into chunks, and Void publishes only the entry file. " +
+		"Import the job module (src/worker/scheduled-cleanup.ts), not the API Worker or anything that uses a dynamic import()."
+	);
+}

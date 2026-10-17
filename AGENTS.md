@@ -157,10 +157,10 @@ in `scripts/lib/void-cloudflare.ts` when updating Void: compare the internals it
 loads by name with the validated version, run `pnpm test:tooling` (partial-failure
 recovery and reuse with a mocked cloud transport), then add the version to
 `VALIDATED_VOID_VERSIONS`.
-`patches/void@1.1.11.patch` (pnpm `patchedDependencies`) makes Void's cron
-wrapper copy its split chunks; without it `void deploy` cannot bundle the
-Worker. Remove it when Void ships the fix and `pnpm check:deploy` passes
-without it. Void records the last build's `main` and `assets` in
+Void bundles `crons/` on its own and keeps only that bundle's entry file, so a
+cron's import graph must not split into chunks: import the job module
+(`src/worker/scheduled-cleanup.ts`), never the API Worker or anything with a
+dynamic `import()`. `pnpm check:deploy` fails if a cron bundle splits. Void records the last build's `main` and `assets` in
 `void.lock.json`; `pnpm run deploy` restores the authored values
 (`scripts/lib/void-lock.ts`) before building and after publishing, and
 `pnpm check:deploy` fails on a lock that still has them.

@@ -20,9 +20,7 @@ import { z } from "zod";
 
 // Upgrading Void means comparing the internals below between versions (see
 // AGENTS.md), running `pnpm test:tooling` and `pnpm check:deploy`, then adding
-// the version here. Validation includes patches/void@<version>.patch: 1.1.11
-// is validated only with its patch applied (`pnpm check:deploy` fails without
-// it); drop the patch once a release ships the fix and still passes.
+// the version here.
 export const VALIDATED_VOID_VERSIONS: readonly string[] = ["1.1.11"];
 
 // Void 1.1.11 ships 208 chunks; its longest export statement is 1,763 bytes.

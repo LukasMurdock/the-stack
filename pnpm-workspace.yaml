@@ -11,9 +11,3 @@ allowBuilds:
     esbuild: true
     sharp: true
     workerd: true
-
-# Void 1.1.11's cron wrapper copies only __void_handlers.js and drops the chunks
-# its bundle splits out, so `void deploy` cannot prepare the Worker. Remove the
-# patch when Void ships the fix (`pnpm check:deploy` fails without it).
-patchedDependencies:
-    void@1.1.11: patches/void@1.1.11.patch

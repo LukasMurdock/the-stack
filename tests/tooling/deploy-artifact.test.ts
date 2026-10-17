@@ -5,6 +5,7 @@ import test from "node:test";
 import {
 	type Artifact,
 	type ArtifactModule,
+	cronBundleHint,
 	expectedFromConfig,
 	parseDeployArtifactOptions,
 	relativeImports,
@@ -176,4 +177,17 @@ test("node scripts/testing/deploy-artifact.ts at its boundary: help and usage er
 		assert.equal(bad.status, 2, bad.stderr);
 		assert.match(bad.stderr, /Usage: pnpm check:deploy/);
 	}
+});
+
+test("a split crons/ bundle is explained, other bundling errors are not", () => {
+	// The exact message Void's re-bundle gave when crons/ imported the API Worker.
+	const split =
+		"[UNRESOLVED_IMPORT] Could not resolve './react-8wLGEpWo.js' in dist/server/__void_handlers.js";
+	assert.match(cronBundleHint(split), /src\/worker\/scheduled-cleanup\.ts/);
+	assert.equal(
+		cronBundleHint(
+			"[UNRESOLVED_IMPORT] Could not resolve './x.js' in dist/server/entry.mjs"
+		),
+		""
+	);
 });
