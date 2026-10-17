@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { routes } from "../../src/worker/api/routes/readiness";
+import { EMAIL_LAST_SEND_KEY } from "../../src/contracts/email-send-outcome";
+import { fakeKv } from "../helpers/fake-kv";
 import { productFixture } from "../helpers/product";
 import { testBindings, unavailableD1 } from "../helpers/worker";
 import { z } from "zod";
@@ -15,7 +17,11 @@ test("readiness requires the migrated database and never exposes database errors
 	const ready = await routes.request(
 		"http://local.test/readiness",
 		{},
-		testBindings({ CORE_DB: f.binding, BETTER_AUTH_SECRET })
+		testBindings({
+			CORE_DB: f.binding,
+			CORE_KV: fakeKv().binding,
+			BETTER_AUTH_SECRET,
+		})
 	);
 	assert.equal(ready.status, 200);
 	assert.equal(ready.headers.get("cache-control"), "no-store");
@@ -24,7 +30,11 @@ test("readiness requires the migrated database and never exposes database errors
 	const unmigrated = await routes.request(
 		"http://local.test/readiness",
 		{},
-		testBindings({ CORE_DB: f.binding, BETTER_AUTH_SECRET })
+		testBindings({
+			CORE_DB: f.binding,
+			CORE_KV: fakeKv().binding,
+			BETTER_AUTH_SECRET,
+		})
 	);
 	assert.equal(unmigrated.status, 503);
 	assert.equal(readinessSchema.parse(await unmigrated.json()).ok, false);
@@ -33,6 +43,7 @@ test("readiness requires the migrated database and never exposes database errors
 		{},
 		testBindings({
 			CORE_DB: unavailableD1("private binding details"),
+			CORE_KV: fakeKv().binding,
 			BETTER_AUTH_SECRET,
 		})
 	);
@@ -51,6 +62,7 @@ test("readiness reports what email can do without failing the app", async (t) =>
 			{},
 			testBindings({
 				CORE_DB: f.binding,
+				CORE_KV: fakeKv().binding,
 				BETTER_AUTH_SECRET,
 				...bindings,
 			})
@@ -61,7 +73,7 @@ test("readiness reports what email can do without failing the app", async (t) =>
 	}
 	assert.deepEqual(
 		await emailStatus({ APP_ENV: "local", EMAIL_TRANSPORT: "log" }),
-		{ delivery: "log_only" }
+		{ delivery: "log_only", lastSend: null }
 	);
 	assert.deepEqual(
 		await emailStatus({
@@ -73,6 +85,7 @@ test("readiness reports what email can do without failing the app", async (t) =>
 			delivery: "unavailable",
 			reason: "EMAIL_FROM uses the placeholder domain your-app.example.",
 			disabled: ["invitations", "password reset", "email verification"],
+			lastSend: null,
 		}
 	);
 	assert.deepEqual(
@@ -82,7 +95,7 @@ test("readiness reports what email can do without failing the app", async (t) =>
 			EMAIL_FROM: "Team <noreply@mail.company.com>",
 			RESEND_API_KEY: "re_live_key",
 		}),
-		{ delivery: "provider", transport: "resend" }
+		{ delivery: "provider", transport: "resend", lastSend: null }
 	);
 });
 
@@ -95,6 +108,7 @@ test("readiness reports whether FLAGS is bound; without it defaults are served",
 			{},
 			testBindings({
 				CORE_DB: f.binding,
+				CORE_KV: fakeKv().binding,
 				BETTER_AUTH_SECRET,
 				...bindings,
 			})
@@ -135,7 +149,7 @@ test("readiness fails, naming no value, while a required secret is missing", asy
 	const response = await routes.request(
 		"http://local.test/readiness",
 		{},
-		testBindings({ CORE_DB: f.binding })
+		testBindings({ CORE_DB: f.binding, CORE_KV: fakeKv().binding })
 	);
 	assert.equal(response.status, 503);
 	assert.deepEqual(
@@ -147,4 +161,42 @@ test("readiness fails, naming no value, while a required secret is missing", asy
 			.parse(await response.json()),
 		{ ok: false, secrets: { missingRequired: ["BETTER_AUTH_SECRET"] } }
 	);
+});
+
+test("readiness reports the last provider send and survives an unreadable store", async (t) => {
+	const f = productFixture();
+	t.after(() => f.sqlite.close());
+	t.mock.method(console, "error", () => {});
+	async function lastSend(kv: KVNamespace) {
+		const response = await routes.request(
+			"http://local.test/readiness",
+			{},
+			testBindings({
+				CORE_DB: f.binding,
+				CORE_KV: kv,
+				BETTER_AUTH_SECRET,
+			})
+		);
+		assert.equal(response.status, 200, "email never decides readiness");
+		return z
+			.object({ email: z.object({ lastSend: z.unknown() }) })
+			.parse(await response.json()).email.lastSend;
+	}
+	const record = {
+		outcome: "failed",
+		atMs: 1_700_000_000_000,
+		type: "verify-email",
+		provider: "resend",
+		code: "validation_error",
+		message: "The mail.company.com domain is not verified",
+	};
+	assert.deepEqual(
+		await lastSend(
+			fakeKv({ [EMAIL_LAST_SEND_KEY]: JSON.stringify(record) }).binding
+		),
+		{ outcome: "failed", atMs: record.atMs, code: "validation_error" }
+	);
+	const broken = fakeKv();
+	broken.kv.get = () => Promise.reject(new Error("KV unavailable"));
+	assert.equal(await lastSend(broken.binding), null);
 });

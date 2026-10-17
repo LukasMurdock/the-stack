@@ -7,6 +7,7 @@ import { routes as flagsRoutes } from "./routes/flags";
 import { routes as rootRoutes } from "./routes/root";
 import { routes as bootstrapRoutes } from "./routes/bootstrap";
 import { routes as adminUserRoutes } from "./routes/admin-users";
+import { routes as adminEmailDeliveryRoutes } from "./routes/admin-email-delivery";
 import { routes as internalTurretSummaryRoutes } from "./routes/internal-turret-summary";
 import { routes as internalTurretRoutes } from "./routes/internal-turret";
 import { routes as internalTurretFeaturesRoutes } from "./routes/internal-turret-features";
@@ -40,6 +41,7 @@ const apiRoutes = api
 	// example:end
 	.route("/", bootstrapRoutes)
 	.route("/", adminUserRoutes)
+	.route("/", adminEmailDeliveryRoutes)
 	.route("/", turretRoutes)
 	.route("/", internalTurretSummaryRoutes)
 	.route("/", internalTurretRoutes)

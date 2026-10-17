@@ -47,7 +47,10 @@ reports `email.delivery` (`provider`, `log_only`, or `unavailable` with a
 `pnpm run doctor` warns when `deploymentCloudflare.vars` cannot send (for
 example, the placeholder `your-app.example` sender). Readiness sees
 configuration only: a Cloudflare binding still needs the domain onboarded
-(`pnpm exec void email status --platform cloudflare`).
+(`pnpm exec void email status --platform cloudflare`). `email.lastSend`
+reports the outcome of the last real provider send (`accepted` or `failed`,
+with `atMs` and `code`); while it is `failed`, admin pages show the sanitized
+provider message and `pnpm ship` warns.
 
 Until email works, invitations, password reset, and email verification cannot
 be delivered. Bootstrap the first administrator with `pnpm admin:bootstrap`

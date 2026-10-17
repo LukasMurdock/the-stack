@@ -5,13 +5,15 @@ import {
 	describeEmailDelivery,
 	type EmailDelivery,
 } from "../../../contracts/email-delivery";
+import { publicLastSendSchema } from "../../../contracts/email-send-outcome";
+import { readLastSend } from "../../email/send-outcome";
 import { flagBindingStatus } from "../../flags";
 import { missingRequiredSecrets } from "../../secrets";
 
 const app = new OpenAPIHono<{ Bindings: Bindings }>();
 // Email is optional for readiness: without it the app serves, but the listed
 // features cannot work. Reporting it here tells the owner before a user does.
-const emailStatus = z.discriminatedUnion("delivery", [
+const emailConfiguration = z.discriminatedUnion("delivery", [
 	z.object({
 		delivery: z.literal("provider"),
 		transport: z.enum(["cloudflare", "resend"]),
@@ -23,6 +25,14 @@ const emailStatus = z.discriminatedUnion("delivery", [
 		disabled: z.array(z.enum(EMAIL_DEPENDENT_FEATURES)),
 	}),
 ]);
+// The last real provider send. `outcome: "failed"` means configuration looks
+// right but the provider refuses (e.g. a sender domain not onboarded); the
+// message is admin-only (GET /api/internal/email-delivery). Null until a
+// provider send happens.
+const emailStatus = z.intersection(
+	emailConfiguration,
+	z.object({ lastSend: publicLastSendSchema.nullable() })
+);
 // Flags are optional too: without the FLAGS binding every flag serves its
 // registry default.
 const flagsStatus = z.discriminatedUnion("binding", [
@@ -58,7 +68,9 @@ const getReadiness = createRoute({
 	},
 });
 
-export function emailReadiness(env: Bindings): z.infer<typeof emailStatus> {
+export function emailReadiness(
+	env: Bindings
+): z.infer<typeof emailConfiguration> {
 	const delivery: EmailDelivery = describeEmailDelivery({
 		appEnv: env.APP_ENV,
 		transport: env.EMAIL_TRANSPORT,
@@ -71,9 +83,27 @@ export function emailReadiness(env: Bindings): z.infer<typeof emailStatus> {
 	return delivery;
 }
 
+// A KV failure must not fail readiness; email never decides `ok`.
+async function lastSendReadiness(
+	env: Bindings
+): Promise<z.infer<typeof publicLastSendSchema> | null> {
+	try {
+		const lastSend = await readLastSend(env.CORE_KV);
+		if (lastSend === null) return null;
+		const { outcome, atMs, code } = lastSend;
+		return { outcome, atMs, code };
+	} catch (error: unknown) {
+		console.error("readiness could not read the last email send", error);
+		return null;
+	}
+}
+
 export const routes = app.openapi(getReadiness, async (c) => {
 	c.header("Cache-Control", "no-store");
-	const email = emailReadiness(c.env);
+	const email = {
+		...emailReadiness(c.env),
+		lastSend: await lastSendReadiness(c.env),
+	};
 	const flags = flagBindingStatus(c.env.FLAGS);
 	const secrets = { missingRequired: [...missingRequiredSecrets(c.env)] };
 	if (secrets.missingRequired.length > 0)

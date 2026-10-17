@@ -162,7 +162,11 @@ function refsSnapshot(repo: string): string {
 }
 
 // git runs for real in the checkout; pnpm/node are recorded and succeed.
-function trunkIo(work: string, servedAtStart: string | null) {
+function trunkIo(
+	work: string,
+	servedAtStart: string | null,
+	readiness: unknown = {}
+) {
 	const calls: string[] = [];
 	const lines: string[] = [];
 	const deployCommits: string[] = [];
@@ -199,7 +203,7 @@ function trunkIo(work: string, servedAtStart: string | null) {
 		},
 		async fetch(url) {
 			calls.push(`fetch ${url}`);
-			if (url.endsWith("/api/readiness")) return Response.json({});
+			if (url.endsWith("/api/readiness")) return Response.json(readiness);
 			return Response.json({ ok: true, commit: served, version: "v-1" });
 		},
 		async sleep(durationMs) {
@@ -237,6 +241,29 @@ test("trunk ship pushes HEAD and its proof note atomically, deploys it and waits
 	assert.match(output, /Shipped main at [0-9a-f]{12} \(Worker version v-1\)/);
 	assert.match(output, /Sign in:\s+https:\/\/app\.test\.dev\/app\/login/);
 	assert.ok(!io.calls.some((call) => call.startsWith("gh ")));
+});
+
+test("trunk ship warns, without failing, while production's last email send failed", async (t) => {
+	const repos = setup(t);
+	const io = trunkIo(repos.work, repos.base, {
+		ok: true,
+		email: {
+			delivery: "provider",
+			transport: "cloudflare",
+			lastSend: {
+				outcome: "failed",
+				atMs: Date.parse(nowIso),
+				code: "E_SENDER_DOMAIN_NOT_AVAILABLE",
+			},
+		},
+	});
+	await ship(io, trunk, config);
+	const output = io.lines.join("\n");
+	assert.match(output, /Shipped main at/);
+	assert.match(
+		output,
+		/WARN: the last email send failed at 2026-01-02T03:04:05\.000Z \(E_SENDER_DOMAIN_NOT_AVAILABLE\)/
+	);
 });
 
 test("trunk ship refuses a dirty tree before any side effect", async (t) => {

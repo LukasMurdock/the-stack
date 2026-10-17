@@ -1,4 +1,5 @@
 import { AuthenticatedOutlet } from "../features/auth/AuthenticatedOutlet";
+import { EmailFailureBanner } from "../features/admin/EmailFailureBanner";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { ApiError } from "../api";
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
@@ -77,6 +78,7 @@ function TsAdminLayout() {
 			</header>
 
 			<div className="mx-auto max-w-7xl px-4 py-6">
+				<EmailFailureBanner />
 				<AuthenticatedOutlet userId={userId} />
 			</div>
 		</div>

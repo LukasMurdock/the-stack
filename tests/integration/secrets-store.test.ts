@@ -3,6 +3,7 @@ import test, { type TestContext } from "node:test";
 import { hashPassword } from "better-auth/crypto";
 import { z } from "zod";
 import worker, { type WorkerEnv } from "../../src/worker/index";
+import { fakeKv } from "../helpers/fake-kv";
 import { productFixture } from "../helpers/product";
 import { testBindings, untracedExecutionContext } from "../helpers/worker";
 
@@ -48,6 +49,7 @@ function fixtureEnv(
 			EMAIL_FROM: "noreply@example.test",
 			TURRET_MODE: "full",
 			CORE_DB: f.binding,
+			CORE_KV: fakeKv().binding,
 		}),
 		...secrets,
 	};

@@ -38,6 +38,7 @@ import {
 	parsePullRequestNumber,
 	productionOrigin,
 	PULL_REQUEST_FIELDS,
+	readinessWarnings,
 	type PullRequest,
 	ReleaseError,
 	releaseSummary,
@@ -245,6 +246,17 @@ async function checkReadiness(io: ReleaseIo, origin: string): Promise<void> {
 	}
 	if (!response.ok)
 		throw new ReleaseError(`/api/readiness returned ${response.status}.`);
+	let body: string;
+	try {
+		body = await response.text();
+	} catch (error: unknown) {
+		// Readiness passed; its details only add warnings.
+		io.log(
+			`WARN: could not read /api/readiness: ${describeFetchError(error)}.`
+		);
+		return;
+	}
+	for (const warning of readinessWarnings(body)) io.log(warning);
 }
 
 async function waitUntilLive(

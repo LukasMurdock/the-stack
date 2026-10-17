@@ -253,6 +253,43 @@ export function parseHealth(body: string): HealthRead {
 	};
 }
 
+// The part of /api/readiness a release reports on. Older builds have no
+// `lastSend`; anything unparsable yields no warning (readiness already passed).
+const readinessEmailSchema = z.object({
+	email: z.object({
+		lastSend: z
+			.object({
+				outcome: z.enum(["accepted", "failed"]),
+				atMs: z.number(),
+				code: z.string().nullable(),
+			})
+			.nullable()
+			.optional(),
+	}),
+});
+
+// A /api/readiness body -> warnings to print. Failed email delivery does not
+// fail a release: the app serves, but invitations and password resets do not
+// arrive.
+export function readinessWarnings(body: string): string[] {
+	let json: unknown;
+	try {
+		json = JSON.parse(body);
+	} catch {
+		return [];
+	}
+	const parsed = readinessEmailSchema.safeParse(json);
+	if (!parsed.success) return [];
+	const lastSend = parsed.data.email.lastSend;
+	if (!lastSend || lastSend.outcome !== "failed") return [];
+	const at = new Date(lastSend.atMs).toISOString();
+	const code = lastSend.code === null ? "" : ` (${lastSend.code})`;
+	return [
+		`WARN: the last email send failed at ${at}${code}; invitations and password resets are not arriving.`,
+		"      Admin pages show the provider message. The sender must be on a domain onboarded for the transport.",
+	];
+}
+
 export function servedCommit(health: HealthRead): string | null {
 	if (health.kind === "served") return health.commit;
 	return null;

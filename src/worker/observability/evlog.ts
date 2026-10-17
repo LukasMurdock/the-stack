@@ -97,6 +97,24 @@ function recordEmailSendFailure(args: {
 	logger.emit();
 }
 
+// Recording the last send outcome (CORE_KV) failed; the send itself already
+// succeeded or logged its own failure.
+function recordEmailOutcomeStoreFailure(args: {
+	outcome: "accepted" | "failed";
+	error: unknown;
+}): void {
+	simpleLog.error({
+		action: "email.outcome_record_failed",
+		email: { outcome: args.outcome },
+		error: {
+			message:
+				args.error instanceof Error
+					? args.error.message
+					: String(args.error),
+		},
+	});
+}
+
 // The audit record of an administrator creating an account. Explicit fields
 // only: never the starting password, and ids rather than the email address.
 function recordAdminUserCreatedEvent(args: {
@@ -136,5 +154,6 @@ export {
 	recordAdminUserCreatedEvent,
 	recordEmailLogOnlyEvent,
 	recordEmailSendFailure,
+	recordEmailOutcomeStoreFailure,
 };
 export type { FlagFallback, WorkerRequestLogFields };

@@ -7,6 +7,7 @@ import {
 	parseCheckRuns,
 	parseTarget,
 	productionOrigin,
+	readinessWarnings,
 	summarizeChecks,
 } from "../../scripts/lib/release.ts";
 import {
@@ -362,5 +363,28 @@ test("the build commit rejects a STACK_COMMIT that is not a full SHA", () => {
 	assert.throws(
 		() => buildCommit({ STACK_COMMIT: "abc123" }),
 		/40-character/
+	);
+});
+
+test("readiness warns only when the last email send failed", () => {
+	const body = (lastSend: unknown) =>
+		JSON.stringify({ ok: true, email: { delivery: "provider", lastSend } });
+	assert.deepEqual(readinessWarnings("<html>"), []);
+	assert.deepEqual(readinessWarnings("{}"), []);
+	assert.deepEqual(
+		readinessWarnings(JSON.stringify({ email: { delivery: "log_only" } })),
+		[]
+	);
+	assert.deepEqual(readinessWarnings(body(null)), []);
+	assert.deepEqual(
+		readinessWarnings(body({ outcome: "accepted", atMs: 0, code: null })),
+		[]
+	);
+	const [warning] = readinessWarnings(
+		body({ outcome: "failed", atMs: 0, code: null })
+	);
+	assert.equal(
+		warning,
+		"WARN: the last email send failed at 1970-01-01T00:00:00.000Z; invitations and password resets are not arriving."
 	);
 });
