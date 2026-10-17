@@ -1,4 +1,4 @@
-import type { Bindings } from "../src/worker/index";
+import type { WorkerEnv } from "../src/worker/index";
 import { runScheduledCleanup } from "../src/worker/scheduled-cleanup";
 
 export const cron = "0 * * * *";
@@ -8,7 +8,7 @@ export const cron = "0 * * * *";
 // the API Worker (see src/worker/scheduled-cleanup.ts).
 export default async function retention(
 	controller: ScheduledController,
-	env: Bindings,
+	env: WorkerEnv,
 	ctx: ExecutionContext
 ) {
 	return runScheduledCleanup(controller, env, ctx);

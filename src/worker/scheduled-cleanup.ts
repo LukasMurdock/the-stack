@@ -1,7 +1,7 @@
 import { createRequestLogger } from "evlog";
 import { makeTurretDb } from "../bindings/d1/turret/db";
 import { cleanupAuthStorage } from "./auth-storage";
-import type { Bindings } from "./index";
+import type { WorkerEnv } from "./index";
 import { traceOperation } from "./observability/tracing";
 import { cleanupTurretStorage } from "./turret/retention";
 
@@ -14,7 +14,7 @@ import { cleanupTurretStorage } from "./turret/retention";
 // if that happens.
 export async function runScheduledCleanup(
 	controller: ScheduledController,
-	env: Bindings,
+	env: WorkerEnv,
 	ctx: ExecutionContext
 ): Promise<void> {
 	// At-least-once delivery: this must be safe to run multiple times.

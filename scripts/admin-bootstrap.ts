@@ -3,7 +3,10 @@
 // prints the generated password once. Nothing is written to disk; the Worker
 // keeps only the hash and refuses a second bootstrap for the same address.
 
-import { deploymentCloudflare } from "../config/cloudflare.mjs";
+import {
+	deploymentCloudflare,
+	secretsStorePrefix,
+} from "../config/cloudflare.mjs";
 import {
 	type Command,
 	CommandError,
@@ -72,7 +75,7 @@ export function parseAdminBootstrapOptions(
 	const secret = env.BOOTSTRAP_SECRET ?? "";
 	if (secret.trim().length === 0)
 		throw new UsageError(
-			"Set BOOTSTRAP_SECRET to the value stored with `pnpm exec void secret put BOOTSTRAP_SECRET`."
+			`Set BOOTSTRAP_SECRET to the value stored in Secrets Store as ${secretsStorePrefix}BOOTSTRAP_SECRET.`
 		);
 	return { kind: "run", options: { origin, delivery, secret } };
 }
@@ -136,8 +139,13 @@ export async function adminBootstrap(
 		"          Shown once and not saved anywhere. Store it in a password manager now."
 	);
 	io.log(`Sign in:  ${options.origin}/app/login`);
-	io.log("Then remove the secret so it cannot be used again:");
-	io.log("          pnpm exec void secret delete BOOTSTRAP_SECRET");
+	io.log("Then retire the secret so it cannot be used again: remove");
+	io.log(
+		"          BOOTSTRAP_SECRET from productionSecretNames in config/cloudflare.mjs,"
+	);
+	io.log(
+		`          redeploy, and delete ${secretsStorePrefix}BOOTSTRAP_SECRET from Secrets Store.`
+	);
 }
 
 async function post(
@@ -208,7 +216,7 @@ function parseReply(text: string, url: string): z.infer<typeof replySchema> {
 function failureMessage(status: number, url: string): string {
 	switch (status) {
 		case 401:
-			return "The deployment rejected BOOTSTRAP_SECRET (or has none set). Check `pnpm exec void secret list`.";
+			return `The deployment rejected BOOTSTRAP_SECRET (or has none set). Check ${secretsStorePrefix}BOOTSTRAP_SECRET in Secrets Store and that productionSecretNames lists BOOTSTRAP_SECRET.`;
 		case 409:
 			return [
 				"This deployment is already bootstrapped for ADMIN_EMAIL; no new password was made.",

@@ -6,15 +6,24 @@ import type { AnalyticsSqlBinding } from "./observability/summary";
 import { api, apiRoutes } from "./api";
 import { runScheduledCleanup } from "./scheduled-cleanup";
 import { createAuth, type AuthEnv } from "./auth";
+import type { SecretName } from "../contracts/secrets";
+import {
+	resolveSecrets,
+	withResolvedSecrets,
+	type SecretSources,
+} from "./secrets";
 
+// What route code sees: every secret already resolved to a string or absent.
 export type Bindings = AuthEnv &
 	OperationEnvironment & {
 		ANALYTICS_SQL?: AnalyticsSqlBinding;
 		TURRET_MODE?: string;
-		BOOTSTRAP_SECRET?: string;
-		TURRET_SIGNING_KEY?: string;
 		CF_VERSION_METADATA?: WorkerVersionMetadata;
 	};
+
+// What Cloudflare passes: a secret is a Secrets Store binding in production
+// and a plain string locally and in tests.
+export type WorkerEnv = Omit<Bindings, SecretName> & SecretSources;
 
 const app = new Hono<{ Bindings: Bindings }>({
 	strict: true,
@@ -137,13 +146,15 @@ app.notFound((c) => {
 export type ApiType = typeof apiRoutes;
 
 export default {
-	fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
-		// Never replace bindings on Cloudflare's shared environment object.
-		return app.fetch(request, { ...env }, ctx);
+	async fetch(request: Request, env: WorkerEnv, ctx: ExecutionContext) {
+		// A new object per request: Cloudflare's shared environment object is
+		// never modified, and secrets are read once for this request.
+		const secrets = await resolveSecrets(env);
+		return app.fetch(request, withResolvedSecrets(env, secrets), ctx);
 	},
 	scheduled(
 		controller: ScheduledController,
-		env: Bindings,
+		env: WorkerEnv,
 		ctx: ExecutionContext
 	): Promise<void> {
 		return runScheduledCleanup(controller, env, ctx);

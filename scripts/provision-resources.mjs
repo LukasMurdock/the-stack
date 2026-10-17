@@ -1,7 +1,17 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import ts from "typescript";
 import { z } from "zod";
+import { SECRETS_STORE_ID_UNPROVISIONED } from "../config/cloudflare.mjs";
 import { ensureFlagshipApp, runWrangler } from "./lib/flagship.ts";
+import {
+	ensureSecretsStore,
+	listStoreSecretNames,
+	listWorkerPlainSecrets,
+	missingSecretsHelp,
+	parseSecretsConfig,
+	plainSecretsSwitchHelp,
+	secretsConfigProblems,
+} from "./lib/secrets-store.ts";
 import { loadVoidProvisioning } from "./lib/void-cloudflare.ts";
 
 const cloudflareConfigSchema = z.looseObject({
@@ -34,6 +44,15 @@ const cloudflareConfigSchema = z.looseObject({
 			})
 		)
 		.optional(),
+	secrets_store_secrets: z
+		.array(
+			z.looseObject({
+				binding: z.string(),
+				store_id: z.string(),
+				secret_name: z.string(),
+			})
+		)
+		.optional(),
 });
 /** @typedef {z.infer<typeof cloudflareConfigSchema>} CloudflareConfig */
 
@@ -51,13 +70,7 @@ const cloudflareConfigSchema = z.looseObject({
  * @returns {CloudflareConfig}
  */
 export function readCloudflareConfig(configPath) {
-	const parsed = ts.parseConfigFileTextToJson(
-		configPath,
-		readFileSync(configPath, "utf8")
-	);
-	if (parsed.error)
-		throw new Error(`Invalid Cloudflare configuration: ${configPath}`);
-	return cloudflareConfigSchema.parse(parsed.config);
+	return cloudflareConfigSchema.parse(readCloudflareConfigValue(configPath));
 }
 
 /** @param {CloudflareConfig} config */
@@ -165,31 +178,141 @@ export function provisionFlagship(
  * @param {string} appId
  */
 function writeFlagshipAppId(configPath, bindingName, appId) {
+	rewriteMaterializedConfig(configPath, (config) => {
+		const parsed = z
+			.looseObject({
+				flagship: z.array(z.looseObject({ binding: z.string() })),
+			})
+			.parse(config);
+		return {
+			...parsed,
+			flagship: parsed.flagship.map((entry) =>
+				entry.binding === bindingName
+					? { ...entry, app_id: appId }
+					: entry
+			),
+		};
+	});
+}
+
+/**
+ * @param {string} configPath
+ * @param {(config: unknown) => Record<string, unknown>} change
+ */
+function rewriteMaterializedConfig(configPath, change) {
 	const text = readFileSync(configPath, "utf8");
 	const provenance = text.match(/^\s*\/\/ void:.*$/gm) ?? [];
 	const parsed = ts.parseConfigFileTextToJson(configPath, text);
 	if (parsed.error)
 		throw new Error(`Invalid Cloudflare configuration: ${configPath}`);
-	const config = z
-		.looseObject({
-			flagship: z.array(z.looseObject({ binding: z.string() })),
-		})
-		.parse(parsed.config);
-	config.flagship = config.flagship.map((entry) =>
-		entry.binding === bindingName ? { ...entry, app_id: appId } : entry
-	);
+	const config = change(parsed.config);
 	const lines = provenance.map((line) => `${line.trim()}\n`).join("");
 	writeFileSync(configPath, `${lines}${JSON.stringify(config, null, 2)}\n`);
 }
 
+// Void 1.1 cannot provision Secrets Store and Wrangler requires a store_id on
+// every binding, so config/cloudflare.mjs carries a placeholder. Before Void
+// publishes, this refuses plain Worker secrets (in the config or on the live
+// Worker; see scripts/lib/secrets-store.ts for why), resolves the placeholder
+// to the account's store, confirms each bound secret exists there, and has
+// Void record the store ID in void.lock.json.
+/**
+ * @param {string} root
+ * @param {string} configPath
+ * @param {(root: string) => void} persistCloudflareConfig
+ * @param {import("./lib/flagship.ts").WranglerRunner} run
+ */
+export function provisionSecretsStore(
+	root,
+	configPath,
+	persistCloudflareConfig,
+	run
+) {
+	const raw = readCloudflareConfigValue(configPath);
+	const problems = secretsConfigProblems(raw, root);
+	if (problems.length > 0) throw new Error(problems.join("\n"));
+	const config = parseSecretsConfig(raw);
+	const entries = config.secrets_store_secrets ?? [];
+	const unprovisioned = entries.some(
+		(entry) => entry.store_id === SECRETS_STORE_ID_UNPROVISIONED
+	);
+	const store = unprovisioned
+		? ensureSecretsStore({ configPath }, run)
+		: undefined;
+	const resolved = entries.map((entry) =>
+		store !== undefined && entry.store_id === SECRETS_STORE_ID_UNPROVISIONED
+			? { ...entry, store_id: store.storeId }
+			: entry
+	);
+	assertSecretsExist(resolved, configPath, run);
+	const plain = listWorkerPlainSecrets(
+		{ workerName: config.name, configPath },
+		run
+	);
+	if (store !== undefined) {
+		rewriteMaterializedConfig(configPath, (value) => ({
+			...z.looseObject({}).parse(value),
+			secrets_store_secrets: resolved,
+		}));
+		persistCloudflareConfig(root);
+	}
+	// After recording the store, so the switch's own build binds it.
+	if (plain.length > 0)
+		throw new Error(plainSecretsSwitchHelp(config.name, plain));
+	return store;
+}
+
+/**
+ * @param {readonly { binding: string; store_id: string; secret_name: string }[]} entries
+ * @param {string} configPath
+ * @param {import("./lib/flagship.ts").WranglerRunner} run
+ */
+function assertSecretsExist(entries, configPath, run) {
+	const help = [];
+	for (const storeId of new Set(entries.map((entry) => entry.store_id))) {
+		const names = listStoreSecretNames({ storeId, configPath }, run);
+		const missing = entries
+			.filter((entry) => entry.store_id === storeId)
+			.filter((entry) => !names.has(entry.secret_name))
+			.map((entry) => ({
+				binding: entry.binding,
+				secretName: entry.secret_name,
+			}));
+		const text = missingSecretsHelp(storeId, missing);
+		if (text !== "") help.push(text);
+	}
+	if (help.length > 0) throw new Error(help.join("\n"));
+}
+
+/** @param {string} configPath */
+function readCloudflareConfigValue(configPath) {
+	const parsed = ts.parseConfigFileTextToJson(
+		configPath,
+		readFileSync(configPath, "utf8")
+	);
+	if (parsed.error)
+		throw new Error(`Invalid Cloudflare configuration: ${configPath}`);
+	return parsed.config;
+}
+
 /**
  * @param {string} [root]
- * @param {Record<string, unknown> & { runFlagship?: import("./lib/flagship.ts").WranglerRunner }} [options]
+ * @param {Record<string, unknown> & { runFlagship?: import("./lib/flagship.ts").WranglerRunner; runSecretsStore?: import("./lib/flagship.ts").WranglerRunner }} [options]
  */
 export async function provisionResources(root = process.cwd(), options = {}) {
-	const { runFlagship = runWrangler, ...voidOptions } = options;
+	const {
+		runFlagship = runWrangler,
+		runSecretsStore = runWrangler,
+		...voidOptions
+	} = options;
 	const sdk = await loadVoidProvisioning();
 	const configPath = sdk.materializeCloudflareConfig(root);
+	// Refuse plain secrets before creating anything.
+	const secretProblems = secretsConfigProblems(
+		readCloudflareConfigValue(configPath),
+		root
+	);
+	if (secretProblems.length > 0) throw new Error(secretProblems.join("\n"));
 	const config = readCloudflareConfig(configPath);
 	for (const plan of provisioningPlans(config)) {
 		const result = await sdk.provisionCloudflareResources(
@@ -220,6 +343,16 @@ export async function provisionResources(root = process.cwd(), options = {}) {
 	if (flagship !== undefined)
 		process.stdout.write(
 			`Flagship app ${flagship.action === "created" ? "created" : "found"} for ${config.name}: ${flagship.appId} (recorded in void.lock.json)\n`
+		);
+	const store = provisionSecretsStore(
+		root,
+		configPath,
+		sdk.persistCloudflareConfig,
+		runSecretsStore
+	);
+	if (store !== undefined)
+		process.stdout.write(
+			`Secrets Store ${store.action === "created" ? "created" : "found"}: ${store.storeId} (recorded in void.lock.json)\n`
 		);
 	const resolved = readCloudflareConfig(configPath);
 	assertSeparateDatabases(resolved);

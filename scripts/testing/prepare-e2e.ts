@@ -18,7 +18,8 @@ import Database from "better-sqlite3";
 import { hashPassword } from "better-auth/crypto";
 import { localCloudflare } from "../../config/cloudflare.mjs";
 import { featureFlags } from "../../src/contracts/feature-flags.ts";
-import { flagStoreAt, syncFlags } from "../lib/flagship.ts";
+import { flagStoreAt, runWrangler, syncFlags } from "../lib/flagship.ts";
+import { seedLocalSecrets } from "../lib/secrets-store.ts";
 import {
 	type Command,
 	isEntryPoint,
@@ -79,6 +80,14 @@ export function parsePrepareE2EOptions(
 
 type E2EPaths = ReturnType<typeof e2ePaths>;
 
+// Browser runs read these through miniflare's local Secrets Store, the path
+// production takes, rather than as plain strings.
+const E2E_SECRETS_STORE_ID = "e2e00000000000000000000000000000";
+export const E2E_STORE_SECRETS = {
+	TURRET_SIGNING_KEY: "browser-test-upload-signing-key",
+	BETTER_AUTH_SECRET: "browser-test-secret-not-for-real-environments",
+} as const;
+
 // The Worker config for this port. Its JSON is part of the fingerprint.
 function writeWorkerConfig(port: number, paths: E2EPaths): string {
 	const { triggers: _crons, ...base } = localCloudflare;
@@ -104,9 +113,12 @@ function writeWorkerConfig(port: number, paths: E2EPaths): string {
 			EMAIL_TRANSPORT: "log",
 			AUTH_SIGNUP_MODE: "invite_only",
 			TURRET_MODE: "full",
-			TURRET_SIGNING_KEY: "browser-test-upload-signing-key",
-			BETTER_AUTH_SECRET: "browser-test-secret-not-for-real-environments",
 		},
+		secrets_store_secrets: Object.keys(E2E_STORE_SECRETS).map((name) => ({
+			binding: name,
+			store_id: E2E_SECRETS_STORE_ID,
+			secret_name: name,
+		})),
 		d1_databases: base.d1_databases.map((database) => ({
 			...database,
 			migrations_dir: path.resolve(database.migrations_dir),
@@ -160,6 +172,28 @@ function seedUsers(file: string, passwordHash: string): boolean {
 	}
 }
 
+function seedSecrets(paths: E2EPaths): void {
+	// The Worker config declares Store bindings Wrangler would resolve; the
+	// CLI only needs a name and a date.
+	const configPath = path.join(paths.directory, "secrets-cli.json");
+	writeFileSync(
+		configPath,
+		JSON.stringify({
+			name: `${localCloudflare.name}-secrets-cli`,
+			compatibility_date: localCloudflare.compatibility_date,
+		})
+	);
+	seedLocalSecrets(
+		{
+			persistTo: paths.state,
+			storeId: E2E_SECRETS_STORE_ID,
+			configPath,
+			secrets: E2E_STORE_SECRETS,
+		},
+		runWrangler
+	);
+}
+
 // Each run starts from freshly migrated, seeded D1 state. Migrating takes two
 // Wrangler processes, so keep a pristine copy and restore it when unchanged.
 async function prepareState(
@@ -185,6 +219,7 @@ async function prepareState(
 		if (seedUsers(path.join(paths.state, name), passwordHash))
 			seeded = true;
 	if (!seeded) throw new Error("Browser fixture CORE_DB was not found.");
+	seedSecrets(paths);
 	// Every run starts with each declared flag at its registry default;
 	// a spec turns one on with `pnpm flags on <key> --e2e`.
 	syncFlags(flagStoreAt(paths.state), featureFlags, { reset: true });

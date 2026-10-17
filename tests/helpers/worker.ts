@@ -23,3 +23,44 @@ export function unavailableD1(message: string): D1Database {
 		dump: fail,
 	};
 }
+
+class UntracedSpan implements Span {
+	readonly isTraced = false;
+	spanContext() {
+		return { traceId: "", spanId: "", traceFlags: 0 };
+	}
+	setAttribute() {
+		return this;
+	}
+	setAttributes() {
+		return this;
+	}
+	recordException() {}
+	updateName() {
+		return this;
+	}
+	setStatus() {
+		return this;
+	}
+	end() {}
+}
+
+// A complete ExecutionContext for calling a Worker's fetch handler the way
+// Cloudflare does; background work is discarded and nothing is traced.
+export function untracedExecutionContext(): ExecutionContext {
+	return {
+		waitUntil() {},
+		passThroughOnException() {},
+		abort() {},
+		props: {},
+		tracing: {
+			enterSpan: (_name, run, ...args) =>
+				run(new UntracedSpan(), ...args),
+			startActiveSpan: (_name, run, ...args) =>
+				run(new UntracedSpan(), ...args),
+			startSpan: () => new UntracedSpan(),
+			getActiveSpan: () => undefined,
+			Span: UntracedSpan,
+		},
+	};
+}

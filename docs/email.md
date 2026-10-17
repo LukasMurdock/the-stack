@@ -60,8 +60,12 @@ person accept invitations without a verification email.
 
 Set `EMAIL_TRANSPORT=resend` in the selected environment and provide `RESEND_API_KEY`. Configure the sender domain with Resend and use its authorized sender mailbox in `EMAIL_FROM`.
 
+Add `"RESEND_API_KEY"` to `productionSecretNames` in `config/cloudflare.mjs`
+and store it in Secrets Store under the app's prefix
+([Secrets](DEPLOYMENT_GUIDE.md#secrets)), then redeploy:
+
 ```bash
-pnpm exec void secret put RESEND_API_KEY
+pnpm exec wrangler secrets-store secret create <store-id> --name THE_STACK_RESEND_API_KEY --scopes workers --remote
 ```
 
 For real local Resend tests, set both `EMAIL_TRANSPORT=resend` and `RESEND_API_KEY` in `.env`; this sends actual messages. Existing projects upgrading from the previous key-selected transport must choose `resend` explicitly to keep their delivery provider. Do not remove the old provider's DNS records or credentials until the chosen migration path is verified.

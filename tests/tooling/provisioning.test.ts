@@ -3,7 +3,10 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { deploymentCloudflare } from "../../config/cloudflare.mjs";
+import {
+	deploymentCloudflare,
+	SECRETS_STORE_ID_UNPROVISIONED,
+} from "../../config/cloudflare.mjs";
 import {
 	provisionFlagship,
 	provisionResources,
@@ -38,6 +41,13 @@ test("Void provisions separate Core/Turret resources and reuses their lock on re
 			{ binding: "TURRET_REPLAY_BUCKET", bucket_name: "default" },
 		],
 		flagship: [{ binding: "FLAGS" }],
+		secrets_store_secrets: [
+			{
+				binding: "BETTER_AUTH_SECRET",
+				store_id: SECRETS_STORE_ID_UNPROVISIONED,
+				secret_name: "FIXTURE_STACK_BETTER_AUTH_SECRET",
+			},
+		],
 	};
 	writeFileSync(
 		path.join(root, "void.config.ts"),
@@ -46,6 +56,9 @@ test("Void provisions separate Core/Turret resources and reuses their lock on re
 	const operations: string[] = [];
 	// Flagship goes through Wrangler's CLI, not Void's transport.
 	const flagshipCommands: string[] = [];
+	// So does Secrets Store: one store holding the bound secret, no Worker yet.
+	const secretsStoreCommands: string[] = [];
+	const storeId = "5".repeat(32);
 	let failTurret = true;
 	let databaseCount = 0;
 	let namespaceCount = 0;
@@ -60,6 +73,24 @@ test("Void provisions separate Core/Turret resources and reuses their lock on re
 						])
 					: JSON.stringify({ id: "flagship-app-1", name: args[3] });
 			return { status: 0, stdout, stderr: "" };
+		},
+		runSecretsStore(args: readonly string[]): WranglerResult {
+			secretsStoreCommands.push(args.slice(0, 3).join(" "));
+			const row = (name: string, id: string) =>
+				`│ Name │ ID │\n│ ${name} │ ${id} │`;
+			if (args[0] === "secret")
+				return {
+					status: 1,
+					stdout: "",
+					stderr: "Worker not found [code: 10007]",
+				};
+			if (args[1] === "store")
+				return { status: 0, stdout: row("s", storeId), stderr: "" };
+			return {
+				status: 0,
+				stdout: row("FIXTURE_STACK_BETTER_AUTH_SECRET", "6".repeat(32)),
+				stderr: "",
+			};
 		},
 		async enableD1ReadReplication() {},
 		log: { info() {}, warn() {} },
@@ -143,16 +174,33 @@ test("Void provisions separate Core/Turret resources and reuses their lock on re
 		{ binding: "FLAGS", app_id: "flagship-app-1" },
 	]);
 	assert.deepEqual(lock.source.flagship, [{ binding: "FLAGS" }]);
+	// The account's store replaces the placeholder, recorded the same way.
+	assert.deepEqual(secretsStoreCommands, [
+		"secrets-store store list",
+		"secrets-store secret list",
+		"secret list --name",
+	]);
+	assert.equal(lock.resolved.secrets_store_secrets[0].store_id, storeId);
+	assert.equal(
+		lock.source.secrets_store_secrets[0].store_id,
+		SECRETS_STORE_ID_UNPROVISIONED
+	);
 	const createdOperations = operations.filter((type) =>
 		type.endsWith(".create")
 	);
 	assert.equal(createdOperations.length, 6);
 	operations.length = 0;
 	flagshipCommands.length = 0;
+	secretsStoreCommands.length = 0;
 	const second = await provisionResources(root, options);
 	assert.deepEqual(second.config, first.config);
 	assert.deepEqual(operations, []);
 	assert.deepEqual(flagshipCommands, []);
+	// The recorded store is reused; deploy still checks its secrets exist.
+	assert.deepEqual(secretsStoreCommands, [
+		"secrets-store secret list",
+		"secret list --name",
+	]);
 
 	// A configuration accidentally pointing two bindings at one physical D1
 	// must fail before it can provision or apply either migration history.

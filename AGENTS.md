@@ -53,7 +53,7 @@ test each CLI as a subprocess (`tests/tooling/cli-boundaries.test.ts`).
   `void deploy --platform cloudflare` would publish, offline and without
   credentials, and checks its imports, bindings and crons. `pnpm check` and
   `pnpm proof` run it; run it after touching Void, crons/, bindings or the build.
-- Deploy: configure the app name, origin, sender, and secrets, then
+- Deploy: configure the app name, origin, sender, and secrets (below), then
   `pnpm run deploy`. Void provisions resources through the two-database adapter,
   migrations run independently, and Void publishes the app. See `docs/DEPLOYMENT_GUIDE.md`.
 - First production admin: `BOOTSTRAP_SECRET=... pnpm admin:bootstrap` prints its
@@ -96,6 +96,24 @@ note, and it says nothing about behavior the tests do not cover. Reviews are a
 contract, not code: a reviewer (human, model or tool) records its verdict with
 `pnpm proof --add-review <file.json>`; `--check --require-reviews <n>` enforces
 a count where policy asks for one.
+
+## Secrets
+
+Production secrets live in Cloudflare Secrets Store (`secrets_store_secrets`
+bindings). Never `wrangler secret put` or `void secret put` in production:
+Void 1.1 pins a live Worker's plain secrets and uploads with its own uploader,
+which cannot upload `FLAGS` or `ANALYTICS_SQL`, so the next deploy fails.
+`pnpm check:deploy` and `pnpm run deploy` refuse plain secrets.
+
+- Worker code reads secrets only from the request env, already resolved to
+  strings by `resolveSecrets` (`src/worker/secrets.ts`) at the entry; use
+  `requireSecret` for a required one. Never log a value.
+- Add one: declare it in `src/contracts/secrets.ts` (required or optional,
+  minimum length), add it to `productionSecretNames` in `config/cloudflare.mjs`,
+  set it in `.env` locally, and create `<PREFIX>_<NAME>` in the store before
+  deploying (`docs/DEPLOYMENT_GUIDE.md`, "Secrets"; deploy prints the command).
+- Local dev reads `.env` strings; browser tests read the local Secrets Store
+  that `prepare-e2e` seeds; unit tests may pass `{ get(): Promise<string> }`.
 
 ## Feature flags
 

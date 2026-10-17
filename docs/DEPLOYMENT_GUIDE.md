@@ -25,15 +25,18 @@ pnpm dev
 
 ```bash
 pnpm exec void connect --platform cloudflare
-pnpm exec void secret put BETTER_AUTH_SECRET
-pnpm exec void secret put BOOTSTRAP_SECRET
-pnpm exec void secret put TURRET_SIGNING_KEY
 pnpm verify
+pnpm run deploy   # finds or creates the Secrets Store, then lists what to create
+# For each secret it names (Wrangler prompts for the value):
+pnpm exec wrangler secrets-store secret create <store-id> \
+  --name THE_STACK_BETTER_AUTH_SECRET --scopes workers --remote
 pnpm run deploy
 ```
 
 Use `pnpm run deploy`: pnpm reserves bare `deploy` for its own use. `pnpm secret`
-prints a random value for each prompt. Credentials and sender-domain ownership are supplied by
+prints a random value for each prompt. Secrets go in Cloudflare Secrets Store,
+never `void secret put` or `wrangler secret put` (see [Secrets](#secrets)).
+Credentials and sender-domain ownership are supplied by
 the app owner; infrastructure resources are created by the deployment workflow.
 Never copy local `.env` secrets into a deployment automatically.
 
@@ -42,7 +45,8 @@ The deploy command:
 1. Uses Void to connect and pin the intended Cloudflare account.
 2. Uses Void's provisioning engine to create or reuse **separate** Core and
    Turret D1 databases, both KV namespaces, and the replay R2 bucket, then
-   finds or creates the Flagship app for the `FLAGS` binding (below).
+   finds or creates the Flagship app for the `FLAGS` binding and the account's
+   Secrets Store, and checks every bound secret exists (below).
 3. Builds and validates the Worker, then applies each database's own migrations.
 4. Runs `void deploy --platform cloudflare` to configure email, publish the
    Worker, check readiness, and update schedules.
@@ -111,9 +115,10 @@ without credentials or network: the deploy build, Void's cron and readiness
 wrapper, and the re-bundle Void hands to Cloudflare, through Void's own
 functions. It fails if the main module is missing, a relative import does not
 resolve inside the bundle, or the bindings or cron schedules differ from the
-generated config. `pnpm check` (run by `pnpm run deploy`) and `pnpm proof` run
-it. It assumes a first deploy and does not cover the env schema's required
-secrets, Void's email setup, or anything only Cloudflare checks at upload.
+generated config, and it refuses plain Worker secrets (see [Secrets](#secrets)).
+`pnpm check` (run by `pnpm run deploy`) and `pnpm proof` run it. It assumes a
+first deploy and does not cover the store's contents, Void's email setup, or
+anything only Cloudflare checks at upload.
 
 Void deploys Astro with `assets.run_worker_first: true` and does not upload
 Astro's `_headers`, so every request, assets included, reaches the Worker. The
@@ -137,6 +142,64 @@ A failure can leave successfully provisioned resources in your account. Rerunnin
 uses the recorded IDs and Void's resource discovery instead of creating copies.
 If one database fails, migrations and application publication do not run. Core
 and Turret must have distinct names and IDs, preserving their separate D1 limits.
+
+## Secrets
+
+Production secrets live in [Cloudflare Secrets Store](https://developers.cloudflare.com/secrets-store/)
+and reach the Worker as `secrets_store_secrets` bindings. Plain Worker secrets
+(`wrangler secret put`, `void secret put`) are not used: when the live Worker
+has any, Void 1.1 pins them and uploads through its own uploader, which cannot
+upload the `FLAGS` (Flagship) or `ANALYTICS_SQL` bindings, so the second
+deploy fails. `pnpm check:deploy` and `pnpm run deploy` refuse a config that
+declares plain secrets, and deploy refuses a live Worker that has them.
+
+- Which secrets exist, and which are required, is declared in
+  `src/contracts/secrets.ts`. `productionSecretNames` in `config/cloudflare.mjs`
+  lists the ones production binds: `BETTER_AUTH_SECRET` (required),
+  `BOOTSTRAP_SECRET` and `TURRET_SIGNING_KEY` by default. Add `RESEND_API_KEY`
+  or the Google pair when you use them.
+- A store belongs to the account, so the secret names in it carry the app's
+  prefix: `appName` `the-stack` stores `THE_STACK_BETTER_AUTH_SECRET`, bound as
+  `BETTER_AUTH_SECRET`.
+- `pnpm run deploy` uses the account's only store, creates
+  `default_secrets_store` if there is none, and records its ID in
+  `void.lock.json`. With several stores, set `store_id` in `config/cloudflare.mjs`
+  (it replaces `SECRETS_STORE_ID_UNPROVISIONED`). Every listed secret must exist
+  in the store before deploy publishes; it stops with the
+  `wrangler secrets-store secret create` command for each missing one.
+- The deploy token needs Secrets Store Write (Super Administrator, or the
+  Secrets Store Admin role to create secrets and Secrets Store Deployer to bind
+  them), and each secret's scopes must include `workers`.
+- The Worker reads each secret once per request (`src/worker/secrets.ts`), so
+  a new value applies to the next request without a deploy:
+
+    ```bash
+    pnpm exec wrangler secrets-store secret list <store-id> --remote
+    pnpm exec wrangler secrets-store secret update <store-id> --secret-id <id> --remote
+    ```
+
+    Rotating `BETTER_AUTH_SECRET` signs everyone out. Adding a secret to
+    `productionSecretNames` takes a deploy.
+
+- Local development reads the same names from `.env` as plain strings; browser
+  tests read theirs from miniflare's local Secrets Store.
+
+### Switching a Worker that already has plain secrets
+
+A fork deployed before this change has plain secrets on its live Worker, and
+Void would pin them on the first Store-based deploy. `pnpm run deploy` detects
+this, records the store, and stops with these steps. Switch once, outside Void:
+
+1. Create each secret in Secrets Store with the values the Worker uses now.
+2. Publish the Store-based Worker with Wrangler:
+   `pnpm run build && pnpm exec wrangler deploy --config dist/server/wrangler.json`.
+3. Delete the old plain secrets:
+   `pnpm exec wrangler secret delete BETTER_AUTH_SECRET --name <appName>`, and so on.
+4. Run `pnpm run deploy` again; it now publishes through Void.
+
+If Wrangler refuses step 2 because a Store binding has the same name as a plain
+secret, delete the plain secrets first (step 3, then 2); sign-in fails until
+the new version is live.
 
 ## Feature flags (Flagship)
 
@@ -173,8 +236,9 @@ once for each declared database; that engine owns account checks, discovery,
 creation, locking, retries, and writing `void.lock.json`. The Stack does not
 implement a second set of Cloudflare provisioning requests.
 
-The same adapter fills the gap for Flagship apps (above), through Wrangler's
-documented `flagship apps` commands, and has Void record the ID.
+The same adapter fills the gap for Flagship apps and the Secrets Store
+(above), through Wrangler's documented `flagship apps` and `secrets-store`
+commands, and has Void record the IDs.
 
 The SDK's internal entry points are isolated in `scripts/lib/void-cloudflare.ts`,
 which finds them by name in Void's bundle and accepts only the Void versions listed
@@ -194,8 +258,11 @@ first administrator.
 ```bash
 read -rs BOOTSTRAP_SECRET && export BOOTSTRAP_SECRET   # the value you stored
 pnpm admin:bootstrap                                   # [--url <origin>]
-pnpm exec void secret delete BOOTSTRAP_SECRET          # once you have signed in
 ```
+
+Once you have signed in, retire the secret: remove `BOOTSTRAP_SECRET` from
+`productionSecretNames`, redeploy, then delete `<PREFIX>_BOOTSTRAP_SECRET`
+from the store (`wrangler secrets-store secret delete <store-id> --secret-id <id> --remote`).
 
 It calls `POST /api/internal/bootstrap-admin` with the `x-bootstrap-secret`
 header and prints `ADMIN_EMAIL`'s generated password once. No email is needed
@@ -211,8 +278,8 @@ How it is kept safe:
 - Only the holder of `BOOTSTRAP_SECRET` can call it (constant-time compare), and
   only over HTTPS; the command refuses plain HTTP except to localhost.
 - It works once per `ADMIN_EMAIL`: a KV flag makes later calls answer 409, so a
-  leaked secret cannot mint more passwords. Delete the secret after first
-  sign-in anyway; with no secret set the endpoint answers 401.
+  leaked secret cannot mint more passwords. Retire the secret after first
+  sign-in anyway; with no secret bound the endpoint answers 401.
 - If the address already has an account (someone registered it first), the
   password is replaced and every session ends, so that registrant is locked out.
 - Responses are `Cache-Control: no-store`, and the password is never logged.

@@ -1,3 +1,5 @@
+import { SECRET_NAMES } from "../src/contracts/secrets.ts";
+
 export const localFlagshipAppId = "the-stack-local";
 
 // Core and Turret have separate D1 databases and migration histories.
@@ -97,6 +99,39 @@ export const localCloudflare = {
 
 export const appName = "the-stack";
 
+// Secrets the production Worker binds from Cloudflare Secrets Store (see
+// src/contracts/secrets.ts for each one). Every name listed here must exist
+// in the account's store before `pnpm run deploy`, which stops with the
+// command to create any that are missing. List optional secrets only once
+// you use them; required ones (BETTER_AUTH_SECRET) must stay.
+export const productionSecretNames = [
+	"BETTER_AUTH_SECRET",
+	"BOOTSTRAP_SECRET",
+	"TURRET_SIGNING_KEY",
+	// "RESEND_API_KEY",
+	// "GOOGLE_CLIENT_ID",
+	// "GOOGLE_CLIENT_SECRET",
+];
+
+// Wrangler requires a store_id on every Secrets Store binding, even to build.
+// `pnpm run deploy` replaces this placeholder with the account's store and
+// records the ID in void.lock.json, like the D1 IDs. Set a real store ID here
+// only to choose between several stores.
+export const SECRETS_STORE_ID_UNPROVISIONED =
+	"unprovisioned-run-pnpm-run-deploy";
+
+// A store belongs to the account, not the Worker, so each app's secret names
+// carry its own prefix: THE_STACK_BETTER_AUTH_SECRET binds as
+// BETTER_AUTH_SECRET. Two apps (or a staging copy) in one account never share
+// a value by accident.
+export const secretsStorePrefix = `${appName.toUpperCase().replaceAll(/[^A-Z0-9]+/g, "_")}_`;
+
+for (const name of productionSecretNames)
+	if (!SECRET_NAMES.some((known) => known === name))
+		throw new Error(
+			`config/cloudflare.mjs: ${name} is not declared in src/contracts/secrets.ts.`
+		);
+
 export const deploymentCloudflare = {
 	name: appName,
 	main: "./src/worker.ts",
@@ -184,4 +219,12 @@ export const deploymentCloudflare = {
 	analytics: {
 		binding: "ANALYTICS_SQL",
 	},
+	// Never plain Worker secrets (`wrangler secret put`, `void secret put`):
+	// Void pins those on the next deploy and its uploader cannot upload FLAGS
+	// or ANALYTICS_SQL. `pnpm check:deploy` and `pnpm run deploy` refuse them.
+	secrets_store_secrets: productionSecretNames.map((name) => ({
+		binding: name,
+		store_id: SECRETS_STORE_ID_UNPROVISIONED,
+		secret_name: `${secretsStorePrefix}${name}`,
+	})),
 };

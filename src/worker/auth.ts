@@ -10,12 +10,12 @@ import type { EmailEnvironment } from "./email/send-email";
 import { createAuthStorage } from "./auth-storage";
 import { isSelfSignUpEnabled } from "./auth-signup-mode";
 import type { ObservabilityContext } from "./observability/tracing";
+import { requireSecret, type ResolvedSecrets } from "./secrets";
 
+// Secrets arrive resolved to strings by the Worker entry (./secrets.ts).
 type AuthEnv = Env &
-	EmailEnvironment & {
-		BETTER_AUTH_SECRET: string;
-		GOOGLE_CLIENT_ID?: string;
-		GOOGLE_CLIENT_SECRET?: string;
+	EmailEnvironment &
+	ResolvedSecrets & {
 		PRODUCT_NAME: string;
 		AUTH_SIGNUP_MODE?: string;
 	};
@@ -40,7 +40,7 @@ function createAuth(
 
 	return betterAuth({
 		baseURL: env.APP_URL,
-		secret: env.BETTER_AUTH_SECRET,
+		secret: requireSecret(env, "BETTER_AUTH_SECRET"),
 		advanced: {
 			defaultCookieAttributes: {
 				path: "/",

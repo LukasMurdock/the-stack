@@ -99,6 +99,8 @@ test("invited users can register under restricted signup and verify in a new tab
 		expect(invited.url()).not.toContain(token);
 		// Deliver the same signed verification link as Better Auth's email. No real
 		// email is sent; server verification and redirects still run normally.
+		// The Worker reads this secret from the local Secrets Store
+		// (E2E_STORE_SECRETS in scripts/testing/prepare-e2e.ts).
 		const { createEmailVerificationToken } =
 			await import("better-auth/api");
 		const verificationToken = await createEmailVerificationToken(

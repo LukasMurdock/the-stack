@@ -9,9 +9,10 @@
 // bindings and cron schedules are the ones the config declares.
 //
 // It assumes a first deploy (no existing Worker whose bindings Void would
-// preserve) and skips what needs an account: the env schema's required
-// secrets and Void's email setup. Afterwards the generated config and the
-// deploy pointer are restored, so only dist/ shows that it ran.
+// preserve) and skips what needs an account: the store's secrets and Void's
+// email setup. It refuses plain Worker secrets (scripts/lib/secrets-store.ts).
+// Afterwards the generated config and the deploy pointer are restored, so only
+// dist/ shows that it ran.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -31,6 +32,10 @@ import {
 	type VoidDeployInternals,
 } from "../lib/void-cloudflare.ts";
 import { buildOutputDrift, readVoidLock } from "../lib/void-lock.ts";
+import {
+	artifactSecretProblems,
+	secretsConfigProblems,
+} from "../lib/secrets-store.ts";
 
 // A cold production build on a loaded machine.
 export const DEPLOY_BUILD_TIMEOUT_MS = 20 * 60_000;
@@ -78,6 +83,7 @@ const BINDING_LISTS = {
 	analytics_engine_datasets: ["binding", "analytics-engine-dataset"],
 	flagship: ["binding", "flagship"],
 	send_email: ["name", "send-email"],
+	secrets_store_secrets: ["binding", "secrets-store-secret"],
 } as const;
 const BINDING_OBJECTS = {
 	assets: "assets",
@@ -97,7 +103,6 @@ export const UNCHECKED_BINDING_FIELDS = [
 	"dispatch_namespaces",
 	"workflows",
 	"pipelines",
-	"secrets_store_secrets",
 	"ratelimits",
 	"worker_loaders",
 	"unsafe",
@@ -480,6 +485,7 @@ export function verifyArtifact(
 		);
 	problems.push(...unresolvedImports(artifact));
 	problems.push(...bindingProblems(artifact.bindings, expected.bindings));
+	problems.push(...artifactSecretProblems(artifact.bindings));
 	const schedules = artifact.schedules.join(", ");
 	const crons = expected.crons.join(", ");
 	if (schedules !== crons)
@@ -490,6 +496,13 @@ export function verifyArtifact(
 }
 
 // --- Orchestration -----------------------------------------------------------
+
+function storeBindings(artifact: Artifact): readonly string[] {
+	return [...artifact.bindings]
+		.filter(([, type]) => type === "secrets-store-secret")
+		.map(([name]) => name)
+		.sort();
+}
 
 function assertLockNormalized(root: string): void {
 	const lock = readVoidLock(root);
@@ -561,11 +574,16 @@ export async function checkDeployArtifact(
 	const sdk = await loadVoidDeployInternals();
 	assertLockNormalized(root);
 	const voidConfig = voidConfigSchema.parse(sdk.readConfig(root));
-	const preset = frameworkPreset(sdk, root);
 	const configPath = sdk.materializeCloudflareConfig(root);
-	const expected = expectedFromConfig(
-		sdk.parseRootWranglerConfig(configPath)
-	);
+	const rootConfig = sdk.parseRootWranglerConfig(configPath);
+	// Before the build: a config with plain secrets is refused in seconds.
+	const secretProblems = secretsConfigProblems(rootConfig, root);
+	if (secretProblems.length > 0)
+		throw new CommandError(
+			`The production config would deploy plain Worker secrets:\n${secretProblems.map((problem) => `  - ${problem}`).join("\n")}`
+		);
+	const preset = frameworkPreset(sdk, root);
+	const expected = expectedFromConfig(rootConfig);
 	rmSync(path.join(root, DEPLOY_POINTER), { force: true });
 	runDeployBuild(
 		sdk,
@@ -582,7 +600,7 @@ export async function checkDeployArtifact(
 			`The deploy artifact would not deploy as configured:\n${problems.map((problem) => `  - ${problem}`).join("\n")}`
 		);
 	process.stdout.write(
-		`Deploy artifact OK (Void ${sdk.version}): main module ${artifact.mainModule}, ${artifact.modules.size} modules, ${artifact.bindings.size} bindings, crons [${artifact.schedules.join(", ")}].\n`
+		`Deploy artifact OK (Void ${sdk.version}): main module ${artifact.mainModule}, ${artifact.modules.size} modules, ${artifact.bindings.size} bindings, crons [${artifact.schedules.join(", ")}], Secrets Store bindings [${storeBindings(artifact).join(", ")}], no plain secrets.\n`
 	);
 }
 

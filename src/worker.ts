@@ -1,6 +1,6 @@
 import handler from "@astrojs/cloudflare/entrypoints/server";
 
-import apiWorker, { type Bindings } from "./worker/index";
+import apiWorker, { type WorkerEnv } from "./worker/index";
 import { observePageRequest } from "./worker/observability/page";
 import { discardUnreadBody } from "./worker/http/unread-body";
 import {
@@ -8,7 +8,7 @@ import {
 	serveHashedAsset,
 } from "./worker/http/hashed-assets";
 
-type WorkerBindings = Bindings & { ASSETS: Fetcher };
+type WorkerBindings = WorkerEnv & { ASSETS: Fetcher };
 
 export default {
 	async fetch(request: Request, env: WorkerBindings, ctx: ExecutionContext) {
@@ -19,7 +19,7 @@ export default {
 
 	async scheduled(
 		controller: ScheduledController,
-		env: Bindings,
+		env: WorkerEnv,
 		ctx: ExecutionContext
 	) {
 		if (apiWorker.scheduled) {

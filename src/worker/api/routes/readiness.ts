@@ -6,6 +6,7 @@ import {
 	type EmailDelivery,
 } from "../../../contracts/email-delivery";
 import { flagBindingStatus } from "../../flags";
+import { missingRequiredSecrets } from "../../secrets";
 
 const app = new OpenAPIHono<{ Bindings: Bindings }>();
 // Email is optional for readiness: without it the app serves, but the listed
@@ -31,10 +32,16 @@ const flagsStatus = z.discriminatedUnion("binding", [
 		serving: z.literal("defaults"),
 	}),
 ]);
+// Required secrets with no valid value (names only). Any makes the app not
+// ready: sign-in cannot work without BETTER_AUTH_SECRET.
+const secretsStatus = z.object({
+	missingRequired: z.array(z.string()),
+});
 const ready = z.object({
 	ok: z.boolean(),
 	email: emailStatus,
 	flags: flagsStatus,
+	secrets: secretsStatus,
 });
 const getReadiness = createRoute({
 	method: "get",
@@ -68,6 +75,9 @@ export const routes = app.openapi(getReadiness, async (c) => {
 	c.header("Cache-Control", "no-store");
 	const email = emailReadiness(c.env);
 	const flags = flagBindingStatus(c.env.FLAGS);
+	const secrets = { missingRequired: [...missingRequiredSecrets(c.env)] };
+	if (secrets.missingRequired.length > 0)
+		return c.json({ ok: false, email, flags, secrets }, 503);
 	try {
 		// Compile a query over required application columns without reading user
 		// data. A live binding alone does not prove migrations were applied.
@@ -79,8 +89,8 @@ export const routes = app.openapi(getReadiness, async (c) => {
  left join auth_session s on s.user_id = u.id
  left join auth_storage a on a.key = s.token
  where 0`).all();
-		return c.json({ ok: true, email, flags }, 200);
+		return c.json({ ok: true, email, flags, secrets }, 200);
 	} catch {
-		return c.json({ ok: false, email, flags }, 503);
+		return c.json({ ok: false, email, flags, secrets }, 503);
 	}
 });
