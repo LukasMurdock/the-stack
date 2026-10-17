@@ -217,3 +217,18 @@ test("Astro and React pages render in the bundled font", async ({ page }) => {
 		expect(font.loaded, path).toBe(true);
 	}
 });
+
+// The local Worker runtime drops a connection whose request body went unread,
+// and the dev server's pooled client then failed the next request with a 500.
+test("a request body the Worker never reads does not fail the next request", async ({
+	request,
+}) => {
+	for (let attempt = 0; attempt < 3; attempt++) {
+		const rejected = await request.post("/api/not-a-route", {
+			data: { unread: "x".repeat(1_000) },
+		});
+		expect(rejected.status()).toBe(404);
+		const next = await request.get("/api/health");
+		expect(next.status()).toBe(200);
+	}
+});
