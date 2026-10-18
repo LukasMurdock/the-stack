@@ -26,6 +26,8 @@ const Route = createFileRoute("/ts_admin")({
 			});
 		return identity;
 	},
+	// The admin area has its own header.
+	staticData: { appChrome: false },
 	component: TsAdminLayout,
 	errorComponent: AdminAccessError,
 });

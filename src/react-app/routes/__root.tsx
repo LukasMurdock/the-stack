@@ -10,6 +10,7 @@ import {
 	Link,
 	Outlet,
 	createRootRouteWithContext,
+	useMatches,
 	useRouter,
 	useRouterState,
 } from "@tanstack/react-router";
@@ -20,6 +21,14 @@ import { useQueryErrorResetBoundary } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import { reportError } from "../features/turret/error-tracker";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AppLayout } from "../components/AppLayout";
+
+declare module "@tanstack/react-router" {
+	interface StaticDataRouteOption {
+		// false: the route draws its own chrome instead of the app header.
+		appChrome?: false;
+	}
+}
 
 type RouterContext = {
 	queryClient: QueryClient;
@@ -106,26 +115,28 @@ function RootComponent() {
 						</div>
 					</div>
 				) : null}
-				<CatchBoundary
-					getResetKey={() => location.href}
-					errorComponent={RootSubtreeError}
-					onCatch={(error, errorInfo) => {
-						reportError(error, {
-							source: "router",
-							extra: {
-								href: location.href,
-								componentStack: errorInfo.componentStack,
-							},
-						});
+				<RootChrome>
+					<CatchBoundary
+						getResetKey={() => location.href}
+						errorComponent={RootSubtreeError}
+						onCatch={(error, errorInfo) => {
+							reportError(error, {
+								source: "router",
+								extra: {
+									href: location.href,
+									componentStack: errorInfo.componentStack,
+								},
+							});
 
-						if (import.meta.env.DEV) {
-							console.error(error);
-							console.error(errorInfo);
-						}
-					}}
-				>
-					<Outlet />
-				</CatchBoundary>
+							if (import.meta.env.DEV) {
+								console.error(error);
+								console.error(errorInfo);
+							}
+						}}
+					>
+						<Outlet />
+					</CatchBoundary>
+				</RootChrome>
 
 				{import.meta.env.DEV ? (
 					<>
@@ -136,6 +147,17 @@ function RootComponent() {
 			</div>
 		</TooltipProvider>
 	);
+}
+
+// The app header is drawn here, above every route, so navigation, a route's
+// pending state and the post-sign-in route reload never remount it (an open
+// menu would close). Routes with their own chrome set staticData.appChrome.
+function RootChrome({ children }: { children: React.ReactNode }) {
+	const ownChrome = useMatches({
+		select: (matches) =>
+			matches.some((match) => match.staticData.appChrome === false),
+	});
+	return ownChrome ? children : <AppLayout>{children}</AppLayout>;
 }
 
 function RootPendingComponent() {
