@@ -19,6 +19,10 @@ ones.
 - **Phone first.** Lay out for 390px wide, then let it widen. Text wraps or
   truncates instead of overflowing; filters wrap onto a new line rather than
   scroll sideways; only tab rows (`ScrollTabs`) scroll.
+- **Fills, not outlines.** Fields, search boxes and secondary buttons are a
+  light gray fill (`bg-input/60`, darker on hover) with no border; only focus
+  rings and invalid fields draw an edge. The primary button is the one solid
+  dark control.
 - **Shared primitives in `src/react-app/ui/`.** Use them before writing markup;
   add one there once two screens need the same thing.
 - **A per-feature copy catalog.** Each feature keeps its strings in

@@ -144,7 +144,7 @@ function RoleField(props: {
 			<label className="block space-y-1">
 				<span className="text-sm font-medium">Role</span>
 				<select
-					className="block h-9 w-full rounded-md border bg-background px-2 text-sm"
+					className="block h-9 w-full rounded-4xl bg-input/60 px-3 text-sm"
 					value={props.role}
 					onChange={(event) => {
 						const parsed = accountRoleSchema.safeParse(
