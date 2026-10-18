@@ -147,3 +147,11 @@
 		@apply bg-background text-foreground;
 	}
 }
+
+/* The phone tab bar ([data-tab-bar], below 48rem) reserves its height so other
+   fixed controls, like the feedback button, sit above it. */
+@media (width < 48rem) {
+	:root:has([data-tab-bar]) {
+		--bottom-bar: 4.5rem;
+	}
+}

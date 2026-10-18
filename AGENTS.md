@@ -32,6 +32,11 @@ test each CLI as a subprocess (`tests/tooling/cli-boundaries.test.ts`).
 - Routes: `pnpm routes:new <path>` scaffolds a file; `pnpm routes` (or the dev
   server) regenerates `routeTree.gen.ts`. Route type errors after adding or
   moving a route usually mean a stale tree.
+- Navigation: add a top-level area (label, icon, audience) in
+  `src/react-app/components/nav-items.ts`; the header, phone bottom bar and
+  `tests/e2e/navigation.spec.ts` follow it. Account, Admin, API docs and Sign
+  out are in the account menu; browser specs open it with
+  `tests/e2e/account-menu.ts`. Sub-tab rows use `ScrollTabs`.
 - Tests: fake R2 with `tests/helpers/fake-r2.ts`. Columns are snake_case in SQL
   (`casing: "snake_case"`), so raw-SQL seeds use `organization_id`, not the key.
 - Feature conventions: read `src/content/docs/v1/extend.md`.

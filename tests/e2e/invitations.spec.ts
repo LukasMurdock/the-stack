@@ -17,7 +17,9 @@ test("invitation acceptance survives a lost response and grants viewer access", 
 	try {
 		const viewer = await viewerContext.newPage();
 		await viewer.goto(link);
+		// The invitation's own link, which returns here; not the header's.
 		await viewer
+			.getByRole("main")
 			.getByRole("link", { name: "Sign in", exact: true })
 			.click();
 		await expect(

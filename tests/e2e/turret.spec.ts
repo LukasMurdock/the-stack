@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { z } from "zod";
+import { signOut } from "./account-menu";
 import { hc } from "hono/client";
 import type { ApiType } from "../../src/worker/api";
 import { jsonOrThrow } from "../../src/react-app/api";
@@ -323,10 +324,7 @@ for (const failure of [
 		await expect(
 			page.getByRole("button", { name: "Clicked 1 times", exact: true })
 		).toBeVisible();
-		await page.getByRole("link", { name: "Login", exact: true }).click();
-		await page
-			.getByRole("button", { name: "Sign out", exact: true })
-			.click();
+		await signOut(page);
 		await page.getByRole("link", { name: "Home", exact: true }).click();
 		await expect(
 			page.getByText("Turret session: inactive", { exact: false })

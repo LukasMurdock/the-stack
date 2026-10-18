@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createdUserResponseSchema } from "../../src/contracts/admin-users";
+import { chooseFromAccountMenu } from "./account-menu";
 
 const fixturePassword = "Browser-test-password-123!";
 const changedPassword = "Changed-browser-password-492873!";
@@ -37,7 +38,7 @@ test("a person replaces the starting password an administrator gave them", async
 	const person = await context.newPage();
 	await signIn(person, email, startingPassword);
 	await expect(person).not.toHaveURL(/\/app\/login/);
-	await person.getByRole("link", { name: "Account", exact: true }).click();
+	await chooseFromAccountMenu(person, "Account");
 	await expect(
 		person.getByRole("heading", { name: "Change password" })
 	).toBeVisible();

@@ -1,6 +1,8 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { organizationQuery } from "../../../features/organizations/queries";
+import { ScrollTabs } from "../../../components/ScrollTabs";
+import { tabActiveProps, tabLinkClass } from "../../../components/nav-items";
 
 export const Route = createFileRoute(
 	"/_authenticated/organizations/$organizationId"
@@ -33,15 +35,13 @@ function OrganizationLayout() {
 						{organization.role}
 					</span>
 				</div>
-				<nav
-					aria-label="Organization"
-					className="flex gap-5 border-b pb-3 text-sm"
-				>
+				<ScrollTabs label="Organization" className="border-b text-sm">
 					{/* example:start */}
 					<Link
 						to="/organizations/$organizationId/projects"
 						params={{ organizationId }}
-						activeProps={{ className: "font-semibold underline" }}
+						className={tabLinkClass}
+						activeProps={tabActiveProps}
 					>
 						Projects
 					</Link>
@@ -49,11 +49,12 @@ function OrganizationLayout() {
 					<Link
 						to="/organizations/$organizationId/members"
 						params={{ organizationId }}
-						activeProps={{ className: "font-semibold underline" }}
+						className={tabLinkClass}
+						activeProps={tabActiveProps}
 					>
 						Members
 					</Link>
-				</nav>
+				</ScrollTabs>
 			</div>
 			{/* Drafts, pagination and mutation feedback belong to this organization. */}
 			<Outlet key={organizationId} />

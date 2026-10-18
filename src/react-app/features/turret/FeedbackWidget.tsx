@@ -74,7 +74,8 @@ function TurretFeedbackWidget() {
 	}
 
 	return (
-		<div className="fixed right-4 bottom-4 z-40">
+		// Above the phone tab bar, when there is one (--bottom-bar in index.css).
+		<div className="fixed right-4 bottom-[calc(1rem+var(--bottom-bar,0px))] z-40">
 			<Dialog open={open} onOpenChange={handleOpenChange}>
 				<DialogTrigger
 					render={<Button type="button" variant="outline" />}
