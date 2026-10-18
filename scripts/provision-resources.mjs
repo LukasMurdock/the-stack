@@ -250,17 +250,47 @@ export function provisionSecretsStore(
 		{ workerName: config.name, configPath },
 		run
 	);
-	if (store !== undefined) {
-		rewriteMaterializedConfig(configPath, (value) => ({
-			...z.looseObject({}).parse(value),
-			secrets_store_secrets: resolved,
-		}));
-		persistCloudflareConfig(root);
-	}
+	if (store !== undefined)
+		recordSecretsStore(
+			root,
+			configPath,
+			store.storeId,
+			persistCloudflareConfig
+		);
 	// After recording the store, so the switch's own build binds it.
 	if (plain.length > 0)
 		throw new Error(plainSecretsSwitchHelp(config.name, plain));
 	return store;
+}
+
+// Puts the store ID in place of SECRETS_STORE_ID_UNPROVISIONED in the
+// materialized config and has Void record it in void.lock.json, where later
+// builds (deploy's, and the switch's) read it.
+/**
+ * @param {string} root
+ * @param {string} configPath
+ * @param {string} storeId
+ * @param {(root: string) => void} persistCloudflareConfig
+ */
+export function recordSecretsStore(
+	root,
+	configPath,
+	storeId,
+	persistCloudflareConfig
+) {
+	rewriteMaterializedConfig(configPath, (value) => {
+		const config = parseSecretsConfig(value);
+		return {
+			...config,
+			secrets_store_secrets: (config.secrets_store_secrets ?? []).map(
+				(entry) =>
+					entry.store_id === SECRETS_STORE_ID_UNPROVISIONED
+						? { ...entry, store_id: storeId }
+						: entry
+			),
+		};
+	});
+	persistCloudflareConfig(root);
 }
 
 /**

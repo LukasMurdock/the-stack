@@ -193,20 +193,86 @@ declares plain secrets, and deploy refuses a live Worker that has them.
 
 ### Switching a Worker that already has plain secrets
 
-A fork deployed before this change has plain secrets on its live Worker, and
-Void would pin them on the first Store-based deploy. `pnpm run deploy` detects
-this, records the store, and stops with these steps. Switch once, outside Void:
+A fork deployed before Secrets Store has plain secrets on its live Worker,
+and Void would pin them on the first Store-based deploy; `pnpm run deploy`
+detects this and stops. Switch once, outside Void, with `pnpm secrets:switch`.
+The no-outage path was proved on a fork's live production Worker, but this
+generic tool has not yet run against a live Worker: read every dry run's
+output before adding `--execute`.
 
-1. Create each secret in Secrets Store with the values the Worker uses now.
-2. Publish the Store-based Worker with Wrangler:
-   `pnpm run build && pnpm exec wrangler deploy --config dist/server/wrangler.json`.
-3. Delete the old plain secrets:
-   `pnpm exec wrangler secret delete BETTER_AUTH_SECRET --name <appName>`, and so on.
-4. Run `pnpm run deploy` again; it now publishes through Void.
+Each phase is a dry run (reads and a local build) until `--execute`, and uses
+the same Cloudflare access as deploy (`CLOUDFLARE_API_TOKEN` or
+`wrangler login`, on the account `void connect` pinned):
 
-If Wrangler refuses step 2 because a Store binding has the same name as a plain
-secret, delete the plain secrets first (step 3, then 2); sign-in fails until
-the new version is live.
+1. `pnpm secrets:switch store [--execute]` finds the account's store (or
+   creates `default_secrets_store`) and records it in `void.lock.json`.
+   Commit and push the lock.
+2. `pnpm secrets:switch create-secrets [--execute]` creates each bound
+   secret the store lacks, with the `workers` scope. Secrets the app mints
+   (`BETTER_AUTH_SECRET`, `BOOTSTRAP_SECRET`, `TURRET_SIGNING_KEY`) get a new
+   value from the CSPRNG, written to Wrangler's stdin, never to argv, output
+   or a file. Provider-issued ones (`RESEND_API_KEY`, the Google pair) are
+   listed with the command to create them, which prompts for the value.
+   Plain secret values cannot be read back from Cloudflare; if you still have
+   the current `BETTER_AUTH_SECRET`, create it yourself first so nobody is
+   signed out. A new one signs everyone out once the switch is live.
+3. `pnpm secrets:switch switch [--expect-version <id>] [--execute]`, from a
+   clean `main` at `origin/main`. Preflight refuses unless the store is
+   recorded, every bound secret exists with the `workers` scope, the live
+   Worker serves one version at 100% (the `--expect-version` one, if
+   given), and its plain secrets are all names the config binds from the
+   Store. It prints each D1 database's Time Travel bookmark with the restore
+   command and the rollback command, runs `pnpm run check` and
+   `pnpm run build`, then:
+    - uploads the Store-based Worker with `wrangler versions upload`, which
+      takes no traffic. Cloudflare accepts Store bindings under the same
+      names as the live plain secrets, and the new version carries the Store
+      bindings instead of those plain secrets. The tool checks the version
+      binds every secret from the Store, waits until its preview URL's
+      `/api/readiness` answers 200 with `secrets.missingRequired` empty, and
+      only then deploys it at 100% with `wrangler versions deploy`. No
+      request ever meets a Worker without its secrets. (A product fork
+      switched its live production Worker this way.)
+    - if Cloudflare refuses that upload, or the version does not bind every
+      secret from the Store, it stops with production unchanged.
+      `--allow-auth-window` takes the fallback instead: deploy a bridge (the
+      same build without Store bindings, reading the plain secrets), delete
+      the plain secrets in one `wrangler secret bulk` request, and deploy the
+      Store-based Worker at once. In between, sign-in answers 500 and
+      readiness 503: auth fails closed, never with a default secret.
+    - deletes any plain secret still on the Worker, then verifies with
+      anonymous requests only: a new version serves all traffic, binds every
+      secret from the Store and has no plain secrets, `/api/readiness`
+      answers 200 with `secrets.missingRequired` empty,
+      `/api/auth/get-session` answers 200 (Better Auth is constructed only
+      with `BETTER_AUTH_SECRET`), and Turret, when configured `full`, runs
+      `full` (it needs `TURRET_SIGNING_KEY`). Checks that need a signed-in
+      user prove nothing here.
+4. Sign in, then deploy through Void as usual (`pnpm run deploy`,
+   `pnpm ship`). The switched version was uploaded by Wrangler, so Void
+   needs `routes`, `workers_dev` and `preview_urls` declared (they are; see
+   [Configure your app](#configure-your-app)).
+
+The preview check needs `preview_urls: true`; with it off, the tool stops
+before deploying and prints the command to deploy the checked version
+yourself.
+
+Rollback: the switch prints
+`pnpm exec wrangler rollback <previous-version> --name <appName> --config .void-wrangler.jsonc`.
+Until a plain secret is deleted (the direct path deletes none), that restores
+the old version with its own plain secrets. After a deletion (the fallback),
+Cloudflare asks to confirm a rollback across changed secrets, and whether the
+old version then keeps its values is unverified: roll forward instead. If the
+fallback's Store-based deploy fails after the deletion, restore sign-in on
+the bridge at once with a new plain value on stdin, then rerun the switch:
+
+```bash
+pnpm -s secret | pnpm exec wrangler secret put BETTER_AUTH_SECRET \
+  --name <appName> --config .void-wrangler.jsonc
+```
+
+The D1 bookmarks restore data, not code: use them only if something wrote
+bad data during the switch.
 
 ## Feature flags (Flagship)
 

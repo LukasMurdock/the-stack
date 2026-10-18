@@ -11,6 +11,10 @@ export type SecretSpec = {
 	readonly requirement: SecretRequirement;
 	// Shortest accepted value, in characters.
 	readonly lengthMin: number;
+	// True when any random value works because the app itself mints it
+	// (`pnpm secret`, `pnpm secrets:switch create-secrets`); false for a
+	// credential a provider issues.
+	readonly generated: boolean;
 	readonly description: string;
 };
 
@@ -23,31 +27,37 @@ export const workerSecrets = {
 	BETTER_AUTH_SECRET: {
 		requirement: "required",
 		lengthMin: 32,
+		generated: true,
 		description: "Signs Better Auth sessions and tokens.",
 	},
 	BOOTSTRAP_SECRET: {
 		requirement: "optional",
 		lengthMin: 1,
+		generated: true,
 		description: "Authorizes POST /api/internal/bootstrap-admin once.",
 	},
 	TURRET_SIGNING_KEY: {
 		requirement: "optional",
 		lengthMin: 1,
+		generated: true,
 		description: "Signs Turret upload tokens; without it Turret is basic.",
 	},
 	RESEND_API_KEY: {
 		requirement: "optional",
 		lengthMin: 1,
+		generated: false,
 		description: "Resend API key, used when EMAIL_TRANSPORT=resend.",
 	},
 	GOOGLE_CLIENT_ID: {
 		requirement: "optional",
 		lengthMin: 1,
+		generated: false,
 		description: "Google sign-in, together with GOOGLE_CLIENT_SECRET.",
 	},
 	GOOGLE_CLIENT_SECRET: {
 		requirement: "optional",
 		lengthMin: 1,
+		generated: false,
 		description: "Google sign-in, together with GOOGLE_CLIENT_ID.",
 	},
 } as const satisfies Readonly<Record<string, SecretSpec>>;

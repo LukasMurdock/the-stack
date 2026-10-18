@@ -21,6 +21,7 @@
 		"check": "pnpm run check:deploy && wrangler deploy --config dist/server/wrangler.json --dry-run",
 		"check:deploy": "node scripts/testing/deploy-artifact.ts",
 		"deploy": "node scripts/deploy.mjs",
+		"secrets:switch": "node scripts/secrets-switch.ts",
 		"secret": "node -e \"console.log(require('node:crypto').randomBytes(32).toString('base64url'))\"",
 		"proof": "node scripts/proof.ts",
 		"ship": "node scripts/ship.ts",

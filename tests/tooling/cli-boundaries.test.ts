@@ -584,6 +584,7 @@ test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", (
 		["demo-record.ts", ["--help"]],
 		["proof.ts", ["--help"]],
 		["flags.ts", ["--help"]],
+		["secrets-switch.ts", ["--help"]],
 	] as const) {
 		const help = runScript(name, args);
 		assert.equal(help.status, 0, `${name}: ${help.stderr}`);
@@ -661,6 +662,48 @@ test("each CLI prints help with exit 0 and rejects bad arguments with exit 2", (
 		runScript("flags.ts", ["on", "not-a-declared-flag"]),
 		/not declared/
 	);
+	assertUsageError(runScript("secrets-switch.ts", []), /Name a phase/);
+	assertUsageError(
+		runScript("secrets-switch.ts", ["rotate"]),
+		/Unknown phase "rotate"/
+	);
+	assertUsageError(
+		runScript("secrets-switch.ts", ["switch", "--execute", "--dry-run"]),
+		/exclude each other/
+	);
+	assertUsageError(
+		runScript("secrets-switch.ts", ["store", "--allow-auth-window"]),
+		/apply to the switch phase/
+	);
+	assertUsageError(
+		runScript("secrets-switch.ts", ["switch", "--expect-version", "v1"]),
+		/--expect-version takes a Worker version ID/
+	);
+});
+
+test("secrets:switch with default arguments stops before any read when Wrangler has no credentials", (t) => {
+	// A HOME without `wrangler login` state and no token: Wrangler answers
+	// whoami locally, so this makes no Cloudflare request.
+	const home = temporaryDirectory(t, "stack-switch-home-");
+	for (const phase of ["store", "create-secrets", "switch"]) {
+		const result = runScript("secrets-switch.ts", [phase], {
+			env: {
+				HOME: home,
+				XDG_CONFIG_HOME: path.join(home, ".config"),
+				CLOUDFLARE_API_TOKEN: "",
+				CLOUDFLARE_API_KEY: "",
+				CLOUDFLARE_EMAIL: "",
+				WRANGLER_SEND_METRICS: "false",
+			},
+		});
+		assert.equal(result.status, 1, result.stdout + result.stderr);
+		assert.match(
+			result.stderr,
+			/Wrangler has no Cloudflare credentials\. Set CLOUDFLARE_API_TOKEN .* or run `pnpm exec wrangler login`.*Nothing was read or changed\./
+		);
+		assert.doesNotMatch(result.stderr, /Usage:|\n\s+at /);
+		assert.doesNotMatch(result.stdout, /Preflight|Building/);
+	}
 });
 
 test("ship <pr> parses and stops at the placeholder production origin", () => {

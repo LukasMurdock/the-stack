@@ -127,6 +127,11 @@ which cannot upload `FLAGS` or `ANALYTICS_SQL`, so the next deploy fails.
   deploying (`docs/DEPLOYMENT_GUIDE.md`, "Secrets"; deploy prints the command).
 - Local dev reads `.env` strings; browser tests read the local Secrets Store
   that `prepare-e2e` seeds; unit tests may pass `{ get(): Promise<string> }`.
+- A live Worker that still has plain secrets switches once with
+  `pnpm secrets:switch store|create-secrets|switch` (dry run until
+  `--execute`): it uploads the Store-based version without traffic, checks
+  it on its preview URL, then deploys it, so sign-in never fails. Never
+  delete the plain secrets first.
 
 ## Feature flags
 

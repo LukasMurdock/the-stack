@@ -165,8 +165,8 @@ export const deploymentCloudflare = {
 	// - workers_dev: Wrangler enables <name>.<subdomain>.workers.dev when a
 	//   Worker has no routes. Set false once a custom domain serves APP_URL.
 	// - preview_urls: Cloudflare enables version preview URLs with workers.dev
-	//   when the setting is absent, so a version can be checked on its own URL
-	//   before it takes traffic.
+	//   when the setting is absent. `pnpm secrets:switch` checks a version on
+	//   its own URL before it takes traffic.
 	routes: [],
 	workers_dev: true,
 	preview_urls: true,

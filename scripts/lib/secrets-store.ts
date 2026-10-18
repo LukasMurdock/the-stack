@@ -232,16 +232,10 @@ export function plainSecretsSwitchHelp(
 	return [
 		`${workerName} has plain Worker secrets: ${names.join(", ")}.`,
 		PINNING_EXPLANATION,
-		"Switch once, outside Void:",
-		'  1. Store each secret in Secrets Store (see docs/DEPLOYMENT_GUIDE.md, "Secrets").',
-		"  2. Build and publish the Store-based Worker with Wrangler:",
-		"       pnpm run build && pnpm exec wrangler deploy --config dist/server/wrangler.json",
-		"  3. Delete the old plain secrets:",
-		...names.map(
-			(name) =>
-				`       pnpm exec wrangler secret delete ${name} --name ${workerName}`
-		),
-		"Then rerun pnpm run deploy.",
+		"Switch once, outside Void, with no sign-in outage. Commit and push void.lock.json (deploy recorded the store), then (each step is a dry run until --execute):",
+		"  pnpm secrets:switch create-secrets   # each bound secret the store lacks",
+		"  pnpm secrets:switch switch           # upload, check, then deploy the Store-based Worker",
+		'Then rerun pnpm run deploy. See docs/DEPLOYMENT_GUIDE.md, "Switching a Worker that already has plain secrets".',
 	].join("\n");
 }
 
@@ -270,44 +264,56 @@ function storeHelp(): string {
 	].join("\n");
 }
 
-// The account's only store, or a new one when it has none. Several stores
-// mean the config must name one; deploy never guesses.
-export function ensureSecretsStore(
+// The account's stores, read-only; empty when it has none.
+export function listSecretsStores(
 	args: { readonly configPath: string },
 	run: WranglerRunner
-): SecretsStore {
-	const configArgs = ["--remote", "--config", args.configPath];
+): readonly { readonly name: string; readonly id: string }[] {
 	const listed = run([
 		"secrets-store",
 		"store",
 		"list",
 		"--per-page",
 		String(LIST_PAGE_SIZE),
-		...configArgs,
+		"--remote",
+		"--config",
+		args.configPath,
 	]);
-	if (listed.status === 0) {
-		const stores = z
-			.array(storeRowSchema)
-			.parse(parseWranglerTable(listed.stdout));
-		const [only] = stores;
-		if (only === undefined)
-			throw new CommandError(
-				`wrangler secrets-store store list printed no stores.\n${storeHelp()}`
-			);
-		if (stores.length > 1)
-			throw new CommandError(
-				`The account has several Secrets Stores (${stores.map((store) => `${store.Name} ${store.ID}`).join(", ")}). Set store_id on the secrets_store_secrets bindings in config/cloudflare.mjs (replace SECRETS_STORE_ID_UNPROVISIONED) with the one to use, then rerun pnpm run deploy.`
-			);
-		return { storeId: only.ID, action: "reused" };
-	}
-	if (!NO_STORES.test(tail(listed)))
+	if (listed.status !== 0) {
+		if (NO_STORES.test(tail(listed))) return [];
 		throw failed("Listing Secrets Stores", listed, storeHelp());
+	}
+	const stores = z
+		.array(storeRowSchema)
+		.parse(parseWranglerTable(listed.stdout));
+	if (stores.length === 0)
+		throw new CommandError(
+			`wrangler secrets-store store list printed no stores.\n${storeHelp()}`
+		);
+	return stores.map((store) => ({ name: store.Name, id: store.ID }));
+}
+
+// The account's only store, or a new one when it has none. Several stores
+// mean the config must name one; deploy never guesses.
+export function ensureSecretsStore(
+	args: { readonly configPath: string },
+	run: WranglerRunner
+): SecretsStore {
+	const stores = listSecretsStores(args, run);
+	const [only] = stores;
+	if (stores.length > 1)
+		throw new CommandError(
+			`The account has several Secrets Stores (${stores.map((store) => `${store.name} ${store.id}`).join(", ")}). Set store_id on the secrets_store_secrets bindings in config/cloudflare.mjs (replace SECRETS_STORE_ID_UNPROVISIONED) with the one to use, then rerun pnpm run deploy.`
+		);
+	if (only !== undefined) return { storeId: only.id, action: "reused" };
 	const created = run([
 		"secrets-store",
 		"store",
 		"create",
 		DEFAULT_STORE_NAME,
-		...configArgs,
+		"--remote",
+		"--config",
+		args.configPath,
 	]);
 	const id = CREATED_STORE.exec(created.stdout.replace(ANSI_ESCAPE, ""))?.[1];
 	if (created.status !== 0 || id === undefined)
@@ -315,15 +321,24 @@ export function ensureSecretsStore(
 	return { storeId: id, action: "created" };
 }
 
-const secretRowSchema = z.looseObject({ Name: z.string().min(1) });
+const secretRowSchema = z.looseObject({
+	Name: z.string().min(1),
+	Scopes: z.string().optional(),
+});
 const NO_SECRETS = /List request returned no secrets/;
 
-// Every secret name in a store, page by page.
-export function listStoreSecretNames(
+export type StoreSecret = {
+	readonly name: string;
+	// Services allowed to bind it; Workers need "workers".
+	readonly scopes: readonly string[];
+};
+
+// Every secret in a store (names and scopes, never values), page by page.
+export function listStoreSecrets(
 	args: { readonly storeId: string; readonly configPath: string },
 	run: WranglerRunner
-): ReadonlySet<string> {
-	const names = new Set<string>();
+): readonly StoreSecret[] {
+	const secrets: StoreSecret[] = [];
 	for (let page = 1; page <= LIST_PAGES_MAX; page++) {
 		const result = run([
 			"secrets-store",
@@ -339,7 +354,8 @@ export function listStoreSecretNames(
 			args.configPath,
 		]);
 		// Wrangler fails a page past the end (or an empty store) this way.
-		if (result.status !== 0 && NO_SECRETS.test(tail(result))) return names;
+		if (result.status !== 0 && NO_SECRETS.test(tail(result)))
+			return secrets;
 		if (result.status !== 0)
 			throw failed(
 				`Listing the secrets in store ${args.storeId}`,
@@ -349,12 +365,27 @@ export function listStoreSecretNames(
 		const rows = z
 			.array(secretRowSchema)
 			.parse(parseWranglerTable(result.stdout));
-		for (const row of rows) names.add(row.Name);
-		if (rows.length < LIST_PAGE_SIZE) return names;
+		for (const row of rows)
+			secrets.push({
+				name: row.Name,
+				scopes: (row.Scopes ?? "")
+					.split(",")
+					.map((scope) => scope.trim())
+					.filter((scope) => scope !== ""),
+			});
+		if (rows.length < LIST_PAGE_SIZE) return secrets;
 	}
 	throw new CommandError(
 		`Store ${args.storeId} lists more than ${LIST_PAGES_MAX * LIST_PAGE_SIZE} secrets (LIST_PAGES_MAX).`
 	);
+}
+
+// Every secret name in a store.
+export function listStoreSecretNames(
+	args: { readonly storeId: string; readonly configPath: string },
+	run: WranglerRunner
+): ReadonlySet<string> {
+	return new Set(listStoreSecrets(args, run).map((secret) => secret.name));
 }
 
 // The commands that create each missing secret, or "" when none is missing.

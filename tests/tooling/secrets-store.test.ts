@@ -14,7 +14,9 @@ import {
 	DEFAULT_STORE_NAME,
 	ensureSecretsStore,
 	LIST_PAGE_SIZE,
+	listSecretsStores,
 	listStoreSecretNames,
+	listStoreSecrets,
 	parseWranglerTable,
 	secretsConfigProblems,
 	seedLocalSecrets,
@@ -326,6 +328,49 @@ test("store listings are read page by page within a bound", () => {
 		).size,
 		0
 	);
+	// The switch checks scopes too: a secret without "workers" cannot bind.
+	assert.deepEqual(
+		listStoreSecrets({ storeId: STORE_ID, configPath: "/tmp/c.json" }, () =>
+			ok(
+				table([
+					{ Name: "A", ID: "1", Scopes: "workers, ai_gateway" },
+					{ Name: "B", ID: "2", Scopes: "" },
+				])
+			)
+		),
+		[
+			{ name: "A", scopes: ["workers", "ai_gateway"] },
+			{ name: "B", scopes: [] },
+		]
+	);
+});
+
+test("listing stores is read-only and reports none, one or a failure", () => {
+	const configPath = "/tmp/fixture/.void-wrangler.jsonc";
+	assert.deepEqual(
+		listSecretsStores({ configPath }, (args) => {
+			assert.deepEqual(args.slice(0, 3), [
+				"secrets-store",
+				"store",
+				"list",
+			]);
+			return fail("✘ [ERROR] List request returned no stores.");
+		}),
+		[]
+	);
+	assert.deepEqual(
+		listSecretsStores({ configPath }, () =>
+			ok(table([{ Name: "default_secrets_store", ID: STORE_ID }]))
+		),
+		[{ name: "default_secrets_store", id: STORE_ID }]
+	);
+	assert.throws(
+		() =>
+			listSecretsStores({ configPath }, () =>
+				fail("Authentication error [code: 10000]")
+			),
+		/Listing Secrets Stores failed[\s\S]*Authentication error/
+	);
 });
 
 type FakeAccount = {
@@ -493,14 +538,11 @@ test("deploy records the account's store, and stops with the command for each mi
 				error.message,
 				/fixture-stack has plain Worker secrets: BETTER_AUTH_SECRET, RESEND_API_KEY/
 			);
-			assert.match(
-				error.message,
-				/pnpm exec wrangler deploy --config dist\/server\/wrangler\.json/
-			);
-			assert.match(
-				error.message,
-				/pnpm exec wrangler secret delete RESEND_API_KEY --name fixture-stack/
-			);
+			assert.match(error.message, /pnpm secrets:switch create-secrets/);
+			assert.match(error.message, /pnpm secrets:switch switch/);
+			// Deleting plain secrets first is the sign-in outage the
+			// switch avoids.
+			assert.doesNotMatch(error.message, /wrangler secret delete/);
 			return true;
 		}
 	);
