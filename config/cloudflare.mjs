@@ -154,6 +154,22 @@ export const deploymentCloudflare = {
 		},
 	},
 	upload_source_maps: true,
+	// How the Worker is reached. Void requires all three before it replaces a
+	// version it did not upload (scripts/lib/worker-traffic.ts), and with them
+	// every deploy states the traffic instead of inheriting manual changes.
+	// The values are what Wrangler and Cloudflare chose when these were left
+	// out:
+	// - routes: none. Add your custom domain here, e.g.
+	//   { pattern: "your-app.example", custom_domain: true }; routes added in
+	//   the dashboard are removed by the next deploy.
+	// - workers_dev: Wrangler enables <name>.<subdomain>.workers.dev when a
+	//   Worker has no routes. Set false once a custom domain serves APP_URL.
+	// - preview_urls: Cloudflare enables version preview URLs with workers.dev
+	//   when the setting is absent, so a version can be checked on its own URL
+	//   before it takes traffic.
+	routes: [],
+	workers_dev: true,
+	preview_urls: true,
 	assets: {
 		binding: "ASSETS",
 		directory: "./dist",

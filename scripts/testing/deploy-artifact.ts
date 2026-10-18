@@ -10,7 +10,9 @@
 //
 // It assumes a first deploy (no existing Worker whose bindings Void would
 // preserve) and skips what needs an account: the store's secrets and Void's
-// email setup. It refuses plain Worker secrets (scripts/lib/secrets-store.ts).
+// email setup. It refuses plain Worker secrets (scripts/lib/secrets-store.ts)
+// and a config that leaves routes, workers_dev or preview_urls to Void's
+// inheritance (scripts/lib/worker-traffic.ts).
 // Afterwards the generated config and the deploy pointer are restored, so only
 // dist/ shows that it ran.
 
@@ -36,6 +38,7 @@ import {
 	artifactSecretProblems,
 	secretsConfigProblems,
 } from "../lib/secrets-store.ts";
+import { trafficConfigProblems } from "../lib/worker-traffic.ts";
 
 // A cold production build on a loaded machine.
 export const DEPLOY_BUILD_TIMEOUT_MS = 20 * 60_000;
@@ -582,6 +585,8 @@ export async function checkDeployArtifact(
 		throw new CommandError(
 			`The production config would deploy plain Worker secrets:\n${secretProblems.map((problem) => `  - ${problem}`).join("\n")}`
 		);
+	const [trafficProblem] = trafficConfigProblems(rootConfig);
+	if (trafficProblem !== undefined) throw new CommandError(trafficProblem);
 	const preset = frameworkPreset(sdk, root);
 	const expected = expectedFromConfig(rootConfig);
 	rmSync(path.join(root, DEPLOY_POINTER), { force: true });

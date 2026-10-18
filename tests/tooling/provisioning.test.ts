@@ -14,6 +14,7 @@ import {
 	readCloudflareConfig,
 } from "../../scripts/provision-resources.mjs";
 import type { WranglerResult } from "../../scripts/lib/flagship.ts";
+import { undeclaredTrafficSettings } from "../../scripts/lib/worker-traffic.ts";
 
 // Exercise the installed Void provisioning engine; fake only its remote
 // transport so creation, lock persistence, and retries need no cloud account.
@@ -31,6 +32,9 @@ test("Void provisions separate Core/Turret resources and reuses their lock on re
 	const config = {
 		name: "fixture-stack",
 		account_id: "f".repeat(32),
+		routes: [],
+		workers_dev: true,
+		preview_urls: true,
 		d1_databases: ["core", "turret"].map((name) => ({
 			binding: `${name.toUpperCase()}_DB`,
 			database_name: `fixture-stack-${name}`,
@@ -215,6 +219,61 @@ test("Void provisions separate Core/Turret resources and reuses their lock on re
 			}),
 		/own database ID/
 	);
+});
+
+// crit-wardrobe's first `void deploy` over a Worker published by plain
+// Wrangler stopped with "dashboard-managed routes or visibility" because the
+// config left out `routes`: Void inherits undeclared traffic settings from
+// metadata only its own uploads carry.
+test("routes, workers_dev and preview_urls are declared, and deploy refuses a config without one", async (t) => {
+	assert.deepEqual(undeclaredTrafficSettings(deploymentCloudflare), []);
+	// The values Wrangler and Cloudflare chose while they were undeclared.
+	assert.deepEqual(
+		{
+			routes: deploymentCloudflare.routes,
+			workers_dev: deploymentCloudflare.workers_dev,
+			preview_urls: deploymentCloudflare.preview_urls,
+		},
+		{ routes: [], workers_dev: true, preview_urls: true }
+	);
+	assert.deepEqual(undeclaredTrafficSettings({}), [
+		"routes",
+		"workers_dev",
+		"preview_urls",
+	]);
+	assert.deepEqual(
+		undeclaredTrafficSettings({
+			route: "your-app.example/*",
+			workers_dev: false,
+			preview_urls: false,
+		}),
+		[]
+	);
+
+	const root = mkdtempSync(path.join(tmpdir(), "stack-traffic-"));
+	t.after(() => rmSync(root, { recursive: true, force: true }));
+	const { routes: _routes, ...withoutRoutes } = deploymentCloudflare;
+	writeFileSync(
+		path.join(root, "void.config.ts"),
+		`export default ${JSON.stringify({ cloudflare: withoutRoutes })};`
+	);
+	const operations: string[] = [];
+	await assert.rejects(
+		provisionResources(root, {
+			async runWrangler(operation: { type: string }) {
+				operations.push(operation.type);
+				throw new Error("nothing may be provisioned");
+			},
+			runFlagship() {
+				throw new Error("nothing may be provisioned");
+			},
+			runSecretsStore() {
+				throw new Error("nothing may be provisioned");
+			},
+		}),
+		/does not declare routes\. void deploy refuses to republish a Worker it did not upload/
+	);
+	assert.deepEqual(operations, []);
 });
 
 test("Flagship provisioning reuses an app by name and fails with the command to run", (t) => {

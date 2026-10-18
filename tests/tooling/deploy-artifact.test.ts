@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
@@ -177,6 +179,39 @@ test("node scripts/testing/deploy-artifact.ts at its boundary: help and usage er
 		assert.equal(bad.status, 2, bad.stderr);
 		assert.match(bad.stderr, /Usage: pnpm check:deploy/);
 	}
+});
+
+test("pnpm check:deploy refuses undeclared routes, workers_dev or preview_urls before building", (t) => {
+	const directory = mkdtempSync(path.join(tmpdir(), "stack-traffic-check-"));
+	t.after(() => rmSync(directory, { recursive: true, force: true }));
+	writeFileSync(
+		path.join(directory, "void.config.ts"),
+		`export default ${JSON.stringify({
+			cloudflare: {
+				name: "fixture-stack",
+				compatibility_date: "2025-10-08",
+				workers_dev: true,
+				secrets_store_secrets: [
+					{
+						binding: "BETTER_AUTH_SECRET",
+						store_id: "a".repeat(32),
+						secret_name: "FIXTURE_STACK_BETTER_AUTH_SECRET",
+					},
+				],
+			},
+		})};\n`
+	);
+	const result = spawnSync(
+		process.execPath,
+		[path.join(process.cwd(), "scripts/testing/deploy-artifact.ts")],
+		{ cwd: directory, encoding: "utf8", timeout: 60_000 }
+	);
+	assert.equal(result.status, 1, result.stdout + result.stderr);
+	assert.match(
+		result.stderr,
+		/does not declare routes, preview_urls\. void deploy refuses to republish a Worker it did not upload/
+	);
+	assert.doesNotMatch(result.stdout, /as void deploy builds it/);
 });
 
 test("a split crons/ bundle is explained, other bundling errors are not", () => {

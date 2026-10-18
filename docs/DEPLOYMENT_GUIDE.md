@@ -12,6 +12,13 @@ In `config/cloudflare.mjs`, set:
 - `deploymentCloudflare.vars.APP_URL`: your deployed HTTPS origin.
 - `ADMIN_EMAIL`: the address for your app's first administrator.
 - `EMAIL_FROM` and `EMAIL_FROM_NAME`: your sender and product name.
+- `routes`, `workers_dev` and `preview_urls`: how the Worker is reached. The
+  defaults serve it on workers.dev with version preview URLs and no routes;
+  add your custom domain to `routes`. Keep all three declared: Void refuses to
+  replace a version it did not upload (one published by Wrangler or the
+  dashboard) while any of them is left out, and `pnpm check:deploy` and
+  `pnpm run deploy` say so first. Routes added in the dashboard are removed
+  by the next deploy.
 
 Keep `localCloudflare` for local emulation. Local setup still needs no cloud account:
 

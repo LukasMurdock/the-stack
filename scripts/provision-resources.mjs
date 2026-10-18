@@ -13,6 +13,7 @@ import {
 	secretsConfigProblems,
 } from "./lib/secrets-store.ts";
 import { loadVoidProvisioning } from "./lib/void-cloudflare.ts";
+import { trafficConfigProblems } from "./lib/worker-traffic.ts";
 
 const cloudflareConfigSchema = z.looseObject({
 	name: z.string(),
@@ -307,12 +308,13 @@ export async function provisionResources(root = process.cwd(), options = {}) {
 	} = options;
 	const sdk = await loadVoidProvisioning();
 	const configPath = sdk.materializeCloudflareConfig(root);
-	// Refuse plain secrets before creating anything.
-	const secretProblems = secretsConfigProblems(
-		readCloudflareConfigValue(configPath),
-		root
-	);
-	if (secretProblems.length > 0) throw new Error(secretProblems.join("\n"));
+	// Refuse plain secrets and undeclared traffic before creating anything.
+	const raw = readCloudflareConfigValue(configPath);
+	const problems = [
+		...secretsConfigProblems(raw, root),
+		...trafficConfigProblems(raw),
+	];
+	if (problems.length > 0) throw new Error(problems.join("\n"));
 	const config = readCloudflareConfig(configPath);
 	for (const plan of provisioningPlans(config)) {
 		const result = await sdk.provisionCloudflareResources(
