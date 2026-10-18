@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from "./routes/__root"
 import { Route as AuthenticatedRouteImport } from "./routes/_authenticated"
 import { Route as PublicRouteImport } from "./routes/_public"
 import { Route as Ts_adminRouteImport } from "./routes/ts_admin"
+import { Route as AuthenticatedAccountRouteImport } from "./routes/_authenticated/account"
 import { Route as AuthenticatedOrganizationsRouteImport } from "./routes/_authenticated/organizations"
 import { Route as PublicIndexRouteImport } from "./routes/_public/index"
 import { Route as PublicInvitationsRouteImport } from "./routes/_public/invitations"
@@ -51,6 +52,11 @@ const Ts_adminRoute = Ts_adminRouteImport.update({
   id: "/ts_admin",
   path: "/ts_admin",
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
+  id: "/account",
+  path: "/account",
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedOrganizationsRoute =
   AuthenticatedOrganizationsRouteImport.update({
@@ -201,6 +207,7 @@ const AuthenticatedOrganizationsOrganizationIdProjectsIndexRoute =
 export interface FileRoutesByFullPath {
   "/": typeof PublicIndexRoute
   "/ts_admin": typeof Ts_adminRouteWithChildren
+  "/account": typeof AuthenticatedAccountRoute
   "/organizations": typeof AuthenticatedOrganizationsRouteWithChildren
   "/invitations": typeof PublicInvitationsRoute
   "/login": typeof PublicLoginRoute
@@ -229,6 +236,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   "/": typeof PublicIndexRoute
+  "/account": typeof AuthenticatedAccountRoute
   "/invitations": typeof PublicInvitationsRoute
   "/login": typeof PublicLoginRoute
   "/reset-password": typeof PublicResetPasswordRouteWithChildren
@@ -257,6 +265,7 @@ export interface FileRoutesById {
   "/_authenticated": typeof AuthenticatedRouteWithChildren
   "/_public": typeof PublicRouteWithChildren
   "/ts_admin": typeof Ts_adminRouteWithChildren
+  "/_authenticated/account": typeof AuthenticatedAccountRoute
   "/_authenticated/organizations": typeof AuthenticatedOrganizationsRouteWithChildren
   "/_public/invitations": typeof PublicInvitationsRoute
   "/_public/login": typeof PublicLoginRoute
@@ -289,6 +298,7 @@ export interface FileRouteTypes {
   fullPaths:
     | "/"
     | "/ts_admin"
+    | "/account"
     | "/organizations"
     | "/invitations"
     | "/login"
@@ -317,6 +327,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | "/"
+    | "/account"
     | "/invitations"
     | "/login"
     | "/reset-password"
@@ -344,6 +355,7 @@ export interface FileRouteTypes {
     | "/_authenticated"
     | "/_public"
     | "/ts_admin"
+    | "/_authenticated/account"
     | "/_authenticated/organizations"
     | "/_public/invitations"
     | "/_public/login"
@@ -400,6 +412,13 @@ declare module "@tanstack/react-router" {
       fullPath: "/ts_admin"
       preLoaderRoute: typeof Ts_adminRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    "/_authenticated/account": {
+      id: "/_authenticated/account"
+      path: "/account"
+      fullPath: "/account"
+      preLoaderRoute: typeof AuthenticatedAccountRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     "/_authenticated/organizations": {
       id: "/_authenticated/organizations"
@@ -622,10 +641,12 @@ const AuthenticatedOrganizationsRouteWithChildren =
   )
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
   AuthenticatedOrganizationsRoute: typeof AuthenticatedOrganizationsRouteWithChildren
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAccountRoute: AuthenticatedAccountRoute,
   AuthenticatedOrganizationsRoute: AuthenticatedOrganizationsRouteWithChildren,
 }
 

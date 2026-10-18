@@ -21,6 +21,11 @@ password, shown once to the administrator (`POST /api/internal/users`,
 administrators only). "Mark email as verified" lets the person accept
 invitations without a verification email.
 
+Signed-in people change their password at `/app/account` (Better Auth
+`changePassword`, optionally signing out their other sessions), so a starting
+password does not have to stay. An account without a password (Google only)
+can request an emailed link there to set one.
+
 ## Local admin bootstrap
 
 ```bash

@@ -35,6 +35,14 @@ export function AppLayout({ children }: { children?: React.ReactNode }) {
 							Status
 						</Link>
 						<Link
+							to="/account"
+							activeProps={{
+								className: "font-semibold underline",
+							}}
+						>
+							Account
+						</Link>
+						<Link
 							to="/login"
 							search={{}}
 							activeProps={{
