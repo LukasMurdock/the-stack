@@ -1,28 +1,36 @@
+# Security updates only. Version-update PRs went stale against the trunk
+# workflow (every commit on main carries a proof), so they are off: the weekly
+# "Outdated dependencies" workflow reports what to update and `pnpm
+# deps:outdated` prints the commands to land it as one proved commit.
+# open-pull-requests-limit: 0 disables version updates; security updates,
+# enabled in the repository's settings (Code security → Dependabot security
+# updates), still open, grouped into one PR per ecosystem.
 version: 2
 updates:
     - package-ecosystem: npm
       directory: "/"
       schedule:
           interval: weekly
-          day: monday
-          time: "09:00"
-          timezone: "UTC"
-      open-pull-requests-limit: 10
+      open-pull-requests-limit: 0
       groups:
-          npm-minor-and-patch:
-              update-types:
-                  - minor
-                  - patch
+          npm-security:
+              applies-to: security-updates
+              patterns:
+                  - "*"
       labels:
           - dependencies
+          - security
 
     - package-ecosystem: github-actions
       directory: "/"
       schedule:
           interval: weekly
-          day: monday
-          time: "09:00"
-          timezone: "UTC"
-      open-pull-requests-limit: 5
+      open-pull-requests-limit: 0
+      groups:
+          actions-security:
+              applies-to: security-updates
+              patterns:
+                  - "*"
       labels:
           - dependencies
+          - security

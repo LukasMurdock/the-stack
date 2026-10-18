@@ -10,6 +10,7 @@
 		"publish": true
 	},
 	"scripts": {
+		"deps:outdated": "node scripts/deps-outdated.ts",
 		"local:setup": "node scripts/setup-local.mjs",
 		"local:seed": "node scripts/seed-local.mjs",
 		"local:reset": "node scripts/reset-local.mjs",

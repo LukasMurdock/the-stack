@@ -97,6 +97,14 @@ contract, not code: a reviewer (human, model or tool) records its verdict with
 `pnpm proof --add-review <file.json>`; `--check --require-reviews <n>` enforces
 a count where policy asks for one.
 
+## Dependencies
+
+Dependabot opens security updates only. Everything else lands as a proved
+trunk commit: `pnpm deps:outdated` (also the weekly "Outdated dependencies"
+workflow summary) lists updates grouped as patch and minor (one commit, with
+the command to run), major (one commit each, after reading the changelog) and
+held (`@types/node` follows the Node major in `engines`).
+
 ## Secrets
 
 Production secrets live in Cloudflare Secrets Store (`secrets_store_secrets`
