@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient, jsonOrThrow } from "../../api";
+import type { EmailSendOutcome } from "../../../contracts/email-send-outcome";
 
 const TYPE_LABELS = {
 	"reset-password": "password reset",
+	"sign-in-link": "sign-in link",
 	"verify-email": "email verification",
 	generic: "",
-} as const;
+} as const satisfies Record<EmailSendOutcome["type"], string>;
 
 const PROVIDER_FIXES = {
 	cloudflare:

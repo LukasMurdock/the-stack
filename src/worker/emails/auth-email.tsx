@@ -12,16 +12,17 @@ import {
 	Text,
 } from "react-email";
 
+import { authEmailCopy, type AuthEmailType } from "./auth-email-copy";
+
 type AuthEmailProps = {
-	type: "verify-email" | "reset-password";
+	type: AuthEmailType;
 	productName: string;
 	url: string;
 };
 
 export function AuthEmail({ productName, url, type }: AuthEmailProps) {
-	const reset = type === "reset-password";
-	const heading = reset ? "Reset your password" : "Verify your email";
-	const previewText = `${heading} for ${productName}`;
+	const copy = authEmailCopy(type, productName);
+	const previewText = `${copy.heading} for ${productName}`;
 
 	return (
 		<Html lang="en">
@@ -33,16 +34,12 @@ export function AuthEmail({ productName, url, type }: AuthEmailProps) {
 						<Text style={styles.brand}>{productName}</Text>
 					</Section>
 
-					<Heading style={styles.h1}>{heading}</Heading>
-					<Text style={styles.p}>
-						{reset
-							? `We received a request to reset the password for your ${productName} account. Use the button below to choose a new password.`
-							: `Thanks for signing up for ${productName}. Please confirm your email address by clicking the button below.`}
-					</Text>
+					<Heading style={styles.h1}>{copy.heading}</Heading>
+					<Text style={styles.p}>{copy.body}</Text>
 
 					<Section style={styles.ctaRow}>
 						<Button href={url} style={styles.button}>
-							{reset ? "Reset password" : "Verify email"}
+							{copy.action}
 						</Button>
 					</Section>
 
@@ -53,10 +50,7 @@ export function AuthEmail({ productName, url, type }: AuthEmailProps) {
 					<Text style={styles.monoLink}>{url}</Text>
 
 					<Hr style={styles.hr} />
-					<Text style={styles.footer}>
-						If you did not request this email, you can safely ignore
-						it.
-					</Text>
+					<Text style={styles.footer}>{copy.footer}</Text>
 				</Container>
 			</Body>
 		</Html>

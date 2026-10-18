@@ -18,7 +18,13 @@ export type EmailEnvironment = {
 	RESEND_API_KEY?: string;
 	CF_VERSION_METADATA?: { id: string };
 };
-export type EmailType = "reset-password" | "verify-email" | "generic";
+// "sign-in-link" is a password-reset link an administrator sent from Admin →
+// Users; only that route selects it (src/worker/auth.ts, createAuth).
+export type EmailType =
+	| "reset-password"
+	| "sign-in-link"
+	| "verify-email"
+	| "generic";
 export type EmailResult =
 	| { transport: "log" }
 	| { transport: "cloudflare" | "resend"; messageId: string };

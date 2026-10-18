@@ -26,6 +26,15 @@ Signed-in people change their password at `/app/account` (Better Auth
 password does not have to stay. An account without a password (Google only)
 can request an emailed link there to set one.
 
+With email working, Admin → Users → ⋯ (or the user's page) → Send sign-in link
+(`POST /api/internal/users/{userId}/sign-in-link`, administrators only) emails
+someone Better Auth's one-hour, single-use reset link in a "Set your password"
+email, for an account whose owner knows no password (a lost starting password,
+an imported account). One link per person per 60 seconds (429 with
+`Retry-After`), refused for banned users (409) and when email is not configured
+(503), and audited as `admin.sign_in_link_sent` with ids only. The public
+password-reset request cannot choose this email.
+
 ## Local admin bootstrap
 
 ```bash

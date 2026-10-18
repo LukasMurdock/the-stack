@@ -2,6 +2,7 @@ import { log as simpleLog, createRequestLogger } from "evlog";
 import type { RequestLogger } from "evlog";
 import { createWorkersLogger, initWorkersLogger } from "evlog/workers";
 import type { ObservabilityContext } from "./tracing";
+import type { EmailType } from "../email/send-email";
 
 type WorkerRequestLogFields = {
 	path: string;
@@ -67,7 +68,7 @@ function createApiRequestLogger(args: {
 }
 
 function recordEmailLogOnlyEvent(args: {
-	type: "reset-password" | "verify-email" | "generic";
+	type: EmailType;
 	to?: string;
 	from?: string;
 	subject?: string;
@@ -79,7 +80,7 @@ function recordEmailLogOnlyEvent(args: {
 }
 
 function recordEmailSendFailure(args: {
-	type?: "reset-password" | "verify-email" | "generic";
+	type?: EmailType;
 	error: unknown;
 	provider?: string;
 	code?: string;
@@ -134,6 +135,19 @@ function recordAdminUserCreatedEvent(args: {
 	});
 }
 
+// The audit record of an administrator emailing someone a sign-in link. Ids
+// only: never the address, the link or its token.
+function recordAdminSignInLinkSentEvent(args: {
+	actorId: string;
+	userId: string;
+}): void {
+	simpleLog.info({
+		action: "admin.sign_in_link_sent",
+		admin: { actorId: args.actorId },
+		user: { id: args.userId },
+	});
+}
+
 type FlagFallback = {
 	readonly key: string;
 	readonly cause: string;
@@ -150,6 +164,7 @@ function recordFlagFallbacks(fallbacks: readonly FlagFallback[]): void {
 
 export {
 	createApiRequestLogger,
+	recordAdminSignInLinkSentEvent,
 	recordFlagFallbacks,
 	recordAdminUserCreatedEvent,
 	recordEmailLogOnlyEvent,

@@ -16,7 +16,7 @@ export const emailSendOutcomeSchema = z.object({
 	// Failed: when the latest failure happened. Accepted: when sends started
 	// succeeding (later successes do not rewrite the record).
 	atMs: z.number().int().nonnegative(),
-	type: z.enum(["reset-password", "verify-email", "generic"]),
+	type: z.enum(["reset-password", "sign-in-link", "verify-email", "generic"]),
 	provider: z.enum(["cloudflare", "resend"]),
 	code: z.string().max(EMAIL_ERROR_CODE_LENGTH_MAX).nullable(),
 	// Sanitized: no addresses or URLs. Never a recipient, body or auth link.

@@ -5,6 +5,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { authClient } from "../../../auth";
+import { SignInLinkFeedback } from "../../../features/admin/SignInLinkFeedback";
+import {
+	signInLinkCopy,
+	useSignInLink,
+} from "../../../features/admin/useSignInLink";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -232,12 +237,18 @@ function TsAdminUserDetailPage() {
 		},
 	});
 
+	const signInLink = useSignInLink();
+
 	const user = userQuery.data;
 	const sessions = sessionsQuery.data?.sessions ?? [];
 	const roleNorm = normalizeAccountRole(user?.role);
 	const isBanned = Boolean(user?.banned);
 
 	const headerTitle = user?.email ?? user?.id ?? userId;
+	const userEmail = user?.email ?? null;
+	const signInLinkBlocked = isBanned
+		? signInLinkCopy.banned
+		: signInLink.unavailableReason;
 
 	const passwordError = useMemo(() => {
 		if (!newPassword && !confirmPassword) return null;
@@ -259,6 +270,23 @@ function TsAdminUserDetailPage() {
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
+					{userEmail ? (
+						<Button
+							type="button"
+							variant="outline"
+							disabled={
+								signInLinkBlocked !== null ||
+								signInLink.send.isPending
+							}
+							onClick={() =>
+								signInLink.request({ userId, email: userEmail })
+							}
+						>
+							{signInLink.send.isPending
+								? "Sending…"
+								: signInLinkCopy.action}
+						</Button>
+					) : null}
 					<Button
 						type="button"
 						variant="outline"
@@ -268,6 +296,12 @@ function TsAdminUserDetailPage() {
 					</Button>
 				</div>
 			</div>
+			{userEmail && signInLinkBlocked ? (
+				<p className="text-sm text-muted-foreground">
+					{signInLinkBlocked}
+				</p>
+			) : null}
+			<SignInLinkFeedback send={signInLink.send} />
 
 			{userQuery.isLoading ? (
 				<div className="text-sm text-muted-foreground">Loading…</div>

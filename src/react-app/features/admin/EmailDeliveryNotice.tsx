@@ -1,15 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import { apiClient, jsonOrThrow } from "../../api";
+import { useEmailConfiguration } from "./useEmailConfiguration";
 
 // Tells an administrator, where they onboard people, that email-based flows
 // cannot work here, so they create accounts directly instead of inviting.
 export function EmailDeliveryNotice() {
-	const readiness = useQuery({
-		queryKey: ["readiness"],
-		retry: false,
-		queryFn: async () => jsonOrThrow(await apiClient.readiness.$get()),
-	});
-	const email = readiness.data?.email;
+	const email = useEmailConfiguration();
 	if (email === undefined) return null;
 	if (email.delivery === "provider") return null;
 	if (email.delivery === "log_only")

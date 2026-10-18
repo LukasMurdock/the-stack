@@ -35,3 +35,13 @@ export const createdUserResponseSchema = z.object({
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+
+// Better Auth user ids, or ids an import kept from another system.
+const USER_ID_LENGTH_MAX = 128;
+export const userTargetSchema = z.object({
+	userId: z.string().min(1).max(USER_ID_LENGTH_MAX),
+});
+
+// POST /api/internal/users/{userId}/sign-in-link. Administrators already see
+// every address, so the response names where the link went.
+export const signInLinkResponseSchema = z.object({ sentTo: z.string() });

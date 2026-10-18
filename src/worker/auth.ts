@@ -30,11 +30,20 @@ export function configuredGoogleProvider(
 	};
 }
 
+// Which email a password-reset request sends. The public
+// /api/auth/request-password-reset handler always uses the default; only the
+// admin sign-in-link route constructs an instance with "sign-in-link", so no
+// request header or body can choose the administrator's wording.
+type PasswordResetEmail = "reset-password" | "sign-in-link";
+type AuthOptions = { readonly passwordResetEmail?: PasswordResetEmail };
+
 function createAuth(
 	env: AuthEnv,
 	ctx?: ObservabilityContext,
-	requestId?: string
+	requestId?: string,
+	options: AuthOptions = {}
 ) {
+	const passwordResetEmail = options.passwordResetEmail ?? "reset-password";
 	const selfSignUpEnabled = isSelfSignUpEnabled(env.AUTH_SIGNUP_MODE);
 	const google = configuredGoogleProvider(env);
 
@@ -72,7 +81,7 @@ function createAuth(
 					env,
 					ctx,
 					requestId,
-					type: "reset-password",
+					type: passwordResetEmail,
 					to: user.email,
 					url,
 				}),

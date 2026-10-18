@@ -6,9 +6,21 @@ import { useMemo, useState } from "react";
 import { authClient } from "../../../auth";
 import { CreateUserDialog } from "../../../features/admin/CreateUserDialog";
 import { EmailDeliveryNotice } from "../../../features/admin/EmailDeliveryNotice";
+import { SignInLinkFeedback } from "../../../features/admin/SignInLinkFeedback";
+import {
+	signInLinkCopy,
+	useSignInLink,
+} from "../../../features/admin/useSignInLink";
+import { Ellipsis } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
 	Table,
@@ -132,6 +144,8 @@ function TsAdminUsersPage() {
 		},
 	});
 
+	const signInLink = useSignInLink();
+
 	const rows = usersQuery.data?.users ?? [];
 	const total = usersQuery.data?.total;
 
@@ -182,7 +196,13 @@ function TsAdminUsersPage() {
 				<CardHeader>
 					<CardTitle>All Users</CardTitle>
 				</CardHeader>
-				<CardContent>
+				<CardContent className="space-y-3">
+					{signInLink.unavailableReason ? (
+						<p className="text-sm text-muted-foreground">
+							{signInLink.unavailableReason}
+						</p>
+					) : null}
+					<SignInLinkFeedback send={signInLink.send} />
 					{usersQuery.isLoading ? (
 						<div className="text-sm text-muted-foreground">
 							Loading…
@@ -324,6 +344,46 @@ function TsAdminUsersPage() {
 															? "Unban"
 															: "Ban"}
 													</Button>
+													<DropdownMenu>
+														<DropdownMenuTrigger
+															aria-label={`More actions for ${u.email ?? u.id}`}
+															className={buttonVariants(
+																{
+																	variant:
+																		"outline",
+																	size: "icon",
+																}
+															)}
+														>
+															<Ellipsis aria-hidden="true" />
+														</DropdownMenuTrigger>
+														<DropdownMenuContent align="end">
+															<DropdownMenuItem
+																disabled={
+																	!u.email ||
+																	isBanned ||
+																	signInLink.unavailableReason !==
+																		null ||
+																	signInLink
+																		.send
+																		.isPending
+																}
+																onClick={() => {
+																	if (u.email)
+																		signInLink.request(
+																			{
+																				userId: u.id,
+																				email: u.email,
+																			}
+																		);
+																}}
+															>
+																{
+																	signInLinkCopy.action
+																}
+															</DropdownMenuItem>
+														</DropdownMenuContent>
+													</DropdownMenu>
 												</div>
 											</TableCell>
 										</TableRow>

@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { EmailSendOutcome } from "../../contracts/email-send-outcome";
 import { AuthEmail } from "../emails/auth-email";
+import { authEmailCopy, type AuthEmailType } from "../emails/auth-email-copy";
 import { renderEmail } from "../emails/render";
 import { recordEmailSendFailure } from "../observability/evlog";
 import type { ObservabilityContext } from "../observability/tracing";
@@ -11,7 +12,6 @@ import {
 	emailErrorCode,
 	type EmailEnvironment,
 	type EmailTransport,
-	type EmailType,
 } from "./send-email";
 import {
 	acceptedOutcome,
@@ -29,7 +29,7 @@ type AuthEmailRequest = {
 	env: AuthEmailEnvironment;
 	ctx?: ObservabilityContext;
 	requestId?: string;
-	type: Exclude<EmailType, "generic">;
+	type: AuthEmailType;
 	to: string;
 	url: string;
 };
@@ -102,10 +102,7 @@ async function composeAndSend(
 		requestId,
 		type,
 		to,
-		subject:
-			type === "reset-password"
-				? `Reset your password for ${env.PRODUCT_NAME}`
-				: `Verify your email for ${env.PRODUCT_NAME}`,
+		subject: `${authEmailCopy(type, env.PRODUCT_NAME).heading} for ${env.PRODUCT_NAME}`,
 		...rendered,
 	});
 }
