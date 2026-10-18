@@ -20,17 +20,21 @@ export async function createOrganization(page: Page) {
 	await page.goto("/app/organizations");
 	await signIn(page, "owner");
 	const name = `Studio ${crypto.randomUUID()}`;
+	await page.getByRole("button", { name: "New organization" }).click();
 	await page.getByLabel("Organization name").fill(name);
 	await page.getByRole("button", { name: "Create organization" }).click();
-	await expect(page.getByRole("status")).toHaveText("Organization created.");
-	await page.getByRole("link", { name, exact: true }).click();
+	// Creating one opens it.
+	await expect(
+		page.getByRole("heading", { level: 1, name, exact: true })
+	).toBeVisible();
 	return name;
 }
 
-// The signed-in role label in the organization layout: a role probe that
-// depends only on core organization screens.
+// The signed-in access line in the organization header ("Viewer access"): a
+// role probe that depends only on core organization screens.
 export function roleLabel(page: Page, role: "owner" | "editor" | "viewer") {
-	return page.getByText(`Your role: ${role}`, { exact: true });
+	const label = `${role.charAt(0).toUpperCase()}${role.slice(1)}`;
+	return page.getByText(`${label} access`, { exact: true });
 }
 
 // Two organizations owned by the same user, the first opened in the UI.

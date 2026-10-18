@@ -30,6 +30,7 @@ protocol, or form framework.
 | HTTP routes                  | `src/features/projects/http.ts`                                    |
 | Client queries               | `src/react-app/features/projects/queries.ts`                       |
 | Screen                       | `src/react-app/features/projects/ProjectsPage.tsx`                 |
+| Screen copy                  | `src/react-app/features/projects/copy.ts`                          |
 | Tests                        | `tests/integration/projects.test.ts`, `tests/e2e/projects.spec.ts` |
 
 The example's operations enforce membership, including a permission predicate
@@ -112,7 +113,7 @@ selects `matched: matchedRows` and returns `readPage(query, offset)` from
 `features/shared/paging.ts`; the route responds with `{ members: rows, page }`.
 `matchedRows` is a window count, so the total comes from the same query, filters,
 and permission predicates as the rows. Screens show counts from `page.total`,
-never from the rows they hold, and page with `react-app/components/Pagination`.
+never from the rows they hold, and page with `react-app/ui/Pagination`.
 
 Lists in creation order break `created_at` ties with
 `insertionOrder(table)` from `bindings/d1/insertion-order.ts` (raw SQL: `rowid`),

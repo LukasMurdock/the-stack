@@ -38,6 +38,9 @@ test("project creation preserves the draft after failure and persists after retr
 	});
 	await createOrganization(page);
 	await page.getByRole("link", { name: "Projects", exact: true }).click();
+	await page
+		.getByRole("button", { name: "New project", exact: true })
+		.click();
 	await page.getByLabel("Project name").fill("Launch");
 	await page.getByLabel("Description").fill("Plan the pilot.");
 	await page.route("**/api/organizations/*/projects", (route) =>
@@ -78,7 +81,7 @@ test("project creation preserves the draft after failure and persists after retr
 	).toBeVisible();
 });
 
-test("viewers read projects without the create form", async ({
+test("viewers read projects without the create action", async ({
 	page,
 	browser,
 	baseURL,
@@ -103,7 +106,7 @@ test("viewers read projects without the create form", async ({
 			viewer.getByRole("heading", { name: "Launch pilot", exact: true })
 		).toBeVisible();
 		await expect(
-			viewer.getByRole("button", { name: "Create project", exact: true })
+			viewer.getByRole("button", { name: "New project", exact: true })
 		).toHaveCount(0);
 		const denied = await context.request.post(projectsPath, {
 			data: { name: "No", description: "" },
@@ -133,20 +136,24 @@ test("changing organization resets project pagination, drafts and failed mutatio
 	).toBeVisible();
 	await openFirst(page, fixture.firstName);
 	await page.getByRole("link", { name: "Projects", exact: true }).click();
-	const projects = page.locator("section").filter({
-		has: page.getByRole("heading", { name: "Projects", exact: true }),
+	const pagination = page.getByRole("navigation", {
+		name: "Pagination",
+		exact: true,
 	});
 	await expect(
-		projects.getByText(`1–${PAGE_SIZE} of ${PAGE_SIZE + 1}`, {
+		pagination.getByText(`1–${PAGE_SIZE} of ${PAGE_SIZE + 1}`, {
 			exact: true,
 		})
 	).toBeVisible();
-	await projects.getByRole("button", { name: "Next", exact: true }).click();
+	await pagination.getByRole("button", { name: "Next", exact: true }).click();
 	const lastPage = `${PAGE_SIZE + 1}–${PAGE_SIZE + 1} of ${PAGE_SIZE + 1}`;
-	await expect(projects.getByText(lastPage, { exact: true })).toBeVisible();
+	await expect(pagination.getByText(lastPage, { exact: true })).toBeVisible();
 	await expect(
-		projects.getByRole("button", { name: "Next", exact: true })
+		pagination.getByRole("button", { name: "Next", exact: true })
 	).toBeDisabled();
+	await page
+		.getByRole("button", { name: "New project", exact: true })
+		.click();
 	await page.getByLabel("Project name").fill("First organization's draft");
 	await page
 		.getByLabel("Description")
@@ -173,9 +180,12 @@ test("changing organization resets project pagination, drafts and failed mutatio
 		"same-document"
 	);
 	// The second organization has no projects: a reset page shows no pager.
-	await expect(
-		page.getByRole("navigation", { name: "Pagination", exact: true })
-	).toHaveCount(0);
+	await expect(pagination).toHaveCount(0);
+	// The dialog closed with the organization; reopened, it holds no draft.
+	await expect(page.getByLabel("Project name")).toHaveCount(0);
+	await page
+		.getByRole("button", { name: "New project", exact: true })
+		.click();
 	await expect(page.getByLabel("Project name")).toHaveValue("");
 	await expect(page.getByLabel("Description")).toHaveValue("");
 	await expect(page.getByRole("alert")).toHaveCount(0);

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { Pagination } from "../../src/react-app/components/Pagination";
+import { Pagination } from "../../src/react-app/ui/Pagination";
 
 function label(offset: number, total: number) {
 	const markup = renderToStaticMarkup(

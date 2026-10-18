@@ -2,6 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { healthQueryOptions } from "../../queries/healthQuery";
 import { nameQueryOptions } from "../../queries/nameQuery";
+import { LinkRow } from "../../ui/LinkRow";
+import { PageHeader } from "../../ui/PageHeader";
+import { StatusPill } from "../../ui/StatusPill";
+import { Unit, unitRowStaticClass } from "../../ui/Unit";
 
 const Route = createFileRoute("/_public/status")({
 	loader: ({ context }) =>
@@ -16,58 +20,50 @@ function StatusPage() {
 	const nameQuery = useSuspenseQuery(nameQueryOptions);
 	const healthQuery = useSuspenseQuery(healthQueryOptions);
 
+	const healthy = healthQuery.data.ok;
 	return (
-		<section className="space-y-4">
-			<div className="space-y-1">
-				<h1 className="text-2xl font-semibold tracking-tight">
-					Status
-				</h1>
-				<p className="text-sm text-muted-foreground">
-					Example TanStack Query reads against the Hono API.
-				</p>
-			</div>
-
-			<div className="grid gap-3 sm:grid-cols-2">
-				<div className="rounded-lg border bg-card p-4">
-					<div className="text-sm text-muted-foreground">
-						GET /api
-					</div>
-					<div className="mt-1 text-lg font-semibold">
-						{nameQuery.data.name}
-					</div>
-				</div>
-				<div className="rounded-lg border bg-card p-4">
-					<div className="text-sm text-muted-foreground">
-						GET /api/health
-					</div>
-					<div className="mt-1 text-lg font-semibold">
-						{healthQuery.data.ok ? "ok" : "not ok"}
-					</div>
-				</div>
-			</div>
-
-			<div className="rounded-lg border bg-card p-4 text-sm">
-				<div className="font-medium">API docs</div>
-				<div className="mt-2 flex flex-wrap gap-3 text-muted-foreground">
-					<a
-						className="underline"
-						href="/api/doc"
-						target="_blank"
-						rel="noreferrer"
-					>
-						OpenAPI JSON
-					</a>
-					<a
-						className="underline"
-						href="/api/scalar"
-						target="_blank"
-						rel="noreferrer"
-					>
-						Scalar UI
-					</a>
-				</div>
-			</div>
-		</section>
+		<div className="space-y-8">
+			<PageHeader title="Status" />
+			<Unit title="API">
+				<ul className="-mx-3">
+					<li className={unitRowStaticClass}>
+						<span className="min-w-0 flex-1 space-y-0.5">
+							<span className="block font-medium">
+								{nameQuery.data.name}
+							</span>
+							<span className="block text-sm text-muted-foreground">
+								GET /api
+							</span>
+						</span>
+					</li>
+					<li className={unitRowStaticClass}>
+						<span className="min-w-0 flex-1 space-y-0.5">
+							<span className="block font-medium">Health</span>
+							<span className="block text-sm text-muted-foreground">
+								GET /api/health
+							</span>
+						</span>
+						<StatusPill tone={healthy ? "done" : "stopped"}>
+							{healthy ? "Healthy" : "Unhealthy"}
+						</StatusPill>
+					</li>
+				</ul>
+			</Unit>
+			<Unit title="API docs">
+				<ul className="-mx-3">
+					<LinkRow
+						url="/api/scalar"
+						title="Scalar UI"
+						detail="Browse and try every endpoint"
+					/>
+					<LinkRow
+						url="/api/doc"
+						title="OpenAPI JSON"
+						detail="/api/doc"
+					/>
+				</ul>
+			</Unit>
+		</div>
 	);
 }
 

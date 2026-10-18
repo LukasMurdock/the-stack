@@ -120,34 +120,39 @@ import {
 } from "../../../features/projects/contracts";
 ```
 
-Inside the existing `create.mutate({ ... })` input, after `description`, add:
+Inside the existing `create.mutate({ ... })` input in `CreateProject`, after
+`description`, add:
 
 ```ts
 status: projectStatusSchema.parse(fields.get("status")),
 ```
 
-Inside the form's existing disabled `fieldset`, before its submit button, add:
+In `ProjectForm`, inside the form's existing disabled `fieldset`, before its
+submit button, add:
 
 ```tsx
-<label htmlFor="project-status">Status</label>
-<select
-	id="project-status"
-	name="status"
-	defaultValue="planned"
-	className="h-9 w-full rounded-md border bg-background px-3 text-sm"
->
-	{projectStatusSchema.options.map((status) => (
-		<option key={status} value={status}>
-			{status}
-		</option>
-	))}
-</select>
+<Field>
+	<FieldLabel htmlFor="project-status">Status</FieldLabel>
+	<select
+		id="project-status"
+		name="status"
+		defaultValue="planned"
+		className="block h-11 w-full rounded-lg border bg-background px-3 text-sm"
+	>
+		{projectStatusSchema.options.map((status) => (
+			<option key={status} value={status}>
+				{status}
+			</option>
+		))}
+	</select>
+</Field>
 ```
 
-The options come from the validator. The field uses the existing pending state and
-form reset behavior. Keep `can(organization.role, "edit")` around `CreateProject`.
+The options come from the validator. The field uses the existing pending state, and
+the dialog starts empty each time it opens. Keep `can(organization.role, "edit")`
+around `CreateProject`.
 
-In the project list, inside each `li` after its description paragraph, add:
+In the project list, inside each row after its description paragraph, add:
 
 ```tsx
 <p className="text-sm text-muted-foreground">Status: {project.status}</p>

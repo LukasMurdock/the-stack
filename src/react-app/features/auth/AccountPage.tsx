@@ -5,13 +5,14 @@ import { passwordSchema } from "../../../contracts/auth";
 import { authClient } from "../../auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-	Field,
-	FieldDescription,
-	FieldError,
-	FieldGroup,
-	FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { PageHeader } from "../../ui/PageHeader";
+import { Unit } from "../../ui/Unit";
+
+const accountCopy = {
+	account: "Account",
+	changePassword: "Change password",
+};
 
 // Better Auth error codes this page words for people.
 const CHANGE_PASSWORD_ERRORS: Record<string, string> = {
@@ -32,21 +33,18 @@ export function AccountPage() {
 			return data;
 		},
 	});
+	const email = authClient.useSession().data?.user.email;
 	return (
-		<section className="mx-auto w-full max-w-md">
-			<FieldGroup className="rounded-xl border bg-card p-6">
-				<div className="space-y-1">
-					<h1 className="text-xl font-semibold tracking-tight">
-						Change password
-					</h1>
-					<FieldDescription>
-						Replace your password, for example a starting password
-						an administrator gave you.
-					</FieldDescription>
-				</div>
-				{accounts.isPending ? (
-					<p className="text-sm text-muted-foreground">Loading...</p>
-				) : accounts.isError ? (
+		<div className="mx-auto w-full max-w-md space-y-6">
+			<PageHeader title={accountCopy.account} meta={email} />
+			<Unit
+				title={accountCopy.changePassword}
+				surface
+				state={
+					accounts.isPending ? { kind: "loading" } : { kind: "ready" }
+				}
+			>
+				{accounts.isPending ? null : accounts.isError ? (
 					<FieldError>{accounts.error.message}</FieldError>
 				) : accounts.data.some(
 						(account) => account.providerId === "credential"
@@ -55,8 +53,8 @@ export function AccountPage() {
 				) : (
 					<NoPassword />
 				)}
-			</FieldGroup>
-		</section>
+			</Unit>
+		</div>
 	);
 }
 

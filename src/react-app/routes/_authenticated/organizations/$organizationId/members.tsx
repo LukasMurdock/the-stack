@@ -1,5 +1,9 @@
 import { can, canManageMember } from "@/features/organizations/policy";
-import { changeMemberSchema } from "@/contracts/organizations";
+import {
+	changeMemberSchema,
+	type memberSchema,
+} from "@/contracts/organizations";
+import type { z } from "zod";
 import { createFileRoute } from "@tanstack/react-router";
 import {
 	useMutation,
@@ -7,16 +11,25 @@ import {
 	useSuspenseQuery,
 } from "@tanstack/react-query";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
 	membersQuery,
 	organizationQuery,
 	changeMemberMutation,
 	removeMemberMutation,
 } from "../../../../features/organizations/queries";
-import { Pagination } from "../../../../components/Pagination";
+import {
+	organizationCopy as copy,
+	roleLabels,
+} from "../../../../features/organizations/copy";
 import { Invitations } from "../../../../features/organizations/Invitations";
 import { MutationFeedback } from "../../../../forms/feedback";
+import { OverflowMenu } from "../../../../ui/OverflowMenu";
+import type { OverflowItem } from "../../../../ui/overflowItems";
+import { Pagination } from "../../../../ui/Pagination";
+import { StatusPill } from "../../../../ui/StatusPill";
+import { Unit, unitRowStaticClass } from "../../../../ui/Unit";
+import { rowsState } from "../../../../ui/unitState";
+
 export const Route = createFileRoute(
 	"/_authenticated/organizations/$organizationId/members"
 )({
@@ -26,6 +39,11 @@ export const Route = createFileRoute(
 		),
 	component: MembersPage,
 });
+
+type Member = z.infer<typeof memberSchema>;
+
+// On this screen the user is here to see who belongs to the organization;
+// owners also invite people and change their access.
 function MembersPage() {
 	const { userId } = Route.useRouteContext();
 	const { organizationId } = Route.useParams();
@@ -43,78 +61,111 @@ function MembersPage() {
 	const remove = useMutation(
 		removeMemberMutation(queryClient, userId, organizationId)
 	);
-	const isPending = change.isPending || remove.isPending;
+	const handlers = {
+		pending: change.isPending || remove.isPending,
+		onRole: (member: Member, role: AssignableRole) => {
+			remove.reset();
+			change.mutate({ userId: member.userId, role });
+		},
+		onRemove: (member: Member) => {
+			if (!window.confirm(copy.confirmRemove(member.name))) return;
+			change.reset();
+			remove.mutate(member.userId);
+		},
+	};
 
 	return (
-		<section className="space-y-6">
-			<h1 className="text-2xl font-semibold">Members</h1>
-			<ul className="divide-y rounded border">
-				{members.map((member) => (
-					<li
-						key={member.userId}
-						className="flex flex-wrap items-center justify-between gap-3 p-4"
-					>
-						<div>
-							<p className="font-medium">{member.name}</p>
-							<p className="break-all text-sm">{member.email}</p>
-						</div>
-						{canManageMember(organization.role, member.role) ? (
-							<div className="flex gap-3">
-								<select
-									aria-label={`Role for ${member.name}`}
-									value={member.role}
-									disabled={isPending}
-									onChange={(event) => {
-										const role =
-											changeMemberSchema.shape.role.safeParse(
-												event.target.value
-											);
-										if (role.success) {
-											remove.reset();
-											change.mutate({
-												userId: member.userId,
-												role: role.data,
-											});
-										}
-									}}
-								>
-									{changeMemberSchema.shape.role.options.map(
-										(role) => (
-											<option key={role} value={role}>
-												{role.charAt(0).toUpperCase() +
-													role.slice(1)}
-											</option>
-										)
-									)}
-								</select>
-								<Button
-									variant="outline"
-									disabled={isPending}
-									onClick={() => {
-										if (
-											window.confirm(
-												`Remove ${member.name}?`
-											)
-										) {
-											change.reset();
-											remove.mutate(member.userId);
-										}
-									}}
-								>
-									Remove
-								</Button>
-							</div>
-						) : (
-							<span className="capitalize">{member.role}</span>
-						)}
-					</li>
-				))}
-			</ul>
-			<MutationFeedback error={change.error ?? remove.error} />
-			<Pagination page={page} onPage={setOffset} />
+		<div className="space-y-8">
+			<div className="space-y-3">
+				<Unit
+					title={copy.members}
+					meta={
+						page.total > 1
+							? copy.memberCount(page.total)
+							: undefined
+					}
+					state={rowsState(members.length, copy.noMembers)}
+				>
+					<ul className="-mx-3">
+						{members.map((member) => (
+							<MemberRow
+								key={member.userId}
+								member={member}
+								actions={
+									canManageMember(
+										organization.role,
+										member.role
+									)
+										? memberActions(member, handlers)
+										: null
+								}
+							/>
+						))}
+					</ul>
+				</Unit>
+				<MutationFeedback error={change.error ?? remove.error} />
+				<Pagination page={page} onPage={setOffset} />
+			</div>
 			{can(organization.role, "manage") && (
 				<Invitations userId={userId} organizationId={organizationId} />
 			)}
-		</section>
+		</div>
+	);
+}
+
+type AssignableRole = z.infer<typeof changeMemberSchema>["role"];
+
+// Access changes are rare, so they sit in each row's ⋯ menu.
+function memberActions(
+	member: Member,
+	handlers: {
+		pending: boolean;
+		onRole: (member: Member, role: AssignableRole) => void;
+		onRemove: (member: Member) => void;
+	}
+): OverflowItem[] {
+	return [
+		...changeMemberSchema.shape.role.options
+			.filter((role) => role !== member.role)
+			.map((role) => ({
+				label: copy.makeRole(role),
+				disabled: handlers.pending,
+				onSelect: () => handlers.onRole(member, role),
+			})),
+		"separator",
+		{
+			label: copy.remove,
+			destructive: true,
+			disabled: handlers.pending,
+			onSelect: () => handlers.onRemove(member),
+		},
+	];
+}
+
+function MemberRow({
+	member,
+	actions,
+}: {
+	member: Member;
+	actions: OverflowItem[] | null;
+}) {
+	return (
+		<li className={unitRowStaticClass}>
+			<span className="min-w-0 flex-1 space-y-0.5">
+				<span className="block truncate font-semibold">
+					{member.name}
+				</span>
+				<span className="block text-sm break-all text-muted-foreground">
+					{member.email}
+				</span>
+			</span>
+			<StatusPill tone="neutral">{roleLabels[member.role]}</StatusPill>
+			{actions && (
+				<OverflowMenu
+					label={copy.actionsFor(member.name)}
+					items={actions}
+				/>
+			)}
+		</li>
 	);
 }

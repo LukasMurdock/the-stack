@@ -4,8 +4,7 @@ import {
 	PAGE_SIZE,
 	type PageInfo,
 } from "@/contracts/pagination";
-
-const count = (value: number) => value.toLocaleString("en-US");
+import { formatCount } from "./format";
 
 // Previous and next for a pagedResponse list, with where the page sits in
 // everything matched. Hidden while one page holds it all; shown whenever off
@@ -31,8 +30,8 @@ export function Pagination({
 			</Button>
 			<span className="text-sm tabular-nums">
 				{offset < total
-					? `${count(offset + 1)}–${count(end)} of ${count(total)}`
-					: `Page ${count(Math.floor(offset / PAGE_SIZE) + 1)}`}
+					? `${formatCount(offset + 1)}–${formatCount(end)} of ${formatCount(total)}`
+					: `Page ${formatCount(Math.floor(offset / PAGE_SIZE) + 1)}`}
 			</span>
 			<Button
 				variant="outline"

@@ -1,8 +1,11 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { ArrowLeft } from "lucide-react";
 import { organizationQuery } from "../../../features/organizations/queries";
 import { ScrollTabs } from "../../../components/ScrollTabs";
 import { tabActiveProps, tabLinkClass } from "../../../components/nav-items";
+import { organizationCopy as copy } from "../../../features/organizations/copy";
+import { backLinkClass, RecordHeader } from "../../../ui/RecordHeader";
 
 export const Route = createFileRoute(
 	"/_authenticated/organizations/$organizationId"
@@ -13,6 +16,8 @@ export const Route = createFileRoute(
 		),
 	component: OrganizationLayout,
 });
+// On this screen the user is here to see which organization this is and
+// move between its parts.
 function OrganizationLayout() {
 	const { userId } = Route.useRouteContext();
 	const { organizationId } = Route.useParams();
@@ -22,20 +27,17 @@ function OrganizationLayout() {
 	return (
 		<div className="space-y-6">
 			<div className="space-y-3">
-				<Link
-					to="/organizations"
-					className="text-sm underline underline-offset-4"
-				>
-					All organizations
-				</Link>
-				<div className="flex flex-wrap items-center justify-between gap-3">
-					<p className="text-lg font-semibold">{organization.name}</p>
-					<span className="text-sm capitalize text-muted-foreground">
-						<span className="sr-only">Your role: </span>
-						{organization.role}
-					</span>
-				</div>
-				<ScrollTabs label="Organization" className="border-b text-sm">
+				<RecordHeader
+					back={
+						<Link to="/organizations" className={backLinkClass}>
+							<ArrowLeft aria-hidden className="size-4" />
+							{copy.allOrganizations}
+						</Link>
+					}
+					title={organization.name}
+					facts={copy.yourAccess(organization.role)}
+				/>
+				<ScrollTabs label={copy.tabs} className="border-b text-sm">
 					{/* example:start */}
 					<Link
 						to="/organizations/$organizationId/projects"
@@ -52,7 +54,7 @@ function OrganizationLayout() {
 						className={tabLinkClass}
 						activeProps={tabActiveProps}
 					>
-						Members
+						{copy.members}
 					</Link>
 				</ScrollTabs>
 			</div>

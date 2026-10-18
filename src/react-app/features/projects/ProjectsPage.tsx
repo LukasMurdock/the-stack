@@ -5,16 +5,24 @@ import {
 	useQueryClient,
 	useSuspenseQuery,
 } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { projectsQuery, createProjectMutation } from "./queries";
+import { projectCopy as copy } from "./copy";
 import { organizationQuery } from "../organizations/queries";
-import { Pagination } from "../../components/Pagination";
+import { FormDialog } from "../../forms/FormDialog";
 import { MutationFeedback } from "../../forms/feedback";
+import { Pagination } from "../../ui/Pagination";
+import { Unit, unitRowStaticClass } from "../../ui/Unit";
+import { rowsState } from "../../ui/unitState";
 import { useWorkflowOutcome } from "../turret/outcomes";
 import { useFlag } from "../../flags";
+
+// On this screen the user is here to see the organization's projects;
+// editors and owners also start new ones.
 export function ProjectsPage({
 	userId,
 	organizationId,
@@ -33,36 +41,47 @@ export function ProjectsPage({
 	// serves projects-total on (see "Feature flags" in AGENTS.md).
 	const showTotal = useFlag("projects-total", { userId, organizationId });
 	return (
-		<section className="space-y-6">
-			<h1 className="text-2xl font-semibold">Projects</h1>
-			{showTotal && (
-				<p className="text-sm text-muted-foreground">
-					{page.total} {page.total === 1 ? "project" : "projects"} in{" "}
-					{organization.name}
-				</p>
-			)}
-			<ul className="divide-y rounded-lg border">
-				{projects.map((project) => (
-					<li key={project.id} className="space-y-1 p-4">
-						<h2 className="font-medium">{project.name}</h2>
-						<p className="whitespace-pre-wrap break-words text-sm">
-							{project.description}
-						</p>
-					</li>
-				))}
-			</ul>
-			{!projects.length && <p>No projects on this page.</p>}
+		<div className="space-y-3">
+			<Unit
+				title={copy.projects}
+				meta={
+					showTotal
+						? copy.projectCount(page.total, organization.name)
+						: undefined
+				}
+				action={
+					can(organization.role, "edit") && (
+						<CreateProject
+							userId={userId}
+							organizationId={organizationId}
+							onCreated={() => setOffset(0)}
+						/>
+					)
+				}
+				state={rowsState(projects.length, copy.noProjects)}
+			>
+				<ul className="-mx-3">
+					{projects.map((project) => (
+						<li key={project.id} className={unitRowStaticClass}>
+							<div className="min-w-0 flex-1 space-y-0.5">
+								<h3 className="font-semibold break-words">
+									{project.name}
+								</h3>
+								{project.description && (
+									<p className="text-sm whitespace-pre-wrap break-words text-muted-foreground">
+										{project.description}
+									</p>
+								)}
+							</div>
+						</li>
+					))}
+				</ul>
+			</Unit>
 			<Pagination page={page} onPage={setOffset} />
-			{can(organization.role, "edit") && (
-				<CreateProject
-					userId={userId}
-					organizationId={organizationId}
-					onCreated={() => setOffset(0)}
-				/>
-			)}
-		</section>
+		</div>
 	);
 }
+
 function CreateProject({
 	userId,
 	organizationId,
@@ -72,7 +91,6 @@ function CreateProject({
 	organizationId: string;
 	onCreated: () => void;
 }) {
-	const form = useRef<HTMLFormElement>(null);
 	const queryClient = useQueryClient();
 	const create = useMutation(
 		createProjectMutation(queryClient, userId, organizationId)
@@ -81,57 +99,92 @@ function CreateProject({
 	const outcome = useWorkflowOutcome("project.create");
 
 	return (
+		<FormDialog
+			triggerLabel={copy.newProject}
+			title={copy.newProject}
+			onClosed={() => create.reset()}
+		>
+			{(close) => (
+				<ProjectForm
+					pending={create.isPending}
+					error={create.error}
+					onFocus={outcome.start}
+					onSubmit={(fields) =>
+						create.mutate(
+							{
+								name: String(fields.get("name") ?? ""),
+								description: String(
+									fields.get("description") ?? ""
+								),
+							},
+							{
+								onSuccess: () => {
+									outcome.succeeded();
+									close();
+									onCreated();
+								},
+								onError: outcome.failed,
+							}
+						)
+					}
+				/>
+			)}
+		</FormDialog>
+	);
+}
+
+function ProjectForm({
+	pending,
+	error,
+	onFocus,
+	onSubmit,
+}: {
+	pending: boolean;
+	error: unknown;
+	onFocus: () => void;
+	onSubmit: (fields: FormData) => void;
+}) {
+	return (
 		<form
-			ref={form}
-			className="max-w-lg space-y-3"
-			onFocus={outcome.start}
+			className="space-y-4"
+			onFocus={onFocus}
 			onSubmit={(event) => {
 				event.preventDefault();
-				const fields = new FormData(event.currentTarget);
-				create.mutate(
-					{
-						name: String(fields.get("name") ?? ""),
-						description: String(fields.get("description") ?? ""),
-					},
-					{
-						onSuccess: () => {
-							outcome.succeeded();
-							form.current?.reset();
-							onCreated();
-						},
-						onError: outcome.failed,
-					}
-				);
+				onSubmit(new FormData(event.currentTarget));
 			}}
 		>
-			<h2 className="text-lg font-medium">Create a project</h2>
-			<fieldset disabled={create.isPending} className="space-y-3">
-				<label htmlFor="project-name">Project name</label>
-				<Input
-					id="project-name"
-					name="name"
-					required
-					maxLength={
-						createProjectSchema.shape.name.maxLength ?? undefined
-					}
-				/>
-				<label htmlFor="project-description">Description</label>
-				<Textarea
-					id="project-description"
-					name="description"
-					maxLength={
-						createProjectSchema.shape.description.maxLength ??
-						undefined
-					}
-				/>
-				<Button type="submit">
-					{create.isPending ? "Creating…" : "Create project"}
+			<fieldset disabled={pending} className="space-y-4">
+				<Field>
+					<FieldLabel htmlFor="project-name">{copy.name}</FieldLabel>
+					<Input
+						id="project-name"
+						name="name"
+						required
+						className="h-11"
+						maxLength={
+							createProjectSchema.shape.name.maxLength ??
+							undefined
+						}
+					/>
+				</Field>
+				<Field>
+					<FieldLabel htmlFor="project-description">
+						{copy.description}
+					</FieldLabel>
+					<Textarea
+						id="project-description"
+						name="description"
+						maxLength={
+							createProjectSchema.shape.description.maxLength ??
+							undefined
+						}
+					/>
+				</Field>
+				<Button type="submit" size="lg" className="w-full">
+					{pending ? copy.creating : copy.create}
 				</Button>
 			</fieldset>
-			<MutationFeedback
-				error={create.error}
-				success={create.isSuccess ? "Project created." : undefined}
-			/>
+			<MutationFeedback error={error} />
 		</form>
 	);
 }

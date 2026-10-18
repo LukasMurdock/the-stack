@@ -40,6 +40,10 @@ test each CLI as a subprocess (`tests/tooling/cli-boundaries.test.ts`).
 - Tests: fake R2 with `tests/helpers/fake-r2.ts`. Columns are snake_case in SQL
   (`casing: "snake_case"`), so raw-SQL seeds use `organization_id`, not the key.
 - Feature conventions: read `src/content/docs/v1/extend.md`.
+- Screens: read `docs/ui.md` before building or changing one. One primary
+  action per screen, state (not narration) in copy, whole-row tap targets,
+  phone-first layouts, shared primitives from `src/react-app/ui/`, and each
+  feature's strings in its own `copy.ts`.
 
 <!-- example:start -->
 

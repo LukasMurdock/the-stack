@@ -53,6 +53,17 @@
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
+	/* Status tones: what a state means, not which feature shows it. */
+	--color-tone-neutral: var(--tone-neutral);
+	--color-tone-neutral-foreground: var(--tone-neutral-foreground);
+	--color-tone-waiting: var(--tone-waiting);
+	--color-tone-waiting-foreground: var(--tone-waiting-foreground);
+	--color-tone-working: var(--tone-working);
+	--color-tone-working-foreground: var(--tone-working-foreground);
+	--color-tone-done: var(--tone-done);
+	--color-tone-done-foreground: var(--tone-done-foreground);
+	--color-tone-stopped: var(--tone-stopped);
+	--color-tone-stopped-foreground: var(--tone-stopped-foreground);
 }
 
 :root {
@@ -88,6 +99,16 @@
 	--sidebar-accent-foreground: oklch(0.205 0 0);
 	--sidebar-border: oklch(0.922 0 0);
 	--sidebar-ring: oklch(0.708 0 0);
+	--tone-neutral: oklch(0.96 0 0);
+	--tone-neutral-foreground: oklch(0.4 0 0);
+	--tone-waiting: oklch(0.96 0.06 85);
+	--tone-waiting-foreground: oklch(0.45 0.11 65);
+	--tone-working: oklch(0.95 0.035 250);
+	--tone-working-foreground: oklch(0.45 0.15 255);
+	--tone-done: oklch(0.95 0.05 155);
+	--tone-done-foreground: oklch(0.42 0.11 155);
+	--tone-stopped: oklch(0.95 0.025 25);
+	--tone-stopped-foreground: oklch(0.5 0.17 25);
 }
 
 .dark {
@@ -122,6 +143,16 @@
 	--sidebar-accent-foreground: oklch(0.985 0 0);
 	--sidebar-border: oklch(1 0 0 / 10%);
 	--sidebar-ring: oklch(0.556 0 0);
+	--tone-neutral: oklch(0.28 0 0);
+	--tone-neutral-foreground: oklch(0.82 0 0);
+	--tone-waiting: oklch(0.32 0.06 75);
+	--tone-waiting-foreground: oklch(0.88 0.12 85);
+	--tone-working: oklch(0.3 0.06 255);
+	--tone-working-foreground: oklch(0.85 0.09 250);
+	--tone-done: oklch(0.3 0.06 155);
+	--tone-done-foreground: oklch(0.86 0.12 155);
+	--tone-stopped: oklch(0.3 0.06 25);
+	--tone-stopped-foreground: oklch(0.85 0.1 25);
 }
 
 @layer base {
