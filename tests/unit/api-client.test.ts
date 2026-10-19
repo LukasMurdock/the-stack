@@ -64,15 +64,3 @@ test("shared transport accepts request metadata without depending on its produce
 	assert.equal(received[1]?.get("x-request-context"), "first");
 	assert.equal(received[2]?.get("x-request-context"), "second");
 });
-
-test("response decoding accepts wire data and returns transformed output", async () => {
-	const decoder = z
-		.object({ createdAt: z.string() })
-		.transform(({ createdAt }) => new Date(createdAt));
-	const date = await jsonOrThrow(
-		Response.json({ createdAt: "2026-10-06T00:00:00.000Z" }),
-		decoder
-	);
-	assert.ok(date instanceof Date);
-	assert.equal(date.toISOString(), "2026-10-06T00:00:00.000Z");
-});

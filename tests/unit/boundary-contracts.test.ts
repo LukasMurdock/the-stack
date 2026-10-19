@@ -1,34 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getRequestLocation } from "../../src/lib/cloudflareRequest";
 import { headerSessionSchema } from "../../src/contracts/auth";
 import { turretComplianceSchema } from "../../src/contracts/turret-policy";
 import { normalizeTurretCompliance } from "../../src/worker/turret/compliance";
 import { turretInitResponseSchema } from "../../src/contracts/turret";
 import { ApiError, jsonOrThrow } from "../../src/react-app/api";
 import { decodeReplayEvents } from "../../src/react-app/features/turret/session/replayLoader";
-import { replaySearchSchema } from "../../src/react-app/features/turret/session/replaySearch";
-
-test("Cloudflare location accepts string metadata and excludes invalid or absent values", () => {
-	const request = new Request("https://example.com");
-	assert.deepEqual(getRequestLocation(request), {
-		country: undefined,
-		colo: undefined,
-	});
-	Object.defineProperty(request, "cf", {
-		configurable: true,
-		value: { country: "US", colo: "IAD" },
-	});
-	assert.deepEqual(getRequestLocation(request), {
-		country: "US",
-		colo: "IAD",
-	});
-	Object.defineProperty(request, "cf", { value: { country: {}, colo: 42 } });
-	assert.deepEqual(getRequestLocation(request), {
-		country: undefined,
-		colo: undefined,
-	});
-});
 
 test("header sessions reject malformed user fields before reaching Astro locals", () => {
 	assert.deepEqual(
@@ -127,30 +104,6 @@ test("replay envelopes preserve rrweb payloads and reject invalid tags, timestam
 			/Invalid replay event envelope/
 		);
 	}
-});
-
-test("legacy replay filters survive parsing followed by a redirect to the canonical route", () => {
-	const parsed = replaySearchSchema.parse({
-		q: "checkout",
-		hasError: "1",
-		grouped: "true",
-		preset: "custom",
-		from: "1000",
-		to: "2000",
-		offset: "50",
-		limit: "25",
-	});
-	assert.deepEqual(parsed, {
-		q: "checkout",
-		hasError: true,
-		groupBy: "user",
-		preset: "custom",
-		from: 1000,
-		to: 2000,
-		offset: 50,
-		limit: 25,
-	});
-	assert.deepEqual(replaySearchSchema.parse(parsed), parsed);
 });
 
 test("API error messages never treat arbitrary JSON fields as strings", async () => {

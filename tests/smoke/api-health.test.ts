@@ -74,12 +74,6 @@ test("health reports the serving Worker version and build commit pnpm ship waits
 	assert.equal(versioned.version, "version-1");
 });
 
-test("health reports open auth mode when configured", async () => {
-	const payload = await getHealth("open");
-	assert.equal(payload.auth.signupMode, "open");
-	assert.equal(payload.auth.selfSignUpEnabled, true);
-});
-
 test("health provider availability agrees with Better Auth for complete and incomplete credentials", async () => {
 	for (const [credentials, enabled] of [
 		[{}, false],

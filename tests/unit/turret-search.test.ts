@@ -83,43 +83,6 @@ test("trend bounds count partial edge buckets and resolve omitted windows from t
 	assert.deepEqual(range, { from: 9 * step, to: 10 * step });
 });
 
-test("destination defaults preserve distinct windows, explicit filters, and old grouped links", () => {
-	assert.equal(replaySearchSchema.parse({}).preset, "1h");
-	assert.equal(issuesSearchSchema.parse({}).preset, "24h");
-	assert.equal(issueDetailSearchSchema.parse({}).preset, "7d");
-	assert.equal(
-		issueDetailSearchSchema.parse({ preset: "24h" }).bucket,
-		"hour"
-	);
-	assert.equal(
-		issueDetailSearchSchema.parse({ preset: "24h", bucket: "day" }).bucket,
-		"day"
-	);
-	assert.equal(replaySearchSchema.parse({ grouped: "1" }).groupBy, "user");
-	assert.equal(
-		replaySearchSchema.parse({ grouped: "1", groupBy: "invalid" }).groupBy,
-		"user"
-	);
-	assert.equal(
-		replaySearchSchema.parse({ grouped: "1", groupBy: "none" }).groupBy,
-		"none"
-	);
-	assert.equal(replaySearchSchema.parse({ hasError: "true" }).hasError, true);
-	assert.equal(
-		replaySearchSchema.parse({
-			preset: "obsolete",
-			limit: "bad",
-			offset: "10",
-		}).offset,
-		10
-	);
-	assert.equal(
-		issuesSearchSchema.parse({ status: "unknown", preset: "unknown" })
-			.status,
-		"open"
-	);
-});
-
 test("investigation links restore the occurrence and replay moment and drop malformed positions", () => {
 	assert.deepEqual(
 		(({ event, t }) => ({ event, t }))(

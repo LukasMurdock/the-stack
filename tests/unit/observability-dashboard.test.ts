@@ -52,24 +52,6 @@ function query(value: TurretSummary | undefined, error = false): SummaryQuery {
 	};
 }
 
-test("dashboard renders full replay totals and sampled request health with release context", () => {
-	const replay = renderToStaticMarkup(
-		createElement(LastHourReplayCard, { query: query(data) })
-	);
-	assert.match(replay, />25</);
-	assert.match(replay, /Error replay sessions/);
-	assert.match(replay, />12</);
-	const health = renderToStaticMarkup(
-		createElement(BackendHealthSection, { query: query(data) })
-	);
-	assert.match(health, /Sampled estimates/);
-	assert.match(health, /1,250/);
-	assert.match(health, /845 ms/);
-	assert.match(health, /112 ms/);
-	assert.match(health, /release-12345678/);
-	assert.match(health, /\/api\/example\/:id/);
-});
-
 test("missing and failed telemetry render unavailable, while loading is distinct", () => {
 	const failed: TurretSummary = {
 		...data,

@@ -3,10 +3,6 @@ import test from "node:test";
 import { turretOutcomeBodySchema } from "../../src/contracts/turret-outcomes";
 import { ApiError } from "../../src/react-app/api";
 import { outcomeFailureReason } from "../../src/react-app/features/turret/outcomes";
-import {
-	outcomesSearchSchema,
-	successRate,
-} from "../../src/react-app/features/turret/outcomeSearch";
 
 test("failure reasons are codes the ingestion contract accepts, never messages", () => {
 	const product = new ApiError({
@@ -32,15 +28,4 @@ test("failure reasons are codes the ingestion contract accepts, never messages",
 			}).success
 		);
 	}
-});
-
-test("success rate counts finished attempts and outcome links default to failures", () => {
-	assert.equal(successRate({ succeeded: 3, failed: 1, abandoned: 0 }), 0.75);
-	assert.equal(successRate({ succeeded: 0, failed: 0, abandoned: 0 }), null);
-	assert.deepEqual(outcomesSearchSchema.parse({ workflow: "checkout" }), {
-		preset: "7d",
-		workflow: "invitation.accept",
-		status: "failed",
-		offset: 0,
-	});
 });

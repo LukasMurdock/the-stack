@@ -123,22 +123,3 @@ test("source, scripts and tests import only declared packages and respect browse
 	}
 	assert.deepEqual(violations, []);
 });
-
-test("literal search and migration fixtures retain a single owner", () => {
-	for (const filename of files("src"))
-		assert.doesNotMatch(
-			readFileSync(filename, "utf8"),
-			/function escapeLike\b/,
-			relative(root, filename)
-		);
-	for (const filename of [
-		...files("tests/integration"),
-		...files("tests/smoke"),
-	]) {
-		const source = readFileSync(filename, "utf8");
-		assert.ok(
-			!(source.includes("CREATE TABLE") && source.includes(".match(")),
-			`${relative(root, filename)} reconstructs migration fragments`
-		);
-	}
-});

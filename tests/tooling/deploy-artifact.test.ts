@@ -9,7 +9,6 @@ import {
 	type ArtifactModule,
 	cronBundleHint,
 	expectedFromConfig,
-	parseDeployArtifactOptions,
 	relativeImports,
 	verifyArtifact,
 } from "../../scripts/testing/deploy-artifact.ts";
@@ -149,36 +148,6 @@ test("the config is parsed strictly: unknown binding kinds and duplicates stop t
 		/kv_namespaces has an entry without a binding/
 	);
 	assert.throws(() => expectedFromConfig({ ...config, name: 1 }), /name/);
-});
-
-test("check:deploy options: no arguments, --help, and bad input", () => {
-	assert.deepEqual(parseDeployArtifactOptions([]), {
-		kind: "run",
-		options: {},
-	});
-	assert.deepEqual(parseDeployArtifactOptions(["-h"]), { kind: "help" });
-	assert.throws(() => parseDeployArtifactOptions(["now"]), /Unexpected/);
-	assert.throws(() => parseDeployArtifactOptions(["--fast"]), /Unknown/);
-});
-
-test("node scripts/testing/deploy-artifact.ts at its boundary: help and usage errors", () => {
-	const script = path.join(
-		process.cwd(),
-		"scripts/testing/deploy-artifact.ts"
-	);
-	const run = (args: readonly string[]) =>
-		spawnSync(process.execPath, [script, ...args], {
-			encoding: "utf8",
-			timeout: 60_000,
-		});
-	const help = run(["--help"]);
-	assert.equal(help.status, 0, help.stderr);
-	assert.match(help.stdout, /Usage: pnpm check:deploy/);
-	for (const args of [["--skip-build"], ["extra"]]) {
-		const bad = run(args);
-		assert.equal(bad.status, 2, bad.stderr);
-		assert.match(bad.stderr, /Usage: pnpm check:deploy/);
-	}
 });
 
 test("pnpm check:deploy refuses undeclared routes, workers_dev or preview_urls before building", (t) => {

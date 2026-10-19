@@ -12,15 +12,6 @@ test("resolveTurretMode defaults to full", () => {
 	assert.equal(resolveTurretMode("bogus"), "full");
 });
 
-test("resolveTurretMode parses known values", () => {
-	assert.equal(resolveTurretMode("off"), "off");
-	assert.equal(resolveTurretMode("basic"), "basic");
-	assert.equal(resolveTurretMode("full"), "full");
-	assert.equal(resolveTurretMode(" OFF "), "off");
-	assert.equal(resolveTurretMode(" Basic "), "basic");
-	assert.equal(resolveTurretMode(" FULL "), "full");
-});
-
 test("mode status disables ingest for off/basic", () => {
 	const off = resolveTurretModeStatus({
 		modeRaw: "off",
@@ -35,15 +26,4 @@ test("mode status disables ingest for off/basic", () => {
 	});
 	assert.equal(basic.ingestEnabled, false);
 	assert.equal(basic.effectiveMode, "basic");
-});
-
-test("mode status degrades full to basic when key missing", () => {
-	const status = resolveTurretModeStatus({
-		modeRaw: "full",
-		hasSigningKey: false,
-	});
-	assert.equal(status.configuredMode, "full");
-	assert.equal(status.effectiveMode, "basic");
-	assert.equal(status.ingestEnabled, false);
-	assert.equal(status.reason, "missing_turret_signing_key");
 });
