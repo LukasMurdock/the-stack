@@ -1,0 +1,59 @@
+{
+	"schemaVersion": 1,
+	"tool": {
+		"name": "proof",
+		"version": "1.0.0"
+	},
+	"commit": "54eb7e9f0d0cea22cb2a77885ca819f8a16a73ad",
+	"tree": "6e9b0cee3d7238cd40c3007f0f74ad1fb2a2ed36",
+	"result": "passed",
+	"startedAt": "2026-10-17T00:01:43.049Z",
+	"finishedAt": "2026-10-17T00:05:25.145Z",
+	"durationMs": 222094,
+	"environment": {
+		"node": "v24.21.0",
+		"pnpm": "10.34.6",
+		"platform": "linux",
+		"arch": "x64"
+	},
+	"steps": [
+		{
+			"name": "install",
+			"command": [
+				"pnpm",
+				"install",
+				"--frozen-lockfile"
+			],
+			"status": "passed",
+			"exitCode": 0,
+			"durationMs": 11283,
+			"logPath": ".proof/54eb7e9f0d0cea22cb2a77885ca819f8a16a73ad/install.log",
+			"logTail": ""
+		},
+		{
+			"name": "verify",
+			"command": [
+				"pnpm",
+				"verify"
+			],
+			"status": "passed",
+			"exitCode": 0,
+			"durationMs": 92181,
+			"logPath": ".proof/54eb7e9f0d0cea22cb2a77885ca819f8a16a73ad/verify.log",
+			"logTail": "ommand (103.391801ms)\n✔ example:remove options: defaults, flags and malformed input (9.183817ms)\n✔ marked blocks are removed whole and malformed markers stop the removal (1.987773ms)\n✔ only the manifest's shared files carry example markers (53.635026ms)\n✔ example:remove --dry-run lists the manifest and changes nothing (331.766779ms)\n✔ example:remove leaves a copy that formats and type-checks without the example (16585.989492ms)\n✔ example:remove --deployed keeps the migration history and drops the table (4650.970502ms)\n✔ configured lint rules reject each unsafe probe in one CLI invocation (5793.655096ms)\n✔ precise types, local accumulator mutation, and justified assertions remain valid (1093.217452ms)\n✔ Oxlint and its plugin API upgrade together at exact matching versions (1.337941ms)\n✔ dev:stop stops the recorded server's whole process tree (578.548788ms)\n✔ dev:stop reaps the process group of a crashed background server (580.855263ms)\n✔ stopProcessTree escalates to SIGKILL after the grace period (483.24347ms)\n✔ pnpm dev refuses a live server, clears a stale lock and fails fast on a busy port (640.698891ms)\n✔ dev:wait bounds each health request and the overall deadline (4350.904711ms)\n✔ browser runs claim distinct ports and reject a busy explicit port (96.884166ms)\n✔ the E2E build fingerprint tracks build inputs, not tests (27.335049ms)\n✔ proof records: the result is derived from the steps and validated on read (7.4372ms)\n✔ proof check: binds to commit and tree, rejects failures, skipped e2e and missing reviews (0.455435ms)\n✔ proof reviews: validated, bounded, and stamped when `at` is missing (2.379493ms)\n✔ pnpm proof at its boundary: refuses dirty trees, records, checks and cleans up (4444.869306ms)\n✔ pnpm proof stops the step and removes the copy on SIGTERM (592.797153ms)\nFlagship app created for fixture-stack: flagship-app-1 (recorded in void.lock.json)\n✔ Void provisions separate Core/Turret resources and reuses their lock on retry (936.238576ms)\n✔ Flagship provisioning reuses an app by name and fails with the command to run (6.7141ms)\n✔ check verdicts stay pending until every run finishes and fail on any bad conclusion (7.102325ms)\n✔ ci:wait polls until checks pass, and reports failing jobs with log tails (3.990708ms)\n✔ ship waits for CI, merges once, deploys, and confirms production serves the commit (21.590795ms)\n✔ ship resumes a merged PR without merging again and skips a deploy already live (1.783661ms)\n✔ ship stops before production changes when it cannot ship safely (1.254287ms)\n✔ the build commit comes from STACK_COMMIT or the checkout (3.169161ms)\n✔ ci:wait refuses to judge a commit whose check runs do not fit one page (0.717903ms)\n✔ ship reports why production never served the commit (0.469606ms)\n✔ the build commit rejects a STACK_COMMIT that is not a full SHA (0.149421ms)\n✔ trunk ship pushes HEAD and its proof note atomically, deploys it and waits until live (173.042038ms)\n✔ trunk ship refuses a dirty tree before any side effect (94.007998ms)\n✔ trunk ship refuses a missing proof, a failed proof and a proof of another tree (258.84581ms)\n✔ trunk ship refuses when main moved and pushes nothing (248.310963ms)\n✔ trunk ship merges diverged remote notes and keeps one valid note per commit (506.358381ms)\n✔ trunk ship rerun after landing skips the push, and skips the deploy once live (245.520072ms)\n✔ trunk ship skips the deploy when production already serves the commit (179.978036ms)\n✔ trunk ship --dry-run prints the preconditions and plan and changes nothing (169.69359ms)\n✔ trunk ship --require-reviews counts approving reviews on the proof (128.761079ms)\n✔ git ls-remote output parses into origin's main and notes heads (0.420543ms)\n✔ node scripts/ship.ts: help, bad arguments and --dry-run in a proved checkout (656.027595ms)\n✔ CI audits main's HEAD for a passing proof on push, and leaves PR jobs alone (0.244802ms)\nℹ tests 73\nℹ suites 0\nℹ pass 73\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 27788.160653\n"
+		},
+		{
+			"name": "e2e",
+			"command": [
+				"pnpm",
+				"test:e2e"
+			],
+			"status": "passed",
+			"exitCode": 0,
+			"durationMs": 117806,
+			"logPath": ".proof/54eb7e9f0d0cea22cb2a77885ca819f8a16a73ad/e2e.log",
+			"logTail": "s/e2e/playback.spec.ts:93:2 › construction failure leaves replay controls disabled and clears partial mounting (1.4s)\n  ✓   9 [chromium] › tests/e2e/playback.spec.ts:143:1 › jump controls wait for mounting, seek consistently and clean up on navigation (1.3s)\n  ✓  10 [chromium] › tests/e2e/playback.spec.ts:197:1 › leaving a pending replay aborts its chunks and cannot mount a late player (817ms)\n  ✓  11 [chromium] › tests/e2e/projects.spec.ts:17:1 › project creation preserves the draft after failure and persists after retry (1.6s)\n  ✓  12 [chromium] › tests/e2e/projects.spec.ts:81:1 › viewers read projects without the create form (1.6s)\n  ✓  13 [chromium] › tests/e2e/projects.spec.ts:117:1 › changing organization resets project pagination, drafts and failed mutation state (3.9s)\n  ✓  14 [chromium] › tests/e2e/projects.spec.ts:184:1 › the project count ships dark until projects-total is on for the organization (5.3s)\n  ✓  15 [chromium] › tests/e2e/session.spec.ts:4:1 › account replacement refreshes private permissions in both directions (8.0s)\n  ✓  16 [chromium] › tests/e2e/session.spec.ts:67:1 › signing out in another tab removes the mounted private screen (2.0s)\n  ✓  17 [chromium] › tests/e2e/signup.spec.ts:4:1 › public signup derives password bounds while sign-in accepts existing credentials (885ms)\n  ✓  18 [chromium] › tests/e2e/smoke.spec.ts:3:1 › admin parent denies a signed-in non-admin without a login loop (828ms)\n  ✓  19 [chromium] › tests/e2e/smoke.spec.ts:20:1 › Astro replay starts only for authenticated sessions and tolerates session failures (2.3s)\n  ✓  20 [chromium] › tests/e2e/smoke.spec.ts:83:1 › login offers Google only when the server reports it available (884ms)\n  ✓  21 [chromium] › tests/e2e/smoke.spec.ts:112:1 › an open Astro tab replaces capture on account change and stops after cross-tab sign-out (6.1s)\n  ✓  22 [chromium] › tests/e2e/smoke.spec.ts:195:1 › Astro and React pages render in the bundled font (441ms)\n  ✓  23 [chromium] › tests/e2e/turret.spec.ts:14:1 › authenticated replay uploads survive a real Worker and R2 round trip (633ms)\n  ✓  24 [chromium] › tests/e2e/turret.spec.ts:178:2 › overflow stops recording while keeping the telemetry session active (3.0s)\n  ✓  25 [chromium] › tests/e2e/turret.spec.ts:178:2 › blocked import stops recording while keeping the telemetry session active (1.7s)\n  ✓  26 [chromium] › tests/e2e/turret.spec.ts:178:2 › recorder initialization stops recording while keeping the telemetry session active (731ms)\n  ✓  27 [chromium] › tests/e2e/turret.spec.ts:178:2 › plugin initialization stops recording while keeping the telemetry session active (800ms)\n  ✓  28 [chromium] › tests/e2e/turret.spec.ts:178:2 › serialization stops recording while keeping the telemetry session active (757ms)\n  ✓  29 [chromium] › tests/e2e/turret.spec.ts:178:2 › lost acknowledgement stops recording while keeping the telemetry session active (3.8s)\n  ✓  30 [chromium] › tests/e2e/turret.spec.ts:340:1 › an unauthorized upload ends the session instead of retaining telemetry credentials (2.9s)\n  ✓  31 [chromium] › tests/e2e/turret.spec.ts:379:1 › the server-issued deadline ends capture and disables session-linked telemetry (3.2s)\n  ✓  32 [chromium] › tests/e2e/turret.spec.ts:434:1 › an issue investigation opens a recorded failure at its moment and keeps the position in the URL (5.7s)\n  ✓  33 [chromium] › tests/e2e/turret.spec.ts:538:1 › a feedback report promoted to an issue opens its replay and stays linked (6.8s)\n  ✓  34 [chromium] › tests/e2e/turret.spec.ts:595:1 › outcomes list every instrumented workflow with the default selected (2.2s)\n  ✓  35 [chromium] › tests/e2e/turret.spec.ts:616:1 › login returns to its destination and Turret links use destination search defaults (2.8s)\n  ✓  36 [chromium] › tests/e2e/turret.spec.ts:672:1 › each editable policy field drives saving without overwriting other settings (2.0s)\n\n  36 passed (1.9m)\n"
+		}
+	],
+	"reviews": []
+}
