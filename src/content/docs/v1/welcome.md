@@ -7,7 +7,7 @@ pubDate: "2026-10-07"
 # Getting Started
 
 Start with a working local app, then change one feature. You need Node.js
-24.21.0+ and pnpm 10.34.6. A Cloudflare account, email provider and OAuth credentials
+24.21.0+ and pnpm 11.22.0. A Cloudflare account, email provider and OAuth credentials
 are not needed for this local walkthrough.
 
 ## 1. Get the starter
@@ -24,7 +24,7 @@ Check Node and install the package manager version declared in `package.json`:
 
 ```bash
 node --version
-npm install --global pnpm@10.34.6
+npm install --global pnpm@11.22.0
 pnpm --version
 ```
 

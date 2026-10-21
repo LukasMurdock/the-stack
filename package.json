@@ -137,7 +137,7 @@
 	"engines": {
 		"node": ">=24.21.0"
 	},
-	"packageManager": "pnpm@10.34.6",
+	"packageManager": "pnpm@11.22.0",
 	"lint-staged": {
 		"*.{js,jsx,ts,tsx,mjs,cjs,json,yml,yaml,md,mdx,astro,css,scss,html}": "oxfmt --no-error-on-unmatched-pattern --write"
 	}

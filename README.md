@@ -2,7 +2,7 @@
 
 API-first, type-safe template for building fast, interactive apps on Cloudflare Workers.
 
-Start locally with Node.js 24.21.0+ and pnpm 10.34.6 (see [Getting Started](src/content/docs/v1/welcome.md) for installation):
+Start locally with Node.js 24.21.0+ and pnpm 11.22.0 (see [Getting Started](src/content/docs/v1/welcome.md) for installation):
 
 ```bash
 pnpm install
