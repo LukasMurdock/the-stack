@@ -65,6 +65,10 @@ for (const persona of FIXTURE_PERSONAS)
 			await expect(
 				tabs.getByRole("link", { name: label, exact: true })
 			).toBeVisible();
+		// The tab title follows the page's heading as the person moves around.
+		await expect(page).toHaveTitle(`Organizations · ${appName}`);
+		await tabs.getByRole("link", { name: "Status", exact: true }).click();
+		await expect(page).toHaveTitle(`Status · ${appName}`);
 	});
 
 test("signed out, the header offers public areas and Sign in", async ({
@@ -89,6 +93,8 @@ test("signed out, the header offers public areas and Sign in", async ({
 	await expect(
 		header.getByRole("button", { name: /^Account menu for / })
 	).toHaveCount(0);
+	// The tab title follows the page's heading.
+	await expect(page).toHaveTitle(`Status · ${appName}`);
 });
 
 test("the header is one row from laptop width", async ({ page }) => {

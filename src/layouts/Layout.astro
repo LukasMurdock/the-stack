@@ -1,6 +1,7 @@
 ---
 import globalStylesHref from "../react-app/index.css?url";
 
+import Favicons from "../components/astro/Favicons.astro";
 import HeaderAuth from "../components/astro/HeaderAuth.astro";
 
 export type Props = {
@@ -15,6 +16,7 @@ const { title } = Astro.props;
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>{title}</title>
+		<Favicons />
 		<link rel="stylesheet" href={globalStylesHref} />
 		<script>
 			import "../react-app/features/turret/autoStart";

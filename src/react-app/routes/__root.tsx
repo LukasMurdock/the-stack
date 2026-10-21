@@ -22,6 +22,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { reportError } from "../features/turret/error-tracker";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "../components/AppLayout";
+import { useDocumentTitle } from "../ui/document-title";
 
 declare module "@tanstack/react-router" {
 	interface StaticDataRouteOption {
@@ -75,12 +76,15 @@ function RootComponent() {
 		[]
 	);
 
+	const page = React.useRef<HTMLDivElement>(null);
+	useDocumentTitle(page);
+
 	const impersonatedBy = sessionQuery.data?.session?.impersonatedBy ?? null;
 	const isImpersonating = Boolean(impersonatedBy);
 
 	return (
 		<TooltipProvider>
-			<div className="min-h-dvh bg-background text-foreground">
+			<div ref={page} className="min-h-dvh bg-background text-foreground">
 				{isImpersonating ? (
 					<div className="border-b bg-amber-50 text-amber-900">
 						<div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm">

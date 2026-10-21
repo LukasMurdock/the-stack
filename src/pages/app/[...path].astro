@@ -3,9 +3,22 @@ export const prerender = false;
 
 import "../../react-app/index.css";
 
+import Favicons from "../../components/astro/Favicons.astro";
 import { AstroRoot } from "../../react-app/AstroRoot";
+import { appName } from "../../react-app/components/nav-items";
 ---
 
-<div id="root">
-    <AstroRoot client:only="react" />
-</div>
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{appName}</title>
+        <Favicons />
+    </head>
+    <body>
+        <div id="root">
+            <AstroRoot client:only="react" />
+        </div>
+    </body>
+</html>

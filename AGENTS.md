@@ -37,6 +37,10 @@ test each CLI as a subprocess (`tests/tooling/cli-boundaries.test.ts`).
   `tests/e2e/navigation.spec.ts` follow it. Account, Admin, API docs and Sign
   out are in the account menu; browser specs open it with
   `tests/e2e/account-menu.ts`. Sub-tab rows use `ScrollTabs`.
+- Branding: `appName` in `nav-items.ts` names the header and tab titles; the
+  icons are `public/favicon.svg`, `favicon.ico` and `apple-touch-icon.png`,
+  linked by `src/components/astro/Favicons.astro`. In the app a tab's title
+  follows the page's only h1 (`src/react-app/ui/document-title.ts`).
 - Tests: fake R2 with `tests/helpers/fake-r2.ts`. Columns are snake_case in SQL
   (`casing: "snake_case"`), so raw-SQL seeds use `organization_id`, not the key.
 - Feature conventions: read `src/content/docs/v1/extend.md`.

@@ -42,8 +42,23 @@ test("hashed assets are immutable and keep their content types; pages are not", 
 	expect(missing.status()).toBe(404);
 	expect(missing.headers()["cache-control"] ?? "").not.toContain("immutable");
 	// Other files from the asset directory keep their own policy.
-	const icon = await request.get("/vite.svg");
+	const icon = await request.get("/favicon.svg");
 	expect(icon.status()).toBe(200);
 	expect(icon.headers()["content-type"]).toMatch(/^image\/svg\+xml/);
 	expect(icon.headers()["cache-control"] ?? "").not.toContain("immutable");
+
+	// Every icon the page links to is served.
+	const icons = await page
+		.locator('link[rel="icon"], link[rel="apple-touch-icon"]')
+		.evaluateAll((links) =>
+			links.map((link) => link.getAttribute("href") ?? "")
+		);
+	expect(icons).toHaveLength(3);
+	for (const pathname of icons) {
+		const response = await request.get(pathname);
+		expect(response.status(), pathname).toBe(200);
+		expect(response.headers()["content-type"], pathname).toMatch(
+			/^image\//
+		);
+	}
 });
