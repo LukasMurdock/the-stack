@@ -3,6 +3,7 @@ import handler from "@astrojs/cloudflare/entrypoints/server";
 import apiWorker, { type WorkerEnv } from "./worker/index";
 import { observePageRequest } from "./worker/observability/page";
 import { discardUnreadBody } from "./worker/http/unread-body";
+import { redirectToAppUrl } from "./worker/http/redirect-hosts";
 import {
 	isHashedAssetPath,
 	serveHashedAsset,
@@ -33,6 +34,9 @@ function route(
 	env: WorkerBindings,
 	ctx: ExecutionContext
 ): Promise<Response> {
+	const redirect = redirectToAppUrl(request, env);
+	if (redirect) return Promise.resolve(redirect);
+
 	const url = new URL(request.url);
 	const p = url.pathname;
 

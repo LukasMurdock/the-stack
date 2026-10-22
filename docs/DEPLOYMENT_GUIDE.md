@@ -19,6 +19,14 @@ In `config/cloudflare.mjs`, set:
   dashboard) while any of them is left out, and `pnpm check:deploy` and
   `pnpm run deploy` say so first. Routes added in the dashboard are removed
   by the next deploy.
+- `APP_REDIRECT_HOSTS`: hosts that redirect to the same path on `APP_URL`,
+  comma-separated. After moving to a custom domain, list the workers.dev host
+  here and keep `workers_dev` on so links already sent keep working; sign-in
+  cookies and same-origin checks belong to `APP_URL`'s origin, so the app
+  does not work on any other. Version preview URLs are not redirected.
+- Send email links from your own domain: put `APP_URL` on the same domain as
+  `EMAIL_FROM`. Sign-in email linking to a workers.dev host from another
+  domain is a common spam signal.
 
 Keep `localCloudflare` for local emulation. Local setup still needs no cloud account:
 

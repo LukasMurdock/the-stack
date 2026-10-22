@@ -26,9 +26,9 @@ export function authEmailCopy(
 	if (type === "sign-in-link")
 		return {
 			heading: "Set your password",
-			body: `An administrator of ${productName} sent you this link so you can sign in. Use the button below to set your password, then sign in with your email address and that password.`,
+			body: `Your ${productName} account is ready. Use the button below to choose a password, then sign in with your email address and that password.`,
 			action: "Set password",
-			footer: "The link works once and expires in one hour. If it has expired, ask your administrator for a new one.",
+			footer: "The link works once and expires in one hour. If it has expired, ask the person who set up your account for a new one.",
 		};
 	return {
 		heading: "Verify your email",

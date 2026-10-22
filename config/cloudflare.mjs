@@ -36,6 +36,8 @@ export const localCloudflare = {
 		EMAIL_TRANSPORT: "log",
 		APP_ENV: "local",
 		APP_URL: "http://localhost:4321",
+		// Hosts whose requests redirect to APP_URL (comma-separated).
+		APP_REDIRECT_HOSTS: "",
 		ADMIN_EMAIL: "admin@localhost.test",
 	},
 	d1_databases: [
@@ -163,7 +165,9 @@ export const deploymentCloudflare = {
 	//   { pattern: "your-app.example", custom_domain: true }; routes added in
 	//   the dashboard are removed by the next deploy.
 	// - workers_dev: Wrangler enables <name>.<subdomain>.workers.dev when a
-	//   Worker has no routes. Set false once a custom domain serves APP_URL.
+	//   Worker has no routes. Once a custom domain serves APP_URL, set it
+	//   false, or keep it and list the workers.dev host in APP_REDIRECT_HOSTS
+	//   so links to it keep working.
 	// - preview_urls: Cloudflare enables version preview URLs with workers.dev
 	//   when the setting is absent. `pnpm secrets:switch` checks a version on
 	//   its own URL before it takes traffic.
@@ -181,6 +185,9 @@ export const deploymentCloudflare = {
 		EMAIL_TRANSPORT: "cloudflare",
 		APP_ENV: "production",
 		APP_URL: "https://your-app.example",
+		// Former hosts, such as <name>.<subdomain>.workers.dev after a move to
+		// a custom domain, that redirect to APP_URL (comma-separated).
+		APP_REDIRECT_HOSTS: "",
 		ADMIN_EMAIL: "admin@your-app.example",
 	},
 	d1_databases: [

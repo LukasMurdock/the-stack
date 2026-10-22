@@ -206,7 +206,7 @@ test("an administrator emails a user without a password a sign-in link they use 
 	const [email] = sent;
 	assert.equal(email.to, "editor@example.test");
 	assert.equal(email.subject, "Set your password for Test");
-	assert.match(email.text, /An administrator of Test sent you this link/);
+	assert.match(email.text, /Your Test account is ready/);
 	assert.doesNotMatch(email.text, /reset the password|Reset password/);
 	// The provider outcome is recorded under its own type.
 	const lastSend = emailSendOutcomeSchema.parse(
