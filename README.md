@@ -255,3 +255,10 @@ pnpm check
 pnpm db:core:generate --name <your_migration_name>
 pnpm run deploy
 ```
+
+- Read generated migrations before committing them. To add a column with a
+  CHECK (every enum column), drizzle-kit rebuilds the table, which D1 refuses
+  once other tables reference it: D1 ignores `PRAGMA foreign_keys=OFF`.
+  `pnpm test:migrations` (in `pnpm verify`) fails on these cases
+  (`scripts/testing/migration-guard.ts`); write
+  `ALTER TABLE … ADD <column> text CHECK(…)` by hand instead.

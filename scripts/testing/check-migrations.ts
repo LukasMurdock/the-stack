@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,6 +16,7 @@ import {
 	migratedSqlite,
 	migrationDirectory,
 } from "../../tests/helpers/migrations";
+import { migrationProblems, type Rule } from "./migration-guard";
 
 function tableSchema(sqlite: Database.Database, table: string) {
 	const indexes = z
@@ -38,6 +45,40 @@ function tableSchema(sqlite: Database.Database, table: string) {
 		})),
 	};
 }
+
+// Applied migrations the guard would refuse today. They can't change; each
+// says why it stands.
+const allowed: Record<string, Rule[]> = {
+	// Nothing references the rebuilt Turret tables, so the pragma is only
+	// noise. The copy wrote the text "rrweb_start_ts_ms" and
+	// "rrweb_last_ts_ms" into sessions that existed then (the columns come
+	// from the other 0003, which sorts after it); those sessions are past
+	// Turret's retention.
+	"turret/0003_gigantic_millenium_guard.sql": [
+		"foreign-keys-off",
+		"copy-missing-column",
+	],
+	"turret/0003_sturdy_scorpion.sql": ["foreign-keys-off"],
+};
+const problems = (["core", "turret"] as const).flatMap((name) => {
+	const folder = migrationDirectory(name);
+	return migrationProblems(
+		readdirSync(folder)
+			.filter((file) => file.endsWith(".sql"))
+			.sort()
+			.map((file) => ({
+				name: `${name}/${file}`,
+				sql: readFileSync(new URL(file, folder), "utf8"),
+			})),
+		allowed
+	);
+});
+assert.deepEqual(
+	problems,
+	[],
+	`Migrations D1 would break on:\n${problems.join("\n")}`
+);
+console.log("Migrations pass the D1 migration guard.");
 
 const directory = mkdtempSync(join(tmpdir(), "stack-d1-migrations-"));
 try {
