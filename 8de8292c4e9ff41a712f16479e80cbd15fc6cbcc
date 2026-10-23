@@ -1,0 +1,71 @@
+{
+	"schemaVersion": 2,
+	"tool": {
+		"name": "proof",
+		"version": "2.0.0"
+	},
+	"commit": "8de8292c4e9ff41a712f16479e80cbd15fc6cbcc",
+	"tree": "db9e7e08f6a62b1e105431564bd4a70e5aa54b7c",
+	"result": "passed",
+	"startedAt": "2026-10-17T08:01:57.584Z",
+	"finishedAt": "2026-10-17T08:05:43.486Z",
+	"durationMs": 225901,
+	"environment": {
+		"node": "v24.21.0",
+		"pnpm": "10.34.6",
+		"platform": "linux",
+		"arch": "x64"
+	},
+	"reviews": [],
+	"steps": [
+		{
+			"name": "install",
+			"command": [
+				"pnpm",
+				"install",
+				"--frozen-lockfile"
+			],
+			"status": "passed",
+			"exitCode": 0,
+			"durationMs": 7113,
+			"logPath": ".proof/8de8292c4e9ff41a712f16479e80cbd15fc6cbcc/install.log",
+			"logTail": ""
+		},
+		{
+			"name": "verify",
+			"command": [
+				"pnpm",
+				"verify"
+			],
+			"status": "passed",
+			"exitCode": 0,
+			"durationMs": 86055,
+			"logPath": ".proof/8de8292c4e9ff41a712f16479e80cbd15fc6cbcc/verify.log",
+			"logTail": "ms)\n✔ pnpm proof stops the step and removes the copy on SIGTERM (576.087505ms)\nFlagship app created for fixture-stack: flagship-app-1 (recorded in void.lock.json)\nSecrets Store found: 55555555555555555555555555555555 (recorded in void.lock.json)\n✔ Void provisions separate Core/Turret resources and reuses their lock on retry (847.871776ms)\n✔ Flagship provisioning reuses an app by name and fails with the command to run (3.216463ms)\n✔ check verdicts stay pending until every run finishes and fail on any bad conclusion (7.062819ms)\n✔ ci:wait polls until checks pass, and reports failing jobs with log tails (3.938432ms)\n✔ ship waits for CI, merges once, deploys, and confirms production serves the commit (24.56663ms)\n✔ ship resumes a merged PR without merging again and skips a deploy already live (4.477331ms)\n✔ ship stops before production changes when it cannot ship safely (1.848978ms)\n✔ the build commit comes from STACK_COMMIT or the checkout (3.534064ms)\n✔ ci:wait refuses to judge a commit whose check runs do not fit one page (1.08756ms)\n✔ ship reports why production never served the commit (0.721668ms)\n✔ the build commit rejects a STACK_COMMIT that is not a full SHA (0.200066ms)\n✔ the table parser reads Wrangler's real local Secrets Store listing (5862.99203ms)\n✔ the config guard refuses plain secrets, env.ts and an unbound required secret (92.303229ms)\n✔ the artifact guard refuses plain secrets and names bindings Void's pinned uploader cannot carry (0.326303ms)\n✔ check:deploy compares Store bindings and fails an artifact with a plain secret (2.399904ms)\n✔ pnpm check:deploy refuses a config with plain secrets before building (770.059743ms)\n✔ the store is reused, created when the account has none, and never guessed among several (7.796986ms)\n✔ store listings are read page by page within a bound (1.010136ms)\n✔ deploy records the account's store, and stops with the command for each missing secret (16.064519ms)\n✔ trunk ship pushes HEAD and its proof note atomically, deploys it and waits until live (347.646963ms)\n✔ trunk ship refuses a dirty tree before any side effect (184.646038ms)\n✔ trunk ship refuses a missing proof, a failed proof and a proof of another tree (308.123284ms)\n✔ trunk ship refuses when main moved and pushes nothing (230.098618ms)\n✔ trunk ship merges diverged remote notes and keeps one valid note per commit (393.53033ms)\n✔ trunk ship rerun after landing skips the push, and skips the deploy once live (185.581784ms)\n✔ trunk ship skips the deploy when production already serves the commit (137.856699ms)\n✔ trunk ship --dry-run prints the preconditions and plan and changes nothing (251.113058ms)\n✔ trunk ship --require-reviews counts approving reviews on the proof (101.503745ms)\n✔ git ls-remote output parses into origin's main and notes heads (8.54933ms)\n✔ node scripts/ship.ts: help, bad arguments and --dry-run in a proved checkout (868.43041ms)\n✔ CI audits main's HEAD for a passing proof on push, and leaves PR jobs alone (0.316128ms)\n✔ parses a chunk's export map by real name (2.84984ms)\n✔ declares nothing for re-exports, empty exports and other final lines (0.158775ms)\n✔ rejects malformed export statements (0.752094ms)\n✔ resolves a name to exactly one chunk (0.377739ms)\n✔ loads internals from a package by name, whatever the chunk hashes (13.158696ms)\n✔ refuses unvalidated versions and changed bundles with the fix (9.303667ms)\n✔ bounds the chunk scan (112.58147ms)\n✔ the installed Void is validated and exposes every internal (501.591787ms)\n✔ the installed Void exposes every deploy-artifact internal (563.782343ms)\n✔ normalizing restores build-output keys and keeps IDs and provenance (1.503516ms)\n✔ lock files are parsed at the boundary (16.097458ms)\n✔ Void's next materialization uses the previous build's output until the lock is normalized (1241.605207ms)\n✔ without a lock there is nothing to normalize (0.461173ms)\nℹ tests 105\nℹ suites 0\nℹ pass 105\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 27652.923806\n"
+		},
+		{
+			"name": "deploy",
+			"command": [
+				"pnpm",
+				"check:deploy"
+			],
+			"status": "passed",
+			"exitCode": 0,
+			"durationMs": 20056,
+			"logPath": ".proof/8de8292c4e9ff41a712f16479e80cbd15fc6cbcc/deploy.log",
+			"logTail": "ace __BaseEnv_Env {\n\tCORE_KV: KVNamespace;\n\tTURRET_CFG: KVNamespace;\n\tTURRET_REPLAY_BUCKET: R2Bucket;\n\tCORE_DB: D1Database;\n\tTURRET_DB: D1Database;\n\tSEND_EMAIL: SendEmail;\n\tTURRET_METRICS: AnalyticsEngineDataset;\n\tTURRET_ANALYTICS: AnalyticsEngineDataset;\n\tFLAGS: Flagship;\n\tCF_VERSION_METADATA: WorkerVersionMetadata;\n\tASSETS: Fetcher;\n\tPRODUCT_NAME: string;\n\tEMAIL_FROM: string;\n\tEMAIL_FROM_NAME: string;\n\tEMAIL_TRANSPORT: string;\n\tAPP_ENV: string;\n\tAPP_URL: string;\n\tADMIN_EMAIL: string;\n}\ndeclare namespace Cloudflare {\n\tinterface GlobalProps {\n\t\tmainModule: typeof import(\"./src/worker\");\n\t}\n\tinterface Env extends __BaseEnv_Env {}\n}\ninterface Env extends __BaseEnv_Env {}\ntype StringifyValues<EnvType extends Record<string, unknown>> = {\n\t[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;\n};\ndeclare namespace NodeJS {\n\tinterface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, \"PRODUCT_NAME\" | \"EMAIL_FROM\" | \"EMAIL_FROM_NAME\" | \"EMAIL_TRANSPORT\" | \"APP_ENV\" | \"APP_URL\" | \"ADMIN_EMAIL\">> {}\n}\n\nGenerating runtime types...\n\nRuntime types generated.\n\n\n✨ Types written to worker-configuration.d.ts\n\n📖 Read about runtime types\nhttps://developers.cloudflare.com/workers/languages/typescript/#generate-types\n📣 Remember to rerun 'wrangler types' after you change your wrangler.json file.\n\n08:03:35 [@astrojs/cloudflare] Enabling image processing with Cloudflare Images for production with the \"IMAGES\" Images binding.\n08:03:35 [vite] Re-optimizing dependencies because vite config has changed\n08:03:35 [vite] Re-optimizing dependencies because vite config has changed\n08:03:36 [content] Syncing content\n08:03:36 [content] Synced content\n08:03:36 [types] Generated 1.07s\n08:03:43 [@astrojs/cloudflare] Enabling image processing with Cloudflare Images for production with the \"IMAGES\" Images binding.\n08:03:44 [content] Syncing content\n08:03:44 [content] Synced content\n08:03:44 [types] Generated 864ms\n08:03:44 [build] output: \"static\"\n08:03:44 [build] mode: \"server\"\n08:03:44 [build] directory: /tmp/proof-6CEOnE/dist/\n08:03:44 [build] adapter: @astrojs/cloudflare\n08:03:44 [build] Collecting build info...\n08:03:44 [build] ✓ Completed in 992ms.\n08:03:44 [build] Building server entrypoints...\n08:03:45 [vite] ✓ built in 704ms\n08:03:46 [vite] ✓ built in 972ms\n08:03:48 [vite] ✓ built in 1.66s\n\u001b[33m▲ \u001b[43;33m[\u001b[43;30mWARNING\u001b[43;33m]\u001b[0m \u001b[1mAnalytics SQL bindings always access remote resources, and so may incur usage charges even in local dev. To suppress this warning, set `remote: true` for the binding definition in your configuration file.\u001b[0m\n\n\n\n prerendering static routes \n08:03:49   ├─ /docs/raw/v1/auth (+22ms) \n08:03:49   ├─ /docs/raw/v1/database (+9ms) \n08:03:49   ├─ /docs/raw/v1/deploy-runbook (+7ms) \n08:03:49   ├─ /docs/raw/v1/extend (+7ms) \n08:03:49   ├─ /docs/raw/v1/first-feature (+6ms) \n08:03:49   ├─ /docs/raw/v1/operate (+5ms) \n08:03:49   ├─ /docs/raw/v1/turret-modes (+5ms) \n08:03:49   ├─ /docs/raw/v1/welcome (+6ms) \n08:03:49   ├─ /docs/index.html (+10ms) \n08:03:49   ├─ /docs/v1/auth/index.html (+11ms) \n08:03:49   ├─ /docs/v1/database/index.html (+6ms) \n08:03:49   ├─ /docs/v1/deploy-runbook/index.html (+5ms) \n08:03:49   ├─ /docs/v1/extend/index.html (+5ms) \n08:03:49   ├─ /docs/v1/first-feature/index.html (+5ms) \n08:03:49   ├─ /docs/v1/operate/index.html (+5ms) \n08:03:49   ├─ /docs/v1/turret-modes/index.html (+5ms) \n08:03:49   ├─ /docs/v1/welcome/index.html (+6ms) \n08:03:49   ├─ /index.html (+6ms) \n08:03:49 ✓ Completed in 884ms.\n\n08:03:49 [build] Rearranging server assets...\n08:03:49 [build] ✓ Completed in 5.04s.\n08:03:49 [@astrojs/cloudflare] Injected immutable Cache-Control for /_astro/* into _headers.\n08:03:49 [build] Server built in 6.04s\n08:03:49 [build] Complete!\n-> preparing the Worker as void deploy does\nDeploy artifact OK (Void 1.1.11): main module index.js, 27 modules, 21 bindings, crons [0 * * * *], Secrets Store bindings [BETTER_AUTH_SECRET, BOOTSTRAP_SECRET, TURRET_SIGNING_KEY], no plain secrets.\n"
+		},
+		{
+			"name": "e2e",
+			"command": [
+				"pnpm",
+				"test:e2e"
+			],
+			"status": "passed",
+			"exitCode": 0,
+			"durationMs": 111980,
+			"logPath": ".proof/8de8292c4e9ff41a712f16479e80cbd15fc6cbcc/e2e.log",
+			"logTail": "mium] › tests/e2e/playback.spec.ts:143:1 › jump controls wait for mounting, seek consistently and clean up on navigation (1.5s)\n  ✓  11 [chromium] › tests/e2e/playback.spec.ts:197:1 › leaving a pending replay aborts its chunks and cannot mount a late player (896ms)\n  ✓  12 [chromium] › tests/e2e/projects.spec.ts:17:1 › project creation preserves the draft after failure and persists after retry (1.7s)\n  ✓  13 [chromium] › tests/e2e/projects.spec.ts:81:1 › viewers read projects without the create form (1.6s)\n  ✓  14 [chromium] › tests/e2e/projects.spec.ts:117:1 › changing organization resets project pagination, drafts and failed mutation state (3.3s)\n  ✓  15 [chromium] › tests/e2e/projects.spec.ts:184:1 › the project count ships dark until projects-total is on for the organization (4.3s)\n  ✓  16 [chromium] › tests/e2e/session.spec.ts:4:1 › account replacement refreshes private permissions in both directions (8.0s)\n  ✓  17 [chromium] › tests/e2e/session.spec.ts:67:1 › signing out in another tab removes the mounted private screen (2.0s)\n  ✓  18 [chromium] › tests/e2e/signup.spec.ts:4:1 › public signup derives password bounds while sign-in accepts existing credentials (878ms)\n  ✓  19 [chromium] › tests/e2e/smoke.spec.ts:3:1 › admin parent denies a signed-in non-admin without a login loop (844ms)\n  ✓  20 [chromium] › tests/e2e/smoke.spec.ts:20:1 › Astro replay starts only for authenticated sessions and tolerates session failures (2.2s)\n  ✓  21 [chromium] › tests/e2e/smoke.spec.ts:83:1 › login offers Google only when the server reports it available (1.8s)\n  ✓  22 [chromium] › tests/e2e/smoke.spec.ts:112:1 › an open Astro tab replaces capture on account change and stops after cross-tab sign-out (6.0s)\n  ✓  23 [chromium] › tests/e2e/smoke.spec.ts:195:1 › Astro and React pages render in the bundled font (436ms)\n  ✓  24 [chromium] › tests/e2e/smoke.spec.ts:223:1 › a request body the Worker never reads does not fail the next request (77ms)\n  ✓  25 [chromium] › tests/e2e/turret.spec.ts:14:1 › authenticated replay uploads survive a real Worker and R2 round trip (514ms)\n  ✓  26 [chromium] › tests/e2e/turret.spec.ts:178:2 › overflow stops recording while keeping the telemetry session active (2.8s)\n  ✓  27 [chromium] › tests/e2e/turret.spec.ts:178:2 › blocked import stops recording while keeping the telemetry session active (1.7s)\n  ✓  28 [chromium] › tests/e2e/turret.spec.ts:178:2 › recorder initialization stops recording while keeping the telemetry session active (716ms)\n  ✓  29 [chromium] › tests/e2e/turret.spec.ts:178:2 › plugin initialization stops recording while keeping the telemetry session active (773ms)\n  ✓  30 [chromium] › tests/e2e/turret.spec.ts:178:2 › serialization stops recording while keeping the telemetry session active (688ms)\n  ✓  31 [chromium] › tests/e2e/turret.spec.ts:178:2 › lost acknowledgement stops recording while keeping the telemetry session active (3.7s)\n  ✓  32 [chromium] › tests/e2e/turret.spec.ts:340:1 › an unauthorized upload ends the session instead of retaining telemetry credentials (899ms)\n  ✓  33 [chromium] › tests/e2e/turret.spec.ts:379:1 › the server-issued deadline ends capture and disables session-linked telemetry (3.2s)\n  ✓  34 [chromium] › tests/e2e/turret.spec.ts:434:1 › an issue investigation opens a recorded failure at its moment and keeps the position in the URL (4.6s)\n  ✓  35 [chromium] › tests/e2e/turret.spec.ts:538:1 › a feedback report promoted to an issue opens its replay and stays linked (4.5s)\n  ✓  36 [chromium] › tests/e2e/turret.spec.ts:595:1 › outcomes list every instrumented workflow with the default selected (1.9s)\n  ✓  37 [chromium] › tests/e2e/turret.spec.ts:616:1 › login returns to its destination and Turret links use destination search defaults (1.3s)\n  ✓  38 [chromium] › tests/e2e/turret.spec.ts:672:1 › each editable policy field drives saving without overwriting other settings (1.9s)\n\n  38 passed (1.9m)\n"
+		}
+	]
+}
