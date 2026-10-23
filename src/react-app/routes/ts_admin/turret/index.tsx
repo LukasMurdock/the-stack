@@ -315,7 +315,7 @@ function TurretDashboardPage() {
 						<CardTitle>Users</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<Tabs defaultValue="total" className="w-full flex-col">
+						<Tabs defaultValue="total" className="w-full">
 							<TabsList>
 								<TabsTrigger value="total">
 									Total users

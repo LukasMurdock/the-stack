@@ -178,7 +178,7 @@ function TurretReplaySessionPage() {
 				</CardContent>
 			</Card>
 
-			<Tabs defaultValue="meta" className="flex-col">
+			<Tabs defaultValue="meta">
 				<TabsList>
 					<TabsTrigger value="meta">Metadata</TabsTrigger>
 					<TabsTrigger value="errors">Errors</TabsTrigger>

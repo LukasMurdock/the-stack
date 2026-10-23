@@ -315,7 +315,7 @@ function TsAdminUserDetailPage() {
 				</div>
 			) : (
 				<Tabs defaultValue="profile">
-					<TabsList>
+					<TabsList className="max-w-full justify-start overflow-x-auto">
 						<TabsTrigger value="profile">Profile</TabsTrigger>
 						<TabsTrigger value="access">Access</TabsTrigger>
 						<TabsTrigger value="security">Security</TabsTrigger>
