@@ -1,0 +1,59 @@
+{
+	"schemaVersion": 1,
+	"tool": {
+		"name": "proof",
+		"version": "1.0.0"
+	},
+	"commit": "0ad30d968b350412fdb89e9377fa39de7f179b9e",
+	"tree": "08b602fbbd3221f637cb4fff37cfbd24a8281dd2",
+	"result": "passed",
+	"startedAt": "2026-10-16T22:34:09.302Z",
+	"finishedAt": "2026-10-16T22:37:19.506Z",
+	"durationMs": 190203,
+	"environment": {
+		"node": "v24.21.0",
+		"pnpm": "10.34.6",
+		"platform": "linux",
+		"arch": "x64"
+	},
+	"steps": [
+		{
+			"name": "install",
+			"command": [
+				"pnpm",
+				"install",
+				"--frozen-lockfile"
+			],
+			"status": "passed",
+			"exitCode": 0,
+			"durationMs": 10030,
+			"logPath": ".proof/0ad30d968b350412fdb89e9377fa39de7f179b9e/install.log",
+			"logTail": "Lockfile is up to date, resolution step is skipped\nProgress: resolved 1, reused 0, downloaded 0, added 0\nPackages: +782\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nProgress: resolved 782, reused 781, downloaded 0, added 758\nProgress: resolved 782, reused 781, downloaded 0, added 782, done\n\ndependencies:\n+ @astrojs/cloudflare 14.3.3\n+ @astrojs/react 7.0.0\n+ @base-ui/react 1.8.0\n+ @fontsource-variable/inter 5.3.0\n+ @hono/zod-openapi 1.6.3\n+ @rrweb/rrweb-plugin-console-record 2.1.7\n+ @rrweb/types 2.1.7\n+ @scalar/hono-api-reference 0.12.9\n+ @tailwindcss/vite 4.3.3\n+ @tanstack/react-query 5.104.1\n+ @tanstack/react-router 1.170.41\n+ @tanstack/react-table 9.2.5\n+ astro 7.3.5\n+ better-auth 1.7.7\n+ class-variance-authority 0.7.1\n+ clsx 2.1.1\n+ cmdk 1.1.1\n+ date-fns 4.4.0\n+ dotenv 18.0.5\n+ drizzle-orm 0.45.3\n+ evlog 2.30.0\n+ hono 4.13.13\n+ lucide-react 1.52.0\n+ react 19.3.0\n+ react-day-picker 10.0.2\n+ react-dom 19.3.0\n+ react-email 6.11.0\n+ react-resizable-panels 4.14.2\n+ recharts 3.10.1\n+ resend 6.32.0\n+ rrweb 2.1.7\n+ rrweb-player 2.1.7\n+ tailwind-merge 3.7.0\n+ tailwindcss 4.3.3\n+ vaul 1.1.2\n+ zod 4.6.5\n\ndevDependencies:\n+ @cloudflare/vite-plugin 1.62.5\n+ @oxlint/plugins 1.86.0\n+ @playwright/test 1.63.0\n+ @tanstack/eslint-plugin-query 5.104.1\n+ @tanstack/eslint-plugin-router 1.162.0\n+ @tanstack/react-query-devtools 5.104.1\n+ @tanstack/react-router-devtools 1.167.2\n+ @tanstack/router-plugin 1.168.42\n+ @types/better-sqlite3 9.6.0\n+ @types/jsdom 30.0.0\n+ @types/node 22.20.5\n+ @types/react 19.3.0\n+ @types/react-dom 19.3.0\n+ @typescript/native <- typescript 7.0.2\n+ better-sqlite3 13.0.3\n+ drizzle-kit 0.31.11\n+ eslint 10.12.0\n+ eslint-plugin-drizzle 0.2.3\n+ eslint-plugin-react-hooks 7.1.1\n+ eslint-plugin-react-refresh 0.5.7\n+ husky 9.1.7\n+ jsdom 30.1.2\n+ lint-staged 17.6.0\n+ oxc-transform-react 0.145.0\n+ oxfmt 0.71.0\n+ oxlint 1.86.0\n+ oxlint-tsgolint 7.0.2004\n+ tsx 4.23.15\n+ tw-animate-css 1.4.0\n+ typescript <- @typescript/typescript6 6.0.2\n+ vite 8.3.2\n+ void 0.28.0\n+ wrangler 4.151.0\n\n. prepare$ husky\n. prepare: Done\nDone in 9.8s using pnpm v10.34.6\n"
+		},
+		{
+			"name": "verify",
+			"command": [
+				"pnpm",
+				"verify"
+			],
+			"status": "passed",
+			"exitCode": 0,
+			"durationMs": 78786,
+			"logPath": ".proof/0ad30d968b350412fdb89e9377fa39de7f179b9e/verify.log",
+			"logTail": "ts own flags, and a rev (0.753645ms)\n✔ each CLI prints help with exit 0 and rejects bad arguments with exit 2 (5602.136704ms)\n✔ ship with default arguments parses and stops at the placeholder production origin (134.397317ms)\n✔ dev:stop and dev:wait run with their defaults from a checkout without a server (1309.815544ms)\n✔ ci:wait with default arguments keeps polling past the first pending result (10375.034543ms)\n✔ admin:bootstrap options: defaults, origins and malformed input (1.200958ms)\n✔ admin:bootstrap with default arguments stops at the placeholder production origin (140.749199ms)\n✔ admin:bootstrap prints the password once, then reports an already bootstrapped deployment (344.699741ms)\n✔ doctor warns that the template's production email cannot send and says what that disables (227.324523ms)\n✔ every `pnpm <name>` in CI, the justfile and docs names a script (5.034063ms)\n✔ CI never needs just, and each just recipe only calls pnpm (0.321196ms)\n✔ find-d1-sqlite points a fresh checkout at local setup (162.449444ms)\n✔ pnpm logs tails the configured app name and forwards arguments (257.305397ms)\n✔ pnpm routes regenerates a stale route tree (4729.837614ms)\n✔ routes:new scaffolds a route and names the regeneration command (91.360387ms)\n✔ example:remove options: defaults, flags and malformed input (2.66777ms)\n✔ marked blocks are removed whole and malformed markers stop the removal (3.898822ms)\n✔ only the manifest's shared files carry example markers (31.548543ms)\n✔ example:remove --dry-run lists the manifest and changes nothing (366.647152ms)\n✔ example:remove leaves a copy that formats and type-checks without the example (16543.19706ms)\n✔ example:remove --deployed keeps the migration history and drops the table (4949.652491ms)\n✔ configured lint rules reject each unsafe probe in one CLI invocation (4953.839478ms)\n✔ precise types, local accumulator mutation, and justified assertions remain valid (942.001886ms)\n✔ Oxlint and its plugin API upgrade together at exact matching versions (1.301477ms)\n✔ dev:stop stops the recorded server's whole process tree (554.489878ms)\n✔ dev:stop reaps the process group of a crashed background server (517.755908ms)\n✔ stopProcessTree escalates to SIGKILL after the grace period (472.205245ms)\n✔ pnpm dev refuses a live server, clears a stale lock and fails fast on a busy port (535.282402ms)\n✔ dev:wait bounds each health request and the overall deadline (4228.731505ms)\n✔ browser runs claim distinct ports and reject a busy explicit port (75.033257ms)\n✔ the E2E build fingerprint tracks build inputs, not tests (25.954862ms)\n✔ proof records: the result is derived from the steps and validated on read (15.930433ms)\n✔ proof check: binds to commit and tree, rejects failures, skipped e2e and missing reviews (0.521192ms)\n✔ proof reviews: validated, bounded, and stamped when `at` is missing (4.982916ms)\n✔ pnpm proof at its boundary: refuses dirty trees, records, checks and cleans up (4174.378561ms)\n✔ pnpm proof stops the step and removes the copy on SIGTERM (572.297699ms)\n✔ Void provisions separate Core/Turret resources and reuses their lock on retry (844.644471ms)\n✔ check verdicts stay pending until every run finishes and fail on any bad conclusion (7.30944ms)\n✔ ci:wait polls until checks pass, and reports failing jobs with log tails (6.28875ms)\n✔ ship waits for CI, merges once, deploys, and confirms production serves the commit (20.18433ms)\n✔ ship resumes a merged PR without merging again and skips a deploy already live (6.484529ms)\n✔ ship stops before production changes when it cannot ship safely (1.618947ms)\n✔ the build commit comes from STACK_COMMIT or the checkout (4.29609ms)\n✔ ci:wait refuses to judge a commit whose check runs do not fit one page (1.328126ms)\n✔ ship reports why production never served the commit (0.736601ms)\n✔ the build commit rejects a STACK_COMMIT that is not a full SHA (0.147689ms)\nℹ tests 58\nℹ suites 0\nℹ pass 58\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 22279.954813\n"
+		},
+		{
+			"name": "e2e",
+			"command": [
+				"pnpm",
+				"test:e2e"
+			],
+			"status": "passed",
+			"exitCode": 0,
+			"durationMs": 100765,
+			"logPath": ".proof/0ad30d968b350412fdb89e9377fa39de7f179b9e/e2e.log",
+			"logTail": "sts/e2e/playback.spec.ts:93:2 › library failure leaves replay controls disabled and clears partial mounting (931ms)\n  ✓   8 [chromium] › tests/e2e/playback.spec.ts:93:2 › construction failure leaves replay controls disabled and clears partial mounting (1.4s)\n  ✓   9 [chromium] › tests/e2e/playback.spec.ts:143:1 › jump controls wait for mounting, seek consistently and clean up on navigation (1.6s)\n  ✓  10 [chromium] › tests/e2e/playback.spec.ts:197:1 › leaving a pending replay aborts its chunks and cannot mount a late player (924ms)\n  ✓  11 [chromium] › tests/e2e/projects.spec.ts:15:1 › project creation preserves the draft after failure and persists after retry (1.8s)\n  ✓  12 [chromium] › tests/e2e/projects.spec.ts:79:1 › viewers read projects without the create form (1.7s)\n  ✓  13 [chromium] › tests/e2e/projects.spec.ts:115:1 › changing organization resets project pagination, drafts and failed mutation state (3.7s)\n  ✓  14 [chromium] › tests/e2e/session.spec.ts:4:1 › account replacement refreshes private permissions in both directions (7.0s)\n  ✓  15 [chromium] › tests/e2e/session.spec.ts:67:1 › signing out in another tab removes the mounted private screen (2.1s)\n  ✓  16 [chromium] › tests/e2e/signup.spec.ts:4:1 › public signup derives password bounds while sign-in accepts existing credentials (1.1s)\n  ✓  17 [chromium] › tests/e2e/smoke.spec.ts:3:1 › admin parent denies a signed-in non-admin without a login loop (977ms)\n  ✓  18 [chromium] › tests/e2e/smoke.spec.ts:20:1 › Astro replay starts only for authenticated sessions and tolerates session failures (2.4s)\n  ✓  19 [chromium] › tests/e2e/smoke.spec.ts:83:1 › login offers Google only when the server reports it available (797ms)\n  ✓  20 [chromium] › tests/e2e/smoke.spec.ts:112:1 › an open Astro tab replaces capture on account change and stops after cross-tab sign-out (6.1s)\n  ✓  21 [chromium] › tests/e2e/smoke.spec.ts:195:1 › Astro and React pages render in the bundled font (504ms)\n  ✓  22 [chromium] › tests/e2e/turret.spec.ts:14:1 › authenticated replay uploads survive a real Worker and R2 round trip (591ms)\n  ✓  23 [chromium] › tests/e2e/turret.spec.ts:178:2 › overflow stops recording while keeping the telemetry session active (2.8s)\n  ✓  24 [chromium] › tests/e2e/turret.spec.ts:178:2 › blocked import stops recording while keeping the telemetry session active (1.7s)\n  ✓  25 [chromium] › tests/e2e/turret.spec.ts:178:2 › recorder initialization stops recording while keeping the telemetry session active (688ms)\n  ✓  26 [chromium] › tests/e2e/turret.spec.ts:178:2 › plugin initialization stops recording while keeping the telemetry session active (1.3s)\n  ✓  27 [chromium] › tests/e2e/turret.spec.ts:178:2 › serialization stops recording while keeping the telemetry session active (747ms)\n  ✓  28 [chromium] › tests/e2e/turret.spec.ts:178:2 › lost acknowledgement stops recording while keeping the telemetry session active (3.8s)\n  ✓  29 [chromium] › tests/e2e/turret.spec.ts:340:1 › an unauthorized upload ends the session instead of retaining telemetry credentials (959ms)\n  ✓  30 [chromium] › tests/e2e/turret.spec.ts:379:1 › the server-issued deadline ends capture and disables session-linked telemetry (3.0s)\n  ✓  31 [chromium] › tests/e2e/turret.spec.ts:434:1 › an issue investigation opens a recorded failure at its moment and keeps the position in the URL (4.8s)\n  ✓  32 [chromium] › tests/e2e/turret.spec.ts:538:1 › a feedback report promoted to an issue opens its replay and stays linked (4.3s)\n  ✓  33 [chromium] › tests/e2e/turret.spec.ts:595:1 › outcomes list every instrumented workflow with the default selected (1.3s)\n  ✓  34 [chromium] › tests/e2e/turret.spec.ts:616:1 › login returns to its destination and Turret links use destination search defaults (1.3s)\n  ✓  35 [chromium] › tests/e2e/turret.spec.ts:672:1 › each editable policy field drives saving without overwriting other settings (2.0s)\n\n  35 passed (1.7m)\n"
+		}
+	],
+	"reviews": []
+}
