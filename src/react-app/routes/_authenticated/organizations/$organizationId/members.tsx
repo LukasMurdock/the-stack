@@ -79,6 +79,7 @@ function MembersPage() {
 			<div className="space-y-3">
 				<Unit
 					title={copy.members}
+					tabPanel
 					meta={
 						page.total > 1
 							? copy.memberCount(page.total)

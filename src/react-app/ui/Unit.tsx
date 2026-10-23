@@ -17,6 +17,7 @@ export function Unit({
 	meta,
 	action,
 	surface = false,
+	tabPanel = false,
 	state = { kind: "ready" },
 	children,
 }: {
@@ -24,6 +25,9 @@ export function Unit({
 	meta?: ReactNode;
 	action?: ReactNode;
 	surface?: boolean;
+	// The only Unit in a tab: the tab already names it, so its title is for
+	// screen readers only. A tab with several Units shows each title.
+	tabPanel?: boolean;
 	state?: UnitState;
 	children?: ReactNode;
 }) {
@@ -37,20 +41,32 @@ export function Unit({
 				surface && "rounded-2xl border bg-card p-4 sm:p-5"
 			)}
 		>
-			<header className="flex items-start justify-between gap-3">
-				<div className="min-w-0 space-y-0.5">
-					<h2
-						id={id}
-						className="text-lg font-semibold tracking-tight"
-					>
-						{title}
-					</h2>
-					{meta && (
-						<p className="text-sm text-muted-foreground">{meta}</p>
-					)}
-				</div>
-				{action && <div className="shrink-0">{action}</div>}
-			</header>
+			{tabPanel && !meta && !action ? (
+				// Nothing else in the header: just the heading, out of the flow.
+				<h2 id={id} className="sr-only">
+					{title}
+				</h2>
+			) : (
+				<header className="flex items-start justify-between gap-3">
+					<div className="min-w-0 space-y-0.5">
+						<h2
+							id={id}
+							className={cn(
+								"text-lg font-semibold tracking-tight",
+								tabPanel && "sr-only"
+							)}
+						>
+							{title}
+						</h2>
+						{meta && (
+							<p className="text-sm text-muted-foreground">
+								{meta}
+							</p>
+						)}
+					</div>
+					{action && <div className="shrink-0">{action}</div>}
+				</header>
+			)}
 			<UnitBody title={title} state={state}>
 				{children}
 			</UnitBody>

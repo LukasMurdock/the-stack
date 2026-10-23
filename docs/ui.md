@@ -47,7 +47,11 @@ ones.
 | `components/ScrollTabs`               | A sub-tab row (navigation chrome, beside the header and `nav-items.ts`).   |
 
 A record page is `RecordHeader`, then `ScrollTabs`, then the tab's Units. A
-list page is `PageHeader`, then a Unit holding the rows, then `Pagination`
+tab that is a single Unit doesn't repeat its name as a heading: pass
+`tabPanel`, and the tab label is the visible heading (the Unit's title stays
+for screen readers). A tab with several Units shows each title.
+
+A list page is `PageHeader`, then a Unit holding the rows, then `Pagination`
 outside the Unit (so a page emptied by changes elsewhere can still be left).
 Start each screen component with a one-line comment saying what the user is
 there to do; it keeps the screen to one job.
