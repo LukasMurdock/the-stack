@@ -18,8 +18,8 @@ import {
 	parseExpires,
 	stringFlag,
 } from "../../src/contracts/feature-flags";
+import { DAY_MS } from "../../src/lib/time";
 
-const DAY_MS = 86_400_000;
 const NOW_UNIX_MS = Date.parse("2026-10-16T12:00:00Z");
 const metadata = {
 	owner: "platform",

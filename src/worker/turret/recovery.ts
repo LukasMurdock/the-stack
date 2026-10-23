@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { TurretDb } from "../../bindings/d1/turret/db";
+import { DAY_MS } from "../../lib/time";
 
 // A resolved issue is likely fixed only when, at the rate it affected replay
 // sessions before resolution, enough sessions have run since that some should
@@ -43,7 +44,7 @@ export function assessRecovery(before: RecoveryCounts, after: RecoveryCounts) {
 }
 
 // Before resolution, the rate is measured over up to this much replay traffic.
-const RECOVERY_BASELINE_MS = 7 * 24 * 60 * 60 * 1000;
+const RECOVERY_BASELINE_MS = 7 * DAY_MS;
 
 // Replay-session counts around a resolved issue's resolution and their
 // assessment; null unless the issue is resolved.

@@ -3,9 +3,11 @@
 // flag and its dead branch once it is fully rolled out or expired; the unit
 // test fails `verify` after `expires`. Values come from Cloudflare Flagship
 // (the FLAGS binding); when it is missing or fails, the default is served.
-// Dependency-free apart from zod: the Worker, the browser and scripts import it.
+// Dependency-free apart from zod and src/lib/time.ts: the Worker, the browser
+// and scripts import it, so local imports carry their extension for Node.
 
 import { z } from "zod";
+import { DAY_MS } from "../lib/time.ts";
 
 export const featureFlags = {
 	// example:start
@@ -41,7 +43,6 @@ export const FLAG_OWNER_LENGTH_MAX = 64;
 export const FLAG_COUNT_MAX = 50;
 // A flag is a temporary branch: it may not be declared to live longer than this.
 export const FLAG_LIFETIME_DAYS_MAX = 366;
-const DAY_MS = 86_400_000;
 const EXPIRES_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 // "client": GET /api/flags returns it to the browser. "server": only Worker

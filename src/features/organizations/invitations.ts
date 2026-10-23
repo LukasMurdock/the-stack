@@ -21,8 +21,9 @@ import {
 } from "../../contracts/organizations";
 import type { CoreDb } from "../../bindings/d1/core/db";
 import { getOrganization } from "./operations";
+import { DAY_MS } from "../../lib/time";
 
-const INVITATION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
+const INVITATION_LIFETIME_MS = 7 * DAY_MS;
 
 // Shared eligibility for listing, registration, and first acceptance.
 // Acceptance retries and revocation intentionally use different conditions.

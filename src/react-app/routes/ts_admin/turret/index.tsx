@@ -36,6 +36,7 @@ import {
 	LastHourReplayCard,
 	ReplayTotalValue,
 } from "../../../features/turret/dashboard/ReplayTotals";
+import { DAY_MS } from "@/lib/time";
 
 const Route = createFileRoute("/ts_admin/turret/")({
 	component: TurretDashboardPage,
@@ -149,7 +150,7 @@ function TurretDashboardPage() {
 	const openIssuesQuery = useQuery(
 		turretIssuesQueryOptions({
 			status: "open",
-			from: now - 24 * 60 * 60 * 1000,
+			from: now - DAY_MS,
 			to: now,
 			limit: turretListPageDefaults.limit,
 			offset: 0,
@@ -170,7 +171,7 @@ function TurretDashboardPage() {
 	);
 	const recentUsersQuery = useQuery(
 		turretReplaySessionsQueryOptions({
-			from: now - 24 * 60 * 60 * 1000,
+			from: now - DAY_MS,
 			to: now,
 			limit: 200,
 			offset: 0,

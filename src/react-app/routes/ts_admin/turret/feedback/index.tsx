@@ -37,6 +37,7 @@ import type {
 	TurretFeedbackStatus,
 	TurretFeedbackKind,
 } from "../../../../features/turret/queries";
+import { DAY_MS } from "@/lib/time";
 
 const Route = createFileRoute("/ts_admin/turret/feedback/")({
 	component: TurretFeedbackPage,
@@ -67,7 +68,7 @@ function TurretFeedbackPage() {
 			status,
 			kind: kind === "all" ? undefined : kind,
 			q: q.trim() || undefined,
-			from: now - 30 * 24 * 60 * 60 * 1000,
+			from: now - 30 * DAY_MS,
 			to: now,
 			limit,
 			offset,

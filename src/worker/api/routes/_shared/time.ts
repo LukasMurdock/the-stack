@@ -1,4 +1,4 @@
-const DAY_MS = 24 * 60 * 60 * 1000;
+import { DAY_MS } from "../../../../lib/time";
 
 function startOfUtcWeekMs(ms: number): number {
 	// Monday 00:00:00 UTC
@@ -13,4 +13,4 @@ function startOfUtcWeekMs(ms: number): number {
 	return startOfDay - daysSinceMonday * DAY_MS;
 }
 
-export { DAY_MS, startOfUtcWeekMs };
+export { startOfUtcWeekMs };

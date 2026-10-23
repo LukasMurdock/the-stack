@@ -35,8 +35,8 @@ import {
 } from "./_shared/admin-auth";
 import { loadReplaySessionSpansGrouped } from "./_shared/session-spans";
 import { startOfUtcWeekMs } from "./_shared/time";
+import { DAY_MS } from "../../../lib/time";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
 type WeeklyPoint = { weekStartMs: number; value: number };
 

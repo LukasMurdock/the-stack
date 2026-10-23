@@ -1,3 +1,4 @@
+import { DAY_MS } from "../src/lib/time.ts";
 // `pnpm flags`: the feature flag registry next to what the local Flagship
 // store serves, and the few store changes a developer needs. Production
 // flags are changed with Flagship itself (dashboard or `wrangler flagship`);
@@ -50,7 +51,6 @@ Flags are declared in src/contracts/feature-flags.ts.`;
 
 // IDs go into a targeting rule; our user and organization IDs fit this.
 const SUBJECT_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
-const DAY_MS = 86_400_000;
 
 type Subject = {
 	readonly userId?: string;

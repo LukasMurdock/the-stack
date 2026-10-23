@@ -39,6 +39,7 @@ import {
 	verifyUploadToken,
 } from "./_shared/turret-upload-token";
 import { startOfUtcWeekMs } from "./_shared/time";
+import { DAY_MS } from "../../../lib/time";
 
 type TurretEnv = {
 	Bindings: Bindings;
@@ -264,8 +265,7 @@ export const routes = turretApp
 				pv: policy.version,
 			});
 
-			const retentionExpiresAt =
-				now + policy.retentionDays * 24 * 60 * 60 * 1000;
+			const retentionExpiresAt = now + policy.retentionDays * DAY_MS;
 			const db = makeTurretDb(env.TURRET_DB);
 
 			const initialUrl =

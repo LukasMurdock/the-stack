@@ -1,6 +1,7 @@
 import type { TurretDb } from "../../bindings/d1/turret/db";
 import { and, eq, gt, inArray, lte } from "drizzle-orm";
 import * as schema from "../../bindings/d1/turret/schema";
+import { DAY_MS } from "../../lib/time";
 
 function replaySessionPrefix(sessionId: string) {
 	return `replay/v1/${sessionId}/`;
@@ -133,7 +134,7 @@ export async function cleanupTurretStorage(
 	return { deletedSessions, deletedChunks };
 }
 
-const UNLINKED_TELEMETRY_RETENTION_MS = 24 * 60 * 60 * 1000;
+const UNLINKED_TELEMETRY_RETENTION_MS = DAY_MS;
 export function telemetryExpiry(
 	now: number,
 	sessionExpiry?: Date | null

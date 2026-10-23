@@ -12,6 +12,7 @@ import { turretUploadChunk } from "../../src/react-app/features/turret/ingest";
 import { createSqliteD1 } from "../helpers/sqlite-d1";
 import { testBindings } from "../helpers/worker";
 import { FakeR2Bucket } from "../helpers/fake-r2";
+import { DAY_MS } from "../../src/lib/time";
 
 async function ingestFixture(t: TestContext) {
 	const sqlite = migratedSqlite("turret");
@@ -491,6 +492,6 @@ test("client and worker error persistence rolls back failed session updates and 
 	);
 	assert.equal(
 		Number(unlinked.expires_at) - Number(unlinked.created_at),
-		24 * 60 * 60 * 1000
+		DAY_MS
 	);
 });
