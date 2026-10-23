@@ -1,0 +1,71 @@
+{
+	"schemaVersion": 2,
+	"tool": {
+		"name": "proof",
+		"version": "2.0.0"
+	},
+	"commit": "8acb6811294388e75c64f015adeaf4957f0a72d0",
+	"tree": "1e5d457d91e879905628d86dafb48f652d9f06b6",
+	"result": "failed",
+	"startedAt": "2026-10-22T23:49:27.415Z",
+	"finishedAt": "2026-10-23T00:00:16.356Z",
+	"durationMs": 648972,
+	"environment": {
+		"node": "v26.12.1",
+		"pnpm": "11.22.0",
+		"platform": "darwin",
+		"arch": "arm64"
+	},
+	"reviews": [],
+	"steps": [
+		{
+			"name": "install",
+			"command": [
+				"pnpm",
+				"install",
+				"--frozen-lockfile"
+			],
+			"status": "passed",
+			"exitCode": 0,
+			"durationMs": 8076,
+			"logPath": ".proof/8acb6811294388e75c64f015adeaf4957f0a72d0/install.log",
+			"logTail": "✓ Lockfile passes supply-chain policies (verified 5s ago)\nLockfile is up to date, resolution step is skipped\nProgress: resolved 1, reused 0, downloaded 0, added 0\nPackages: +777\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nPackages are cloned from the content-addressable store to the virtual store.\n  Content-addressable store is at: /Users/lukasmurdock/.local/share/pnpm/store/v11\n  Virtual store is at:             node_modules/.pnpm\nProgress: resolved 777, reused 777, downloaded 0, added 48\nProgress: resolved 777, reused 777, downloaded 0, added 153\nProgress: resolved 777, reused 777, downloaded 0, added 501\nProgress: resolved 777, reused 777, downloaded 0, added 777, done\n\ndependencies:\n+ @astrojs/cloudflare 14.4.0\n+ @astrojs/react 7.1.0\n+ @base-ui/react 1.9.0\n+ @fontsource-variable/inter 5.3.0\n+ @hono/zod-openapi 1.6.3\n+ @rrweb/rrweb-plugin-console-record 2.1.7\n+ @rrweb/types 2.1.7\n+ @scalar/hono-api-reference 0.12.12\n+ @tailwindcss/vite 4.3.3\n+ @tanstack/react-query 5.104.3\n+ @tanstack/react-router 1.170.44\n+ @tanstack/react-table 9.3.1\n+ astro 7.4.0\n+ better-auth 1.7.10\n+ class-variance-authority 0.7.1\n+ clsx 2.1.1\n+ cmdk 1.1.1\n+ date-fns 4.4.0\n+ dotenv 18.0.8\n+ drizzle-orm 0.45.4\n+ evlog 2.32.0\n+ hono 4.13.13\n+ lucide-react 1.57.0\n+ react 19.3.1\n+ react-day-picker 10.0.2\n+ react-dom 19.3.1\n+ react-email 6.11.2\n+ react-resizable-panels 4.14.5\n+ recharts 3.10.1\n+ resend 6.33.0\n+ rrweb 2.1.7\n+ rrweb-player 2.1.7\n+ tailwind-merge 3.7.0\n+ tailwindcss 4.3.3\n+ vaul 1.1.2\n+ zod 4.6.7\n\ndevDependencies:\n+ @cloudflare/vite-plugin 1.64.0\n+ @oxlint/plugins 1.88.0\n+ @playwright/test 1.64.1\n+ @tanstack/eslint-plugin-query 5.104.3\n+ @tanstack/eslint-plugin-router 1.162.0\n+ @tanstack/react-query-devtools 5.104.3\n+ @tanstack/react-router-devtools 1.167.2\n+ @tanstack/router-plugin 1.168.46\n+ @types/better-sqlite3 9.6.0\n+ @types/jsdom 30.0.0\n+ @types/node 24.19.2\n+ @types/react 19.3.0\n+ @types/react-dom 19.3.0\n+ @typescript/native <- typescript 7.0.2\n+ better-sqlite3 13.0.3\n+ drizzle-kit 0.31.11\n+ eslint 10.12.0\n+ eslint-plugin-drizzle 0.2.3\n+ eslint-plugin-react-hooks 7.1.1\n+ eslint-plugin-react-refresh 0.5.7\n+ husky 9.1.7\n+ jsdom 30.1.3\n+ lint-staged 17.6.0\n+ oxc-transform-react 0.154.0\n+ oxfmt 0.73.0\n+ oxlint 1.88.0\n+ oxlint-tsgolint 7.0.2004\n+ tsx 4.23.15\n+ tw-animate-css 1.4.0\n+ typescript <- @typescript/typescript6 6.0.2\n+ vite 8.3.4\n+ void 1.1.11\n+ wrangler 4.151.0\n\n. prepare$ husky\n. prepare: Done\nDone in 8s using pnpm v11.22.0\n"
+		},
+		{
+			"name": "verify",
+			"command": [
+				"pnpm",
+				"verify"
+			],
+			"status": "failed",
+			"exitCode": 1,
+			"durationMs": 631249,
+			"logPath": ".proof/8acb6811294388e75c64f015adeaf4957f0a72d0/verify.log",
+			"logTail": " Test.postRun (node:internal/test_runner/test:1542:19)\n      at Test.run (node:internal/test_runner/test:1467:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: null,\n    expected: 1,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n\ntest at tests/tooling/secrets-store.test.ts:1:1994\n✖ the table parser reads Wrangler's real local Secrets Store listing (529382.740791ms)\n  Error: spawnSync pnpm ETIMEDOUT\n      at Object.spawnSync (node:internal/child_process:1175:20)\n      at spawnSync (node:child_process:976:24)\n      at runWrangler (/private/var/folders/t4/2lpg_z3d2msdhcz0tll2z1p40000gn/T/proof-kBIysz/scripts/lib/flagship.ts:64:17)\n      at seedLocalSecrets (/private/var/folders/t4/2lpg_z3d2msdhcz0tll2z1p40000gn/T/proof-kBIysz/scripts/lib/secrets-store.ts:436:18)\n      at TestContext.<anonymous> (/private/var/folders/t4/2lpg_z3d2msdhcz0tll2z1p40000gn/T/proof-kBIysz/tests/tooling/secrets-store.test.ts:94:2)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.start (node:internal/test_runner/test:1262:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {\n    errno: -60,\n    code: 'ETIMEDOUT',\n    syscall: 'spawnSync pnpm',\n    path: 'pnpm',\n    spawnargs: [ 'exec', 'wrangler', 'secrets-store', 'secret', 'create', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '--name', 'SECOND_SECRET', '--value', 'two', '--scopes', 'workers', '--persist-to', '/var/folders/t4/2lpg_z3d2msdhcz0tll2z1p40000gn/T/stack-secrets-table-TYDSDj/state', '--config', '/var/folders/t4/2lpg_z3d2msdhcz0tll2z1p40000gn/T/stack-secrets-table-TYDSDj/wrangler.json' ]\n  }\n\ntest at tests/tooling/ship-trunk.test.ts:1:6247\n✖ trunk ship refuses a missing proof, a failed proof and a proof of another tree (515619.502667ms)\n  Error: spawnSync git ETIMEDOUT\n      at Object.spawnSync (node:internal/child_process:1175:20)\n      at spawnSync (node:child_process:976:24)\n      at execFileSync (node:child_process:1019:15)\n      at git (/private/var/folders/t4/2lpg_z3d2msdhcz0tll2z1p40000gn/T/proof-kBIysz/tests/tooling/ship-trunk.test.ts:46:9)\n      at commitFile (/private/var/folders/t4/2lpg_z3d2msdhcz0tll2z1p40000gn/T/proof-kBIysz/tests/tooling/ship-trunk.test.ts:62:2)\n      at setup (/private/var/folders/t4/2lpg_z3d2msdhcz0tll2z1p40000gn/T/proof-kBIysz/tests/tooling/ship-trunk.test.ts:132:15)\n      at TestContext.<anonymous> (/private/var/folders/t4/2lpg_z3d2msdhcz0tll2z1p40000gn/T/proof-kBIysz/tests/tooling/ship-trunk.test.ts:284:16)\n      at Test.runInAsyncScope (node:async_hooks:226:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:974:18) {\n    errno: -60,\n    code: 'ETIMEDOUT',\n    syscall: 'spawnSync git',\n    path: 'git',\n    spawnargs: [ 'add', 'a.txt' ],\n    error: Error: spawnSync git ETIMEDOUT\n        at Object.spawnSync (node:internal/child_process:1175:20)\n        at spawnSync (node:child_process:976:24)\n        at execFileSync (node:child_process:1019:15)\n        at git (/private/var/folders/t4/2lpg_z3d2msdhcz0tll2z1p40000gn/T/proof-kBIysz/tests/tooling/ship-trunk.test.ts:46:9)\n        at commitFile (/private/var/folders/t4/2lpg_z3d2msdhcz0tll2z1p40000gn/T/proof-kBIysz/tests/tooling/ship-trunk.test.ts:62:2)\n        at setup (/private/var/folders/t4/2lpg_z3d2msdhcz0tll2z1p40000gn/T/proof-kBIysz/tests/tooling/ship-trunk.test.ts:132:15)\n        at TestContext.<anonymous> (/private/var/folders/t4/2lpg_z3d2msdhcz0tll2z1p40000gn/T/proof-kBIysz/tests/tooling/ship-trunk.test.ts:284:16)\n        at Test.runInAsyncScope (node:async_hooks:226:14)\n        at Test.run (node:internal/test_runner/test:1402:25)\n        at Test.processPendingSubtests (node:internal/test_runner/test:974:18),\n    status: 0,\n    signal: null,\n    output: [ null, '', '' ],\n    pid: 99680,\n    stdout: '',\n    stderr: ''\n  }\n[ELIFECYCLE] Command failed with exit code 1.\n[ELIFECYCLE] Command failed with exit code 1.\n"
+		},
+		{
+			"name": "deploy",
+			"command": [
+				"pnpm",
+				"check:deploy"
+			],
+			"status": "not_run",
+			"exitCode": null,
+			"durationMs": 0,
+			"logPath": null,
+			"logTail": ""
+		},
+		{
+			"name": "e2e",
+			"command": [
+				"pnpm",
+				"test:e2e"
+			],
+			"status": "not_run",
+			"exitCode": null,
+			"durationMs": 0,
+			"logPath": null,
+			"logTail": ""
+		}
+	]
+}
