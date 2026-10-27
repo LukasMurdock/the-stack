@@ -1,8 +1,8 @@
 // void.lock.json keeps the authored Cloudflare config (`source`) beside what
 // Void last wrote into the generated .void-wrangler.jsonc (`resolved`). While
 // `source` is unchanged, Void's next materialization uses `resolved` as is.
-// That is how provisioned IDs survive, but Void 1.1.11's framework deploy
-// also writes the build's output into the generated config (main:
+// That is how provisioned IDs survive, but Void's framework deploy (1.1.11
+// through 1.2.1) also writes the build's output into the generated config (main:
 // dist/server/entry.mjs, assets.directory: dist/client) and records it when it
 // saves its published-traffic snapshot, so the next build would take the
 // previous build's output as its Worker entry.

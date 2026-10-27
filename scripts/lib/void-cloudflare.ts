@@ -21,9 +21,9 @@ import { z } from "zod";
 // Upgrading Void means comparing the internals below between versions (see
 // AGENTS.md), running `pnpm test:tooling` and `pnpm check:deploy`, then adding
 // the version here.
-export const VALIDATED_VOID_VERSIONS: readonly string[] = ["1.1.11"];
+export const VALIDATED_VOID_VERSIONS: readonly string[] = ["1.2.1"];
 
-// Void 1.1.11 ships 208 chunks; its longest export statement is 1,763 bytes.
+// Void 1.2.1 ships 213 chunks; its longest export statement is 2,023 bytes.
 export const CHUNK_COUNT_MAX = 2_000;
 export const EXPORT_TAIL_BYTES = 16_384;
 export const EXPORT_SPECIFIERS_MAX = 512;

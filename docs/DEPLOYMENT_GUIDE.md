@@ -144,7 +144,7 @@ their own headers.
 ## Resource state and retries
 
 Commit `void.lock.json` after provisioning. It contains resolved resource IDs,
-so another machine or CI reuses the same resources. Void 1.1.11 also records
+so another machine or CI reuses the same resources. Void (1.1.11 through 1.2.1) also records
 the last build's output there (`main: dist/server/entry.mjs`,
 `assets.directory: dist/client`), which the next build would read back as its
 source; `pnpm run deploy` restores the authored values before building and
