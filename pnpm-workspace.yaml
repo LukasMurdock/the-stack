@@ -1,4 +1,15 @@
 minimumReleaseAge: 1440
+# Better Auth 1.7.16 is the 2026-11-03 security release; drop these once older than a day.
+minimumReleaseAgeExclude:
+    - better-auth@1.7.16
+    - "@better-auth/core@1.7.16"
+    - "@better-auth/drizzle-adapter@1.7.16"
+    - "@better-auth/kysely-adapter@1.7.16"
+    - "@better-auth/memory-adapter@1.7.16"
+    - "@better-auth/mongo-adapter@1.7.16"
+    - "@better-auth/prisma-adapter@1.7.16"
+    - "@better-auth/telemetry@1.7.16"
+    - better-call@1.4.5
 blockExoticSubdeps: true
 trustPolicy: no-downgrade
 trustPolicyIgnoreAfter: 10080
