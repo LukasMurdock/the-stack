@@ -202,6 +202,14 @@ test("Astro and React pages render in the bundled font", async ({ page }) => {
 		await expect(
 			page.getByRole("heading", { name: heading, exact: true }).first()
 		).toBeVisible();
+		// Every sheet goes into each replay snapshot, so one linked twice costs
+		// its whole size against the replay's upload limit.
+		const sheets = await page
+			.locator("link[rel=stylesheet]")
+			.evaluateAll((links) =>
+				links.map((link) => link.getAttribute("href"))
+			);
+		expect(new Set(sheets).size, path).toBe(sheets.length);
 		const font = await page.evaluate(async () => {
 			await document.fonts.ready;
 			return {
