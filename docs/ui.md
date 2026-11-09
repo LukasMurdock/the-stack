@@ -42,7 +42,7 @@ ones.
 | `ui/StatusPill`, `ui/tone`            | A state as a labelled chip; color comes from the tone tokens in index.css. |
 | `ui/OverflowMenu`                     | The ⋯ menu of secondary actions; drops stray separators.                   |
 | `ui/Pagination`                       | Previous/next for a `pagedResponse` list.                                  |
-| `ui/format`                           | `formatCount`, `plural`, `formatDate`.                                     |
+| `ui/format`                           | `formatCount`, `plural`, `formatDate`, `formatAgo`, `formatDateTime`.      |
 | `forms/FormDialog`                    | A primary-action button that opens its form in a dialog.                   |
 | `components/ScrollTabs`               | A sub-tab row (navigation chrome, beside the header and `nav-items.ts`).   |
 

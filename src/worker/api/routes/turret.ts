@@ -5,7 +5,7 @@ import {
 	REPLAY_CHUNK_BYTES_MAX,
 	jsonBytes,
 } from "../../../contracts/turret-ingest";
-import { telemetryExpiry, readRetainedReplay } from "../../turret/retention";
+import { readRetainedReplay } from "../../turret/retention";
 import { commitReplayChunk } from "../../turret/chunks";
 import type { UploadTokenPayload } from "./_shared/turret-upload-token";
 import type { MiddlewareHandler } from "hono";
@@ -767,19 +767,13 @@ export const routes = turretApp
 			// Best-effort lookup for session metadata to denormalize user.
 			let userId = "";
 			let userEmail: string | null = null;
-			let expiresAt = telemetryExpiry(now);
 			try {
 				const session = await db.query.turretSessions.findFirst({
 					where: (t, ops) => ops.eq(t.sessionId, sessionId),
-					columns: {
-						userId: true,
-						userEmail: true,
-						retentionExpiresAt: true,
-					},
+					columns: { userId: true, userEmail: true },
 				});
 				userId = session?.userId ?? "";
 				userEmail = session?.userEmail ?? null;
-				expiresAt = telemetryExpiry(now, session?.retentionExpiresAt);
 			} catch {
 				// ignore; keep defaults
 			}
@@ -801,7 +795,8 @@ export const routes = turretApp
 				contact: body.contact || null,
 				extraJson: body.extra ? JSON.stringify(body.extra) : null,
 				status: "open",
-				expiresAt: new Date(expiresAt),
+				// Kept: feedback doesn't expire with its session.
+				expiresAt: null,
 				createdAt: new Date(now),
 				updatedAt: new Date(now),
 			});

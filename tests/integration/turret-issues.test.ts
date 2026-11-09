@@ -726,6 +726,79 @@ test("issue triage and readers preserve partial edits and sample semantics", asy
 					`SELECT status FROM turret_user_feedback WHERE id='${id}'`
 				).status;
 
+			// The inbox reads a page, every status's count under the same
+			// filters, and finds a report by its reporter or its id.
+			f.sqlite
+				.prepare(
+					"UPDATE turret_user_feedback SET user_email = 'sam@example.test' WHERE id = 'report-b'"
+				)
+				.run();
+			const inbox = async (query: string) => {
+				const body = z
+					.object({
+						feedback: z.array(
+							z.object({
+								id: z.string(),
+								replayAvailable: z.boolean(),
+							})
+						),
+						counts: z.object({
+							open: z.number(),
+							triaged: z.number(),
+							resolved: z.number(),
+						}),
+					})
+					.parse(
+						await (await request(`feedback?from=0&${query}`)).json()
+					);
+				return {
+					ids: body.feedback.map(({ id }) => id),
+					open: body.counts.open,
+					triaged: body.counts.triaged,
+				};
+			};
+			assert.deepEqual(await inbox("status=open&limit=1"), {
+				ids: ["report-b"],
+				open: 2,
+				triaged: 0,
+			});
+			assert.deepEqual(await inbox("status=triaged"), {
+				ids: [],
+				open: 2,
+				triaged: 0,
+			});
+			assert.deepEqual(await inbox("q=sam%40example"), {
+				ids: ["report-b"],
+				open: 1,
+				triaged: 0,
+			});
+			assert.deepEqual((await inbox("id=report-a")).ids, ["report-a"]);
+			// A report outlives its replay, and says so.
+			const replay = async () =>
+				z
+					.object({
+						feedback: z.array(
+							z.object({ replayAvailable: z.boolean() })
+						),
+					})
+					.parse(
+						await (
+							await request("feedback?from=0&id=report-a")
+						).json()
+					).feedback[0]?.replayAvailable;
+			assert.equal(await replay(), false);
+			f.sqlite
+				.prepare(
+					"UPDATE turret_sessions SET chunk_count = 1 WHERE session_id = (SELECT session_id FROM turret_user_feedback WHERE id = 'report-a')"
+				)
+				.run();
+			assert.equal(await replay(), true);
+			f.sqlite
+				.prepare(
+					"UPDATE turret_sessions SET chunk_count = 0 WHERE session_id = (SELECT session_id FROM turret_user_feedback WHERE id = 'report-a')"
+				)
+				.run();
+
 			const promoted = await send("POST", "feedback/report-a/issue");
 			assert.equal(promoted.status, 200);
 			const { issueFingerprint } = z

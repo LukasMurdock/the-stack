@@ -11,4 +11,12 @@ export const toneClasses = {
 		done: "bg-tone-done text-tone-done-foreground",
 		stopped: "bg-tone-stopped text-tone-stopped-foreground",
 	},
+	// A word or icon that carries a state.
+	text: {
+		neutral: "",
+		waiting: "text-tone-waiting-foreground",
+		working: "text-tone-working-foreground",
+		done: "text-tone-done-foreground",
+		stopped: "text-tone-stopped-foreground",
+	},
 } satisfies Record<string, Record<Tone, string>>;

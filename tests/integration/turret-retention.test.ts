@@ -147,7 +147,7 @@ test("R2 and database failures preserve enough metadata to retry", async (t) => 
 	});
 });
 
-test("cleanup limits session batches and removes legacy linked telemetry and feedback", async (t) => {
+test("cleanup limits session batches, removes legacy linked telemetry and keeps feedback", async (t) => {
 	const f = fixture();
 	t.after(() => f.sqlite.close());
 	for (let i = 0; i < 11; i++) f.session(`expired-${i}`, 1000, 0);
@@ -182,7 +182,7 @@ test("cleanup limits session batches and removes legacy linked telemetry and fee
 	assert.equal(
 		readSqlRow(f.sqlite, "SELECT count(*) AS n FROM turret_user_feedback")
 			.n,
-		0
+		1
 	);
 	assert.equal(
 		readSqlRow(
@@ -191,11 +191,11 @@ test("cleanup limits session batches and removes legacy linked telemetry and fee
 		).n,
 		0
 	);
-	// A report's issue link is evidence that expires with the report.
+	// A report, and its issue link, outlive the session it came from.
 	assert.equal(
 		readSqlRow(f.sqlite, "SELECT count(*) AS n FROM turret_issue_feedback")
 			.n,
-		0
+		1
 	);
 	assert.equal(
 		(await cleanupTurretStorage(f.db, bucket, 1000)).deletedSessions,

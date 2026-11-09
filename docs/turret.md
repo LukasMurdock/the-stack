@@ -219,10 +219,12 @@ The URL keeps `event` (the selected occurrence) and `t` (the replay position in 
 
 Feedback can describe broken behavior that never raises an error, so reports are issue evidence alongside error occurrences. A report links to at most one issue, through `turret_issue_feedback`.
 
-- **Create issue** promotes a report to its own issue, with the fingerprint `report:<feedback id>`. The issue title is the report's first line, and promoting the same report again opens the same issue.
+Admin → Feedback (`/ts_admin/turret/feedback`) is the inbox for reports: New, Triaged and Resolved tabs, the list beside the open report on wide screens, and one or the other on narrow ones. The filters and open report are in the URL. On wide screens, `J`/`K` move, `T`/`E`/`N` decide, `I` creates an issue, `Z` undoes and `?` lists them, with a switch to turn them off. It shows every report: feedback doesn't expire, though a report's replay does, and then the session link goes. Pages hold 50 reports, and moving by key stops at the end of a page.
+
+- **Create issue** promotes a report to its own issue, with the fingerprint `report:<feedback id>`. The issue title is the report's first line, and promoting the same report again finds the same issue. The inbox stays open with a link to the issue, and the report moves to Triaged.
 - **Link to this issue** appears on reports in an investigation's timeline. It attaches a report from the same replay session to the issue under investigation, moving it from any other issue. `PUT /api/internal/turret/feedback/{id}/issue` does the same by fingerprint, and `DELETE` unlinks.
 - Linking marks an open report as triaged. A report made after the issue was resolved reopens it as regressed, under the same rule as error occurrences. The report's deployment is the one that served its replay session.
-- An issue exists while it has retained occurrences or linked reports. Issue counts include reports: the issue list has a reports count, and users and replay sessions include reporters. Links are deleted with their reports when feedback expires.
+- An issue exists while it has retained occurrences or linked reports. Issue counts include reports: the issue list has a reports count, and users and replay sessions include reporters. Reports are kept when their replay session expires, and so are their links.
 - The issue page lists linked reports. Selecting one (`report` in the URL) opens it like an occurrence, with its replay positioned 5 seconds before the report and the session timeline around it.
 
 Error occurrences are still grouped only by fingerprint. Turret cannot yet attach an occurrence to a different issue or merge issues.

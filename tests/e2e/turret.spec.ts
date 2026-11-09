@@ -562,11 +562,11 @@ test("a feedback report promoted to an issue opens its replay and stays linked",
 	await page.getByRole("button", { name: "Send", exact: true }).click();
 	expect((await sent).ok()).toBe(true);
 
+	// The inbox stays open when the issue is made, with a link to it.
 	await page.goto("/app/ts_admin/turret/feedback");
-	await page
-		.getByRole("row", { name: new RegExp(message) })
-		.getByRole("button", { name: "Create issue", exact: true })
-		.click();
+	await page.getByRole("link", { name: new RegExp(message) }).click();
+	await page.getByRole("button", { name: /^Create issue/ }).click();
+	await page.getByRole("link", { name: "View issue", exact: true }).click();
 	await expect(page).toHaveURL(/\/issues\/report%3A|\/issues\/report:/);
 	await expect(
 		page.getByText("Selected report", { exact: true })
@@ -581,11 +581,14 @@ test("a feedback report promoted to an issue opens its replay and stays linked",
 
 	// Linking triages the report, so it leaves the default open view.
 	await page.goto("/app/ts_admin/turret/feedback");
-	await page.getByRole("combobox").first().click();
-	await page.getByRole("option", { name: "triaged", exact: true }).click();
+	await expect(
+		page.getByRole("link", { name: new RegExp(message) })
+	).toHaveCount(0);
+	await page.getByRole("link", { name: /^Triaged/ }).click();
+	await page.getByRole("link", { name: new RegExp(message) }).click();
 	await expect(
 		page
-			.getByRole("row", { name: new RegExp(message) })
+			.getByRole("article")
 			.getByRole("link", { name: "View issue", exact: true })
 	).toBeVisible();
 });

@@ -199,11 +199,12 @@ context reads also reject expired credentials when background timers are delayed
 Capture does not automatically renew; reload the page to start a new signed session.
 
 Telemetry retention is resolved in `worker/turret/retention.ts`: session-linked
-records inherit the session expiry; unavailable or missing session metadata uses
+records other than feedback inherit the session expiry; unavailable or missing session metadata uses
 the short fallback. Feedback still requires session user metadata to be stored.
 Expired replay sessions are hidden from lists and rejected by replay readers and
-upload authorization immediately. The hourly cleanup removes expired telemetry
-and feedback, then purges up to ten replay sessions, selecting 99 chunk metadata rows and 99 R2
+upload authorization immediately. Feedback is kept: it is what people asked of the product,
+so it outlives its session and replay. The hourly cleanup removes expired telemetry,
+then purges up to ten replay sessions, selecting 99 chunk metadata rows and 99 R2
 objects per session. Prefix listing also finds objects whose metadata write failed.
 R2 objects are deleted before their database references; failures retain those
 references for retry, and large sessions resume on later runs. Retention changes

@@ -2,7 +2,13 @@ import { AuthenticatedOutlet } from "../features/auth/AuthenticatedOutlet";
 import { EmailFailureBanner } from "../features/admin/EmailFailureBanner";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { ApiError } from "../api";
-import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
+import {
+	Link,
+	createFileRoute,
+	useRouter,
+	useRouterState,
+} from "@tanstack/react-router";
+import { cn } from "@/lib/utils";
 
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { AccountMenu } from "../components/AccountMenu";
@@ -34,11 +40,17 @@ const Route = createFileRoute("/ts_admin")({
 
 // The way back to the app comes first; the developer path stays out of sight.
 function TsAdminLayout() {
+	// Feedback lives under Turret's address but has its own tab.
+	const pathname = useRouterState({
+		select: (state) => state.location.pathname,
+	});
+	const turretPath = pathname.includes("/ts_admin/turret");
+	const onFeedback = pathname.includes("/ts_admin/turret/feedback");
 	const { userId } = Route.useRouteContext();
 	const user = authClient.useSession().data?.user;
 	return (
 		<div className="min-h-dvh">
-			<header className="border-b bg-card">
+			<header className="border-b bg-card max-lg:[body:has([data-reading])_&]:hidden">
 				<div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2">
 					<Link
 						to="/"
@@ -76,16 +88,28 @@ function TsAdminLayout() {
 						Users
 					</Link>
 					<Link
-						to="/ts_admin/turret"
+						to="/ts_admin/turret/feedback"
 						className={tabLinkClass}
 						activeProps={tabActiveProps}
+					>
+						Feedback
+					</Link>
+					<Link
+						to="/ts_admin/turret"
+						className={cn(
+							tabLinkClass,
+							!onFeedback &&
+								turretPath &&
+								tabActiveProps.className
+						)}
+						activeOptions={{ exact: true }}
 					>
 						Turret
 					</Link>
 				</ScrollTabs>
 			</header>
 
-			<div className="mx-auto max-w-7xl px-4 py-6">
+			<div className="mx-auto max-w-7xl px-4 py-6 max-lg:[body:has([data-reading])_&]:py-0">
 				<EmailFailureBanner />
 				<AuthenticatedOutlet userId={userId} />
 			</div>

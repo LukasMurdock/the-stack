@@ -1,6 +1,7 @@
 import { literalContains } from "../../../bindings/d1/literal-search";
 import { insertionOrder } from "../../../bindings/d1/insertion-order";
-import { and, desc, eq, gte, lt, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gte, lt, sql, type SQL } from "drizzle-orm";
+import { playableReplay } from "../../turret/retention";
 import {
 	turretIssueFeedback,
 	turretUserFeedback,
@@ -56,6 +57,8 @@ const FeedbackItemSchema = z
 		message: z.string(),
 		contact: z.string().nullable(),
 		status: FeedbackStatusSchema,
+		// A report outlives its replay, so each says whether there's one to watch.
+		replayAvailable: z.boolean(),
 		// The issue this report is evidence for, if any.
 		issueFingerprint: z.string().nullable(),
 		createdAt: z.number(),
@@ -65,24 +68,29 @@ const FeedbackItemSchema = z
 
 // Dates are deliberately milliseconds on this API. SQL expressions bypass the
 // table's Date decoder; all readers share this explicit public projection.
-const feedbackProjection = {
-	id: turretUserFeedback.id,
-	sessionId: turretUserFeedback.sessionId,
-	userId: turretUserFeedback.userId,
-	userEmail: turretUserFeedback.userEmail,
-	ts: sql<number>`${turretUserFeedback.ts}`,
-	url: turretUserFeedback.url,
-	kind: turretUserFeedback.kind,
-	message: turretUserFeedback.message,
-	contact: turretUserFeedback.contact,
-	status: turretUserFeedback.status,
-	issueFingerprint: sql<string | null>`(
+const feedbackProjection = (now: number) =>
+	({
+		id: turretUserFeedback.id,
+		sessionId: turretUserFeedback.sessionId,
+		userId: turretUserFeedback.userId,
+		userEmail: turretUserFeedback.userEmail,
+		ts: sql<number>`${turretUserFeedback.ts}`,
+		url: turretUserFeedback.url,
+		kind: turretUserFeedback.kind,
+		message: turretUserFeedback.message,
+		contact: turretUserFeedback.contact,
+		status: turretUserFeedback.status,
+		issueFingerprint: sql<string | null>`(
 		SELECT ${turretIssueFeedback.fingerprint} FROM ${turretIssueFeedback}
 		WHERE ${turretIssueFeedback.feedbackId} = ${turretUserFeedback.id}
 	)`,
-	createdAt: sql<number>`${turretUserFeedback.createdAt}`,
-	updatedAt: sql<number>`${turretUserFeedback.updatedAt}`,
-} satisfies Record<keyof z.infer<typeof FeedbackItemSchema>, unknown>;
+		createdAt: sql<number>`${turretUserFeedback.createdAt}`,
+		updatedAt: sql<number>`${turretUserFeedback.updatedAt}`,
+		replayAvailable:
+			sql`${playableReplay("turret_user_feedback.session_id", now)}`.mapWith(
+				Boolean
+			),
+	}) satisfies Record<keyof z.infer<typeof FeedbackItemSchema>, unknown>;
 
 // Bounds the reports listed on one issue page; links beyond it still count.
 const ISSUE_REPORTS_MAX = 200;
@@ -107,6 +115,16 @@ const FeedbackListResponseSchema = z
 		offset: z.number(),
 	})
 	.openapi("TurretFeedbackListResponse");
+
+// The list, and how many reports match its filters in each status, for the
+// inbox's tabs.
+const FeedbackInboxResponseSchema = FeedbackListResponseSchema.extend({
+	counts: z.object({
+		open: z.number(),
+		triaged: z.number(),
+		resolved: z.number(),
+	}),
+}).openapi("TurretFeedbackInboxResponse");
 
 internalTurretFeedbackApp.get(
 	"/internal/turret/session/:id/feedback",
@@ -134,6 +152,7 @@ export const routes = internalTurretFeedbackApp
 						status: FeedbackStatusSchema.optional(),
 						kind: FeedbackKindSchema.optional(),
 						q: z.string().optional(),
+						id: z.string().optional(),
 						...turretListPageSchema.shape,
 						sessionId: z.string().optional(),
 						userId: z.string().optional(),
@@ -147,7 +166,7 @@ export const routes = internalTurretFeedbackApp
 					description: "List user feedback",
 					content: {
 						"application/json": {
-							schema: FeedbackListResponseSchema,
+							schema: FeedbackInboxResponseSchema,
 						},
 					},
 				},
@@ -174,29 +193,47 @@ export const routes = internalTurretFeedbackApp
 				gte(table.ts, new Date(fromMs)),
 				lt(table.ts, new Date(toMs)),
 			];
-			if (status) filters.push(eq(table.status, status));
+			if (qv.id) filters.push(eq(table.id, qv.id));
 			if (kind) filters.push(eq(table.kind, kind));
 			if (sessionId) filters.push(eq(table.sessionId, sessionId));
 			if (userId) filters.push(eq(table.userId, userId));
 			if (q)
 				filters.push(
-					sql`(${literalContains(table.message, q)} OR ${literalContains(table.url, q)})`
+					sql`(${literalContains(table.message, q)} OR ${literalContains(table.url, q)} OR ${literalContains(table.userEmail, q)})`
 				);
-			const rows = FeedbackItemSchema.array().parse(
-				await makeTurretDb(env.TURRET_DB)
-					.select(feedbackProjection)
+			const db = makeTurretDb(env.TURRET_DB);
+			const [rows, totals] = await Promise.all([
+				db
+					.select(feedbackProjection(now))
 					.from(table)
-					.where(and(...filters))
+					.where(
+						and(
+							...filters,
+							status ? eq(table.status, status) : undefined
+						)
+					)
 					.orderBy(desc(table.createdAt), desc(insertionOrder(table)))
 					.limit(limit)
-					.offset(offset)
-			);
+					.offset(offset),
+				db
+					.select({ status: table.status, count: count() })
+					.from(table)
+					.where(and(...filters))
+					.groupBy(table.status),
+			]);
+			const counted = (value: string) =>
+				totals.find((row) => row.status === value)?.count ?? 0;
 
 			return c.json(
 				{
-					feedback: rows,
+					feedback: FeedbackItemSchema.array().parse(rows),
 					limit,
 					offset,
+					counts: {
+						open: counted("open"),
+						triaged: counted("triaged"),
+						resolved: counted("resolved"),
+					},
 				},
 				200
 			);
@@ -251,7 +288,7 @@ export const routes = internalTurretFeedbackApp
 				return c.json({ error: "Not Found" }, 404);
 			const rows = FeedbackItemSchema.array().parse(
 				await makeTurretDb(env.TURRET_DB)
-					.select(feedbackProjection)
+					.select(feedbackProjection(Date.now()))
 					.from(turretUserFeedback)
 					.where(eq(turretUserFeedback.sessionId, sessionId))
 					.orderBy(
@@ -483,14 +520,7 @@ export const routes = internalTurretFeedbackApp
 			const { fingerprint } = c.req.valid("param");
 			const now = Date.now();
 			const rows = await makeTurretDb(c.env.TURRET_DB)
-				.select({
-					...feedbackProjection,
-					replayAvailable: sql<number>`EXISTS (
-						SELECT 1 FROM turret_sessions s
-						WHERE s.session_id = ${turretUserFeedback.sessionId}
-							AND s.chunk_count > 0 AND s.retention_expires_at > ${now}
-					)`,
-				})
+				.select(feedbackProjection(now))
 				.from(turretUserFeedback)
 				.innerJoin(
 					turretIssueFeedback,
@@ -502,10 +532,7 @@ export const routes = internalTurretFeedbackApp
 					desc(turretUserFeedback.id)
 				)
 				.limit(ISSUE_REPORTS_MAX);
-			const reports = rows.map(({ replayAvailable, ...report }) => ({
-				...FeedbackItemSchema.parse(report),
-				replayAvailable: Boolean(replayAvailable),
-			}));
+			const reports = FeedbackItemSchema.array().parse(rows);
 			return c.json({ reports }, 200);
 		}
 	);

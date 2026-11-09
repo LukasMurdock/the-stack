@@ -1,3 +1,4 @@
+import { playableReplay } from "../../turret/retention";
 import { sql } from "drizzle-orm";
 import { makeTurretDb } from "../../../bindings/d1/turret/db";
 import { literalContains } from "../../../bindings/d1/literal-search";
@@ -162,13 +163,6 @@ function issueSample(row: Record<string, unknown>) {
 		ts: row.sampleTs,
 	});
 }
-
-// A replay is playable while its session is retained and has indexed chunks.
-const playableReplay = (sessionColumn: string, now: number) => sql`EXISTS (
-	SELECT 1 FROM turret_sessions s
-	WHERE s.session_id = ${sql.raw(sessionColumn)} AND s.chunk_count > 0
-		AND s.retention_expires_at > ${now}
-)`;
 
 async function readIssue(db: D1Database, fingerprint: string, now: number) {
 	const turretDb = makeTurretDb(db);

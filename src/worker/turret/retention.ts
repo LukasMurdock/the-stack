@@ -1,5 +1,5 @@
 import type { TurretDb } from "../../bindings/d1/turret/db";
-import { and, eq, gt, inArray, lte } from "drizzle-orm";
+import { and, eq, gt, inArray, lte, sql } from "drizzle-orm";
 import * as schema from "../../bindings/d1/turret/schema";
 import { DAY_MS } from "../../lib/time";
 
@@ -10,6 +10,16 @@ function replaySessionPrefix(sessionId: string) {
 export function replayChunkKey(sessionId: string, seq: number) {
 	return `${replaySessionPrefix(sessionId)}chunk/${String(seq).padStart(8, "0")}.json`;
 }
+
+// A replay is playable while its session is retained and has indexed chunks.
+export const playableReplay = (
+	sessionColumn: string,
+	now: number
+) => sql`EXISTS (
+	SELECT 1 FROM turret_sessions s
+	WHERE s.session_id = ${sql.raw(sessionColumn)} AND s.chunk_count > 0
+		AND s.retention_expires_at > ${now}
+)`;
 
 export function retainedReplay(now = Date.now()) {
 	return gt(schema.turretSessions.retentionExpiresAt, new Date(now));
@@ -32,6 +42,8 @@ const REPLAY_CLEANUP_BATCH = 99; // Leaves one D1 parameter for sessionId.
 
 // Bound each run to ten sessions, 99 metadata rows and 99 listed objects per
 // session. Remaining metadata and the session prefix let later runs resume.
+// Feedback is what people asked of the product, not telemetry, so nothing here
+// deletes it: a report outlives its replay session.
 export async function cleanupTurretStorage(
 	db: TurretDb,
 	bucket: Pick<R2Bucket, "delete" | "list">,
@@ -47,9 +59,6 @@ export async function cleanupTurretStorage(
 	await db
 		.delete(schema.turretSessionErrors)
 		.where(lte(schema.turretSessionErrors.expiresAt, expired));
-	await db
-		.delete(schema.turretUserFeedback)
-		.where(lte(schema.turretUserFeedback.expiresAt, expired));
 	await db
 		.delete(schema.turretOutcomeAttempts)
 		.where(lte(schema.turretOutcomeAttempts.expiresAt, expired));
@@ -114,9 +123,6 @@ export async function cleanupTurretStorage(
 			await db
 				.delete(schema.turretSessionErrors)
 				.where(eq(schema.turretSessionErrors.sessionId, sessionId));
-			await db
-				.delete(schema.turretUserFeedback)
-				.where(eq(schema.turretUserFeedback.sessionId, sessionId));
 			await db
 				.delete(schema.turretOutcomeAttempts)
 				.where(eq(schema.turretOutcomeAttempts.sessionId, sessionId));

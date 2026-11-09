@@ -39,6 +39,10 @@ export type TurretReplaySessionError = InferResponseType<
 	typeof replaySession.errors.$get,
 	200
 >["errors"][number];
+export type TurretFeedbackItem = InferResponseType<
+	typeof turret.feedback.$get,
+	200
+>["feedback"][number];
 export type TurretReplaySessionFeedback = InferResponseType<
 	typeof replaySession.feedback.$get,
 	200
@@ -625,6 +629,7 @@ export {
 	turretIssueActivityQueryOptions,
 	turretIssueRecoveryQueryOptions,
 	turretIssueTrackingMutation,
+	turretKeys,
 	turretFeedbackIssueMutation,
 	turretFeedbackQueryOptions,
 	turretReplaySessionFeedbackQueryOptions,
