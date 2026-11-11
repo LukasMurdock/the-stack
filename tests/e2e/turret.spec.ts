@@ -447,6 +447,9 @@ test("an issue investigation opens a recorded failure at its moment and keeps th
 	await page.getByRole("button", { name: "Sign in", exact: true }).click();
 	expect((await uploaded).ok()).toBe(true);
 	await page.getByRole("link", { name: "Home", exact: true }).click();
+	// A retry must not inherit the issue's owner, notes or links. A short
+	// suffix survives fingerprint normalization and fits D1's search limit.
+	const message = `Intentional UI test error ${crypto.randomUUID().slice(0, 8)}`;
 	// Two occurrences give the investigation another one to step to.
 	for (let attempt = 0; attempt < 2; attempt++) {
 		const reported = page.waitForResponse(
@@ -454,19 +457,18 @@ test("an issue investigation opens a recorded failure at its moment and keeps th
 				new URL(response.url()).pathname.endsWith("/error") &&
 				response.request().method() === "POST"
 		);
-		await page
-			.getByRole("button", { name: "Report UI error", exact: true })
-			.click();
+		await page.evaluate((message) => {
+			setTimeout(() => {
+				throw new Error(message);
+			});
+		}, message);
 		expect((await reported).ok()).toBe(true);
 	}
 
 	await page.goto(
-		"/app/ts_admin/turret/issues?q=Intentional%20UI%20test%20error"
+		`/app/ts_admin/turret/issues?q=${encodeURIComponent(message)}`
 	);
-	await page
-		.getByRole("cell", { name: /Intentional UI test error/ })
-		.first()
-		.click();
+	await page.getByRole("cell").filter({ hasText: message }).click();
 	await expect(
 		page.getByText("Representative occurrence", { exact: true })
 	).toBeVisible();
@@ -510,7 +512,14 @@ test("an issue investigation opens a recorded failure at its moment and keeps th
 		.fill("https://github.com/acme/app/pull/42");
 	await page.getByRole("button", { name: "Add link", exact: true }).click();
 	await expect(page.getByRole("link", { name: "acme/app#42" })).toBeVisible();
-	await expect(page.getByText("Reproduced from the replay.")).toBeVisible();
+	await expect(
+		page
+			.getByRole("paragraph")
+			.filter({ hasText: "Reproduced from the replay." })
+	).toBeVisible();
+	await expect(
+		page.getByLabel("Investigation note", { exact: true })
+	).toHaveValue("");
 	await expect(
 		page.getByText("linked acme/app#42", { exact: false })
 	).toBeVisible();
